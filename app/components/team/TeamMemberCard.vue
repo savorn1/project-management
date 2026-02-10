@@ -37,6 +37,7 @@
           ✏️
         </button>
         <button
+          v-if="!isSelf"
           @click="$emit('delete', member)"
           class="p-2 text-gray-400 hover:text-rose-400 hover:bg-slate-700 rounded-lg transition-colors"
           title="Delete user"
@@ -53,9 +54,12 @@ import type { TeamMember } from '~/types'
 
 interface Props {
   member: TeamMember
+  currentUserId?: string
 }
 
 const props = defineProps<Props>()
+
+const isSelf = computed(() => props.currentUserId && props.member._id === props.currentUserId)
 
 defineEmits<{
   edit: [member: TeamMember]

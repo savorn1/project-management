@@ -3,6 +3,7 @@ import type { Workplace, WorkplaceInput, WorkplaceMember, WorkplaceMemberWithUse
 const workplaces = ref<Workplace[]>([])
 const currentWorkplace = ref<Workplace | null>(null)
 const workplaceMembers = ref<WorkplaceMemberWithUser[]>([])
+const workplaceStats = ref<Record<string, { projectCount: number; memberCount: number }>>({})
 const isLoading = ref(false)
 const apiError = ref<string | null>(null)
 
@@ -22,6 +23,11 @@ export function useWorkplaces() {
 
     workplaces.value = result
     isLoading.value = false
+
+    // Load stats in background
+    workplacesApi.getStats().then((stats) => {
+      workplaceStats.value = stats
+    })
   }
 
   async function loadWorkplace(id: string) {
@@ -113,6 +119,7 @@ export function useWorkplaces() {
     workplaces,
     currentWorkplace,
     workplaceMembers,
+    workplaceStats,
     isLoading,
     apiError,
     loadWorkplaces,

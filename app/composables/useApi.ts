@@ -309,6 +309,11 @@ export function useApi() {
       })
       return response !== null
     },
+
+    async getStats(): Promise<Record<string, { projectCount: number; memberCount: number }>> {
+      const response = await request<SingleResponse<Record<string, { projectCount: number; memberCount: number }>>>('/admin/workplaces/stats')
+      return response?.data || {}
+    },
   }
 
   // Workplace Members API

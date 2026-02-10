@@ -23,6 +23,7 @@
         v-for="member in members"
         :key="member._id"
         :member="member"
+        :current-user-id="user?.id"
         @edit="openEditModal"
         @delete="openDeleteConfirm"
       />
@@ -189,6 +190,7 @@ useSeoMeta({
   description: 'Manage users and their roles'
 })
 
+const { user } = useAuth()
 const { members, isLoading, createMember, updateMember, deleteMember, loadMembers } = useTeam()
 
 onMounted(async () => {

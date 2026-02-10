@@ -23,6 +23,8 @@
         v-for="workplace in workplaces"
         :key="workplace._id"
         :workplace="workplace"
+        :project-count="workplaceStats[workplace._id]?.projectCount ?? 0"
+        :member-count="workplaceStats[workplace._id]?.memberCount ?? 0"
       />
     </div>
 
@@ -100,7 +102,7 @@ useSeoMeta({
   description: 'Manage your workplaces'
 })
 
-const { workplaces, isLoading, loadWorkplaces, createWorkplace } = useWorkplaces()
+const { workplaces, workplaceStats, isLoading, loadWorkplaces, createWorkplace } = useWorkplaces()
 
 onMounted(async () => {
   if (workplaces.value.length === 0) await loadWorkplaces()
