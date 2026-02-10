@@ -5,6 +5,7 @@
     draggable="true"
     @dragstart="$emit('dragstart', task)"
     @dragend="$emit('dragend')"
+    @click="$emit('select', task)"
   >
     <div class="flex items-start gap-3">
       <button
@@ -41,7 +42,7 @@
           class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-sm"
           :title="assignee.name"
         >
-          {{ assignee.avatar }}
+          {{ getInitials(assignee.name) }}
         </div>
       </div>
     </div>
@@ -62,6 +63,7 @@ const props = defineProps<Props>()
 
 defineEmits<{
   (e: 'toggle', id: string): void
+  (e: 'select', task: Task): void
   (e: 'dragstart', task: Task): void
   (e: 'dragend'): void
 }>()
@@ -70,6 +72,13 @@ const assignee = computed(() => {
   if (!props.task.assigneeId) return null
   return getMemberById(props.task.assigneeId)
 })
+
+function getInitials(name?: string): string {
+  if (!name) return '?'
+  const parts = name.trim().split(/\s+/)
+  if (parts.length >= 2) return `${parts[0]!.charAt(0)}${parts[parts.length - 1]!.charAt(0)}`.toUpperCase()
+  return parts[0]!.charAt(0).toUpperCase()
+}
 
 const dueDateClass = computed(() => {
   const status = getDueDateStatus(props.task.dueDate)

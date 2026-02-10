@@ -3,7 +3,8 @@
     <div
       v-for="task in tasks"
       :key="task._id"
-      class="flex items-center gap-4 p-4 bg-slate-800 rounded-lg border border-slate-700 hover:border-slate-600 transition-colors"
+      class="flex items-center gap-4 p-4 bg-slate-800 rounded-lg border border-slate-700 hover:border-slate-600 transition-colors cursor-pointer"
+      @click="$emit('select', task)"
     >
       <button
         @click="$emit('toggle', task._id)"
@@ -31,7 +32,7 @@
           class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-sm"
           :title="getAssignee(task.assigneeId)?.name"
         >
-          {{ getAssignee(task.assigneeId)?.avatar }}
+          {{ getInitials(getAssignee(task.assigneeId)?.name) }}
         </div>
       </div>
 
@@ -66,6 +67,7 @@ defineProps<Props>()
 
 defineEmits<{
   (e: 'toggle', id: string): void
+  (e: 'select', task: Task): void
 }>()
 
 const { getProjectById } = useProjects()
@@ -92,7 +94,7 @@ function getStatusColor(status: TaskStatus): 'slate' | 'blue' | 'amber' | 'emera
   const colors: Record<TaskStatus, 'slate' | 'blue' | 'amber' | 'emerald'> = {
     todo: 'slate',
     in_progress: 'blue',
-    review: 'amber',
+    in_review: 'amber',
     done: 'emerald'
   }
   return colors[status]
@@ -100,5 +102,12 @@ function getStatusColor(status: TaskStatus): 'slate' | 'blue' | 'amber' | 'emera
 
 function getStatusLabel(status: TaskStatus): string {
   return STATUS_CONFIG[status].label
+}
+
+function getInitials(name?: string): string {
+  if (!name) return '?'
+  const parts = name.trim().split(/\s+/)
+  if (parts.length >= 2) return `${parts[0]!.charAt(0)}${parts[parts.length - 1]!.charAt(0)}`.toUpperCase()
+  return parts[0]!.charAt(0).toUpperCase()
 }
 </script>

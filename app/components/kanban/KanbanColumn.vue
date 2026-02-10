@@ -32,6 +32,7 @@
         :key="task._id"
         :task="task"
         @toggle="$emit('toggle-task', $event)"
+        @select="$emit('select-task', $event)"
         @dragstart="$emit('drag-start', task)"
         @dragend="$emit('drag-end')"
       />
@@ -60,6 +61,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   (e: 'add-task'): void
   (e: 'toggle-task', id: string): void
+  (e: 'select-task', task: Task): void
   (e: 'drag-start', task: Task): void
   (e: 'drag-end'): void
   (e: 'drag-over'): void

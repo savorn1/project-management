@@ -8,6 +8,7 @@
       :is-drop-target="dropTargetColumn === column.id"
       @add-task="handleAddTask(column.id)"
       @toggle-task="toggleTaskComplete"
+      @select-task="(task: Task) => emit('select-task', task)"
       @drag-start="onDragStart"
       @drag-end="onDragEnd"
       @drag-over="onDragOver(column.id)"
@@ -28,6 +29,7 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   (e: 'add-task', status: TaskStatus): void
+  (e: 'select-task', task: Task): void
 }>()
 
 const {

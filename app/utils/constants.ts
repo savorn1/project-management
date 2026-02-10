@@ -47,8 +47,8 @@ export const STATUS_CONFIG: Record<TaskStatus, StyleConfig> = {
     color: 'text-blue-400',
     bgColor: 'bg-blue-400/20',
   },
-  review: {
-    label: 'Review',
+  in_review: {
+    label: 'In Review',
     color: 'text-amber-400',
     bgColor: 'bg-amber-400/20',
   },
