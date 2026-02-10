@@ -1,4 +1,4 @@
-import type { Task, Project, ProjectInput, TeamMember, DashboardStats, Workplace, WorkplaceInput, WorkplaceMember as WpMember, WorkplaceMemberWithUser } from '~/types'
+import type { Task, TaskComment, TaskActivity, Project, ProjectInput, TeamMember, DashboardStats, Workplace, WorkplaceInput, WorkplaceMember as WpMember, WorkplaceMemberWithUser } from '~/types'
 
 interface ListResponse<T> {
   success: boolean
@@ -319,8 +319,15 @@ export function useApi() {
     },
 
     async getAllWithDetails(workplaceId: string): Promise<WorkplaceMemberWithUser[]> {
-      const response = await request<RawListResponse<WorkplaceMemberWithUser>>(`/admin/workplaces/${workplaceId}/members/details?limit=100`)
-      return response?.data || []
+      const response = await request<RawListResponse<any>>(`/admin/workplaces/${workplaceId}/members/details?limit=100`)
+      return (response?.data || []).map((m: any) => {
+        const user = typeof m.userId === 'object' ? m.userId : undefined
+        return {
+          ...m,
+          user,
+          userId: user?._id || m.userId,
+        }
+      })
     },
 
     async getMemberRole(workplaceId: string, userId: string): Promise<string | null> {
@@ -350,6 +357,56 @@ export function useApi() {
     },
   }
 
+  // Task Comments API
+  // Note: Backend returns populated userId as { _id, name, email } object
+  // We map it to the `user` field for frontend consumption
+  const commentsApi = {
+    async getByTask(taskId: string): Promise<TaskComment[]> {
+      const response = await request<RawListResponse<any>>(`/admin/tasks/${taskId}/comments?limit=100`)
+      return (response?.data || []).map(mapComment)
+    },
+
+    async create(taskId: string, content: string): Promise<TaskComment | null> {
+      const response = await request<any>(`/admin/tasks/${taskId}/comments`, {
+        method: 'POST',
+        body: JSON.stringify({ content }),
+      })
+      return response ? mapComment(response) : null
+    },
+
+    async update(taskId: string, commentId: string, content: string): Promise<TaskComment | null> {
+      const response = await request<any>(`/admin/tasks/${taskId}/comments/${commentId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ content }),
+      })
+      return response ? mapComment(response) : null
+    },
+
+    async delete(taskId: string, commentId: string): Promise<boolean> {
+      const response = await request<DeleteResponse>(`/admin/tasks/${taskId}/comments/${commentId}`, {
+        method: 'DELETE',
+      })
+      return response !== null
+    },
+  }
+
+  function mapComment(raw: any): TaskComment {
+    const user = typeof raw.userId === 'object' ? raw.userId : undefined
+    return {
+      ...raw,
+      user,
+      userId: user?._id || raw.userId,
+    }
+  }
+
+  // Task Activity API
+  const activityApi = {
+    async getByTask(taskId: string): Promise<TaskActivity[]> {
+      const response = await request<RawListResponse<TaskActivity>>(`/admin/tasks/${taskId}/activities?limit=100`)
+      return response?.data || []
+    },
+  }
+
   // Health check
   async function checkHealth(): Promise<boolean> {
     const response = await request('/health')
@@ -363,6 +420,8 @@ export function useApi() {
     tasksApi,
     projectsApi,
     teamApi,
+    commentsApi,
+    activityApi,
     workplacesApi,
     workplaceMembersApi,
     checkHealth,

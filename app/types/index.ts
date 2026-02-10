@@ -105,6 +105,28 @@ export interface WorkplaceMemberWithUser extends WorkplaceMember {
   user?: TeamMember
 }
 
+// Task Comment
+export interface TaskComment {
+  _id: string
+  taskId: string
+  userId: string
+  user?: { _id: string; name: string; email: string }
+  content: string
+  createdAt: string
+  updatedAt: string
+}
+
+// Task Activity
+export interface TaskActivity {
+  _id: string
+  taskId: string
+  userId: string
+  user?: { _id: string; name: string; email: string }
+  action: string
+  meta?: Record<string, unknown>
+  createdAt: string
+}
+
 // Dashboard Stats
 export interface DashboardStats {
   totalProjects: number

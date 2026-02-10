@@ -190,6 +190,29 @@
                   </span>
                 </div>
               </div>
+
+              <!-- Comments / Activity Tabs -->
+              <div class="border-t border-slate-700/50 pt-4">
+                <div class="flex gap-4 mb-4">
+                  <button
+                    @click="previewTab = 'comments'"
+                    class="text-sm font-medium pb-2 border-b-2 transition-colors"
+                    :class="previewTab === 'comments' ? 'text-indigo-400 border-indigo-400' : 'text-gray-400 border-transparent hover:text-white'"
+                  >
+                    Comments
+                  </button>
+                  <button
+                    @click="previewTab = 'activity'"
+                    class="text-sm font-medium pb-2 border-b-2 transition-colors"
+                    :class="previewTab === 'activity' ? 'text-indigo-400 border-indigo-400' : 'text-gray-400 border-transparent hover:text-white'"
+                  >
+                    Activity
+                  </button>
+                </div>
+
+                <TaskCommentSection v-if="previewTab === 'comments'" :task-id="selectedTask._id" />
+                <TaskActivitySection v-else :task-id="selectedTask._id" />
+              </div>
             </div>
           </div>
         </div>
@@ -327,6 +350,7 @@ useSeoMeta({
 
 // Task preview
 const selectedTask = ref<Task | null>(null)
+const previewTab = ref<'comments' | 'activity'>('comments')
 
 function openPreview(task: Task) {
   selectedTask.value = task
