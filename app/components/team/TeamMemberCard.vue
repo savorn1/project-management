@@ -1,26 +1,48 @@
 <template>
   <BaseCard class="hover:border-indigo-500/50 transition-colors">
-    <div class="flex flex-col items-center text-center">
-      <div class="w-16 h-16 bg-indigo-600 rounded-full flex items-center justify-center text-3xl mb-4">
-        {{ member.avatar }}
+    <div class="flex items-start gap-4">
+      <div class="w-12 h-12 rounded-full flex items-center justify-center text-lg font-semibold flex-shrink-0"
+        :class="member.isActive ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-400'"
+      >
+        {{ initials }}
       </div>
 
-      <h3 class="text-white font-semibold">{{ member.name }}</h3>
-      <p class="text-gray-400 text-sm">{{ member.email }}</p>
-
-      <BaseBadge :color="getRoleColor(member.role)" class="mt-3">
-        {{ member.role }}
-      </BaseBadge>
-
-      <div class="flex items-center gap-4 mt-4 pt-4 border-t border-slate-700 w-full">
-        <div class="flex-1 text-center">
-          <p class="text-xl font-bold text-white">{{ member.taskCount }}</p>
-          <p class="text-gray-400 text-xs">Total Tasks</p>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2">
+          <h3 class="text-white font-semibold truncate">{{ member.name }}</h3>
+          <span
+            class="w-2 h-2 rounded-full flex-shrink-0"
+            :class="member.isActive ? 'bg-emerald-400' : 'bg-slate-500'"
+            :title="member.isActive ? 'Active' : 'Inactive'"
+          />
         </div>
-        <div class="flex-1 text-center">
-          <p class="text-xl font-bold text-indigo-400">{{ member.activeTasks }}</p>
-          <p class="text-gray-400 text-xs">Active</p>
+        <p class="text-gray-400 text-sm truncate">{{ member.email }}</p>
+
+        <div class="flex items-center gap-2 mt-3">
+          <BaseBadge :color="getRoleColor(member.role)">
+            {{ formatRole(member.role) }}
+          </BaseBadge>
+          <span v-if="member.lastLogin" class="text-gray-500 text-xs">
+            Last login: {{ formatDate(member.lastLogin) }}
+          </span>
         </div>
+      </div>
+
+      <div class="flex gap-1 flex-shrink-0">
+        <button
+          @click="$emit('edit', member)"
+          class="p-2 text-gray-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+          title="Edit user"
+        >
+          ✏️
+        </button>
+        <button
+          @click="$emit('delete', member)"
+          class="p-2 text-gray-400 hover:text-rose-400 hover:bg-slate-700 rounded-lg transition-colors"
+          title="Delete user"
+        >
+          🗑️
+        </button>
       </div>
     </div>
   </BaseCard>
@@ -29,24 +51,35 @@
 <script setup lang="ts">
 import type { TeamMember } from '~/types'
 
-interface MemberWithStats extends TeamMember {
-  taskCount: number
-  activeTasks: number
-}
-
 interface Props {
-  member: MemberWithStats
+  member: TeamMember
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 
-function getRoleColor(role: string): 'indigo' | 'emerald' | 'amber' | 'violet' {
-  const colors: Record<string, 'indigo' | 'emerald' | 'amber' | 'violet'> = {
-    admin: 'indigo',
-    manager: 'emerald',
-    developer: 'amber',
-    designer: 'violet'
+defineEmits<{
+  edit: [member: TeamMember]
+  delete: [member: TeamMember]
+}>()
+
+const initials = computed(() => {
+  const parts = props.member.name.trim().split(/\s+/)
+  if (parts.length >= 2) {
+    return `${parts[0]!.charAt(0)}${parts[parts.length - 1]!.charAt(0)}`.toUpperCase()
   }
-  return colors[role] || 'slate'
+  return parts[0]!.charAt(0).toUpperCase()
+})
+
+function getRoleColor(role: string): 'indigo' | 'emerald' {
+  return role === 'super_admin' ? 'indigo' : 'emerald'
+}
+
+function formatRole(role: string): string {
+  return role === 'super_admin' ? 'Super Admin' : 'Admin'
+}
+
+function formatDate(dateStr: string): string {
+  const date = new Date(dateStr)
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 </script>

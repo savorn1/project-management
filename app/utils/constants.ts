@@ -59,18 +59,3 @@ export const STATUS_CONFIG: Record<TaskStatus, StyleConfig> = {
   },
 }
 
-export const PROJECT_COLORS = [
-  'indigo',
-  'emerald',
-  'rose',
-  'amber',
-  'cyan',
-  'violet',
-  'pink',
-  'teal',
-]
-
-export const PROJECT_ICONS = [
-  '📊', '🚀', '💡', '🎯', '📱',
-  '🔧', '📈', '🎨', '⚡', '🔒',
-]

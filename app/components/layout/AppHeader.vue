@@ -1,5 +1,5 @@
 <template>
-  <header class="h-16 bg-slate-900/80 backdrop-blur-xl border-b border-slate-800/50 flex items-center justify-between px-6 sticky top-0 z-10">
+  <header class="h-16 shrink-0 bg-slate-900/80 backdrop-blur-xl border-b border-slate-800/50 flex items-center justify-between px-6 z-20">
     <div>
       <h1 class="text-xl font-semibold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">{{ pageTitle }}</h1>
     </div>

@@ -2,11 +2,11 @@
   <div class="space-y-3">
     <div
       v-for="task in tasks"
-      :key="task.id"
+      :key="task._id"
       class="flex items-center gap-4 p-4 bg-slate-800 rounded-lg border border-slate-700 hover:border-slate-600 transition-colors"
     >
       <button
-        @click="$emit('toggle', task.id)"
+        @click="$emit('toggle', task._id)"
         class="w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0"
         :class="task.status === 'done' ? 'bg-emerald-500 border-emerald-500' : 'border-gray-500 hover:border-indigo-500'"
       >
@@ -55,7 +55,6 @@
 
 <script setup lang="ts">
 import type { Task, TaskStatus } from '~/types'
-import { getProjectById, getMemberById } from '~/data/mockData'
 import { formatShortDate, getDueDateStatus } from '~/utils/formatters'
 import { STATUS_CONFIG } from '~/utils/constants'
 
@@ -68,6 +67,9 @@ defineProps<Props>()
 defineEmits<{
   (e: 'toggle', id: string): void
 }>()
+
+const { getProjectById } = useProjects()
+const { getMemberById } = useTeam()
 
 function getProjectName(projectId: string): string {
   return getProjectById(projectId)?.name || 'Unknown Project'

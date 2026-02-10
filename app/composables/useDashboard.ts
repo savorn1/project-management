@@ -43,7 +43,7 @@ export function useDashboard() {
 
   const projectsWithProgress = computed(() => {
     return projects.value.map(project => {
-      const projectTasks = tasks.value.filter(t => t.projectId === project.id)
+      const projectTasks = tasks.value.filter(t => t.projectId === project._id)
       const completedCount = projectTasks.filter(t => t.status === 'done').length
       const progress = projectTasks.length > 0 ? Math.round((completedCount / projectTasks.length) * 100) : 0
 

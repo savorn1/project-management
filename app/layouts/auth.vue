@@ -12,6 +12,7 @@
     <div class="relative w-full max-w-md px-6">
       <slot />
     </div>
+    <BaseToast />
   </div>
 </template>
 

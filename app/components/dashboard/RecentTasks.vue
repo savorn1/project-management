@@ -10,11 +10,11 @@
     <div class="space-y-3">
       <div
         v-for="task in recentTasks"
-        :key="task.id"
+        :key="task._id"
         class="flex items-center gap-3 p-3 bg-slate-700/50 rounded-lg hover:bg-slate-700 transition-colors"
       >
         <button
-          @click="toggleTask(task.id)"
+          @click="toggleTask(task._id)"
           class="w-5 h-5 rounded border-2 flex items-center justify-center transition-colors"
           :class="task.status === 'done' ? 'bg-emerald-500 border-emerald-500' : 'border-gray-500 hover:border-indigo-500'"
         >
@@ -45,10 +45,10 @@
 
 <script setup lang="ts">
 import type { TaskPriority } from '~/types'
-import { getProjectById } from '~/data/mockData'
 
 const { recentTasks } = useDashboard()
 const { toggleTaskComplete } = useTasks()
+const { getProjectById } = useProjects()
 
 function toggleTask(id: string) {
   toggleTaskComplete(id)

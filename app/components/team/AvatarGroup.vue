@@ -2,7 +2,7 @@
   <div class="flex items-center">
     <div
       v-for="(member, index) in visibleMembers"
-      :key="member.id"
+      :key="member._id"
       class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-sm border-2 border-slate-800 -ml-2 first:ml-0"
       :title="member.name"
     >

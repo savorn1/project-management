@@ -6,24 +6,21 @@
         <NuxtLink to="/projects" class="text-gray-400 hover:text-white transition-colors">
           ← Back
         </NuxtLink>
-        <div
-          class="w-14 h-14 rounded-xl flex items-center justify-center text-3xl"
-          :class="getColorClass(project.color)"
-        >
-          {{ project.icon }}
+        <div class="w-14 h-14 rounded-xl bg-indigo-500/20 flex items-center justify-center text-3xl">
+          📁
         </div>
         <div>
-          <h1 class="text-2xl font-bold text-white">{{ project.name }}</h1>
+          <div class="flex items-center gap-3">
+            <h1 class="text-2xl font-bold text-white">{{ project.name }}</h1>
+            <span class="text-gray-500 text-sm font-mono">{{ project.key }}</span>
+          </div>
           <p class="text-gray-400 mt-1">{{ project.description }}</p>
         </div>
       </div>
 
-      <div class="flex items-center gap-4">
-        <AvatarGroup :members="projectMembers" :max="5" />
-        <BaseButton variant="secondary">
-          ⚙️ Settings
-        </BaseButton>
-      </div>
+      <BaseButton variant="secondary">
+        ⚙️ Settings
+      </BaseButton>
     </div>
 
     <!-- Project Stats -->
@@ -117,7 +114,7 @@
             class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-indigo-500"
           >
             <option :value="null">Unassigned</option>
-            <option v-for="member in projectMembers" :key="member.id" :value="member.id">
+            <option v-for="member in members" :key="member._id" :value="member._id">
               {{ member.avatar }} {{ member.name }}
             </option>
           </select>
@@ -152,12 +149,16 @@
 <script setup lang="ts">
 import type { TaskStatus, TaskPriority } from '~/types'
 
+definePageMeta({
+  middleware: 'auth'
+})
+
 const route = useRoute()
 const projectId = route.params.id as string
 
 const { createTask, getTasksByProject, loadTasks, tasks } = useTasks()
 const { getProjectById, loadProjects, projects } = useProjects()
-const { members, loadMembers, getMemberById } = useTeam()
+const { members, loadMembers } = useTeam()
 
 onMounted(async () => {
   if (tasks.value.length === 0) await loadTasks()
@@ -167,12 +168,6 @@ onMounted(async () => {
 
 const project = computed(() => getProjectById(projectId))
 const projectTasks = computed(() => getTasksByProject(projectId))
-const projectMembers = computed(() => {
-  if (!project.value) return []
-  return project.value.memberIds
-    .map(id => getMemberById(id))
-    .filter(Boolean) as typeof members.value
-})
 const progress = computed(() => {
   if (projectTasks.value.length === 0) return 0
   const completed = projectTasks.value.filter(t => t.status === 'done').length
@@ -222,17 +217,4 @@ function handleCreateTask() {
   }
 }
 
-function getColorClass(color: string): string {
-  const colors: Record<string, string> = {
-    indigo: 'bg-indigo-500/20',
-    emerald: 'bg-emerald-500/20',
-    amber: 'bg-amber-500/20',
-    rose: 'bg-rose-500/20',
-    cyan: 'bg-cyan-500/20',
-    violet: 'bg-violet-500/20',
-    pink: 'bg-pink-500/20',
-    teal: 'bg-teal-500/20'
-  }
-  return colors[color] || 'bg-indigo-500/20'
-}
 </script>

@@ -51,7 +51,7 @@
           class="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-indigo-500"
         >
           <option :value="null">All Projects</option>
-          <option v-for="project in projects" :key="project.id" :value="project.id">
+          <option v-for="project in projects" :key="project._id" :value="project._id">
             {{ project.name }}
           </option>
         </select>
@@ -103,7 +103,7 @@
               class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-indigo-500"
             >
               <option value="" disabled>Select project</option>
-              <option v-for="project in projects" :key="project.id" :value="project.id">
+              <option v-for="project in projects" :key="project._id" :value="project._id">
                 {{ project.name }}
               </option>
             </select>
@@ -140,7 +140,7 @@
               class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-indigo-500"
             >
               <option :value="null">Unassigned</option>
-              <option v-for="member in members" :key="member.id" :value="member.id">
+              <option v-for="member in members" :key="member._id" :value="member._id">
                 {{ member.avatar }} {{ member.name }}
               </option>
             </select>
@@ -160,6 +160,10 @@
 
 <script setup lang="ts">
 import type { TaskPriority } from '~/types'
+
+definePageMeta({
+  middleware: 'auth'
+})
 
 useSeoMeta({
   title: 'Tasks | TaskFlow',

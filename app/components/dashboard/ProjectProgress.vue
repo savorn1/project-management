@@ -10,12 +10,12 @@
     <div class="space-y-4">
       <div
         v-for="project in projectsWithProgress"
-        :key="project.id"
+        :key="project._id"
         class="group"
       >
-        <NuxtLink :to="`/projects/${project.id}`" class="block p-3 bg-slate-700/50 rounded-lg hover:bg-slate-700 transition-colors">
+        <NuxtLink :to="`/projects/${project._id}`" class="block p-3 bg-slate-700/50 rounded-lg hover:bg-slate-700 transition-colors">
           <div class="flex items-center gap-3 mb-2">
-            <span class="text-xl">{{ project.icon }}</span>
+            <span class="text-xl">📁</span>
             <div class="flex-1 min-w-0">
               <p class="text-white font-medium truncate">{{ project.name }}</p>
               <p class="text-gray-400 text-sm">{{ project.completedCount }} / {{ project.taskCount }} tasks</p>
@@ -25,8 +25,7 @@
 
           <div class="h-2 bg-slate-600 rounded-full overflow-hidden">
             <div
-              class="h-full rounded-full transition-all duration-500"
-              :class="getProgressColor(project.color)"
+              class="h-full bg-indigo-500 rounded-full transition-all duration-500"
               :style="{ width: `${project.progress}%` }"
             ></div>
           </div>
@@ -45,18 +44,4 @@
 
 <script setup lang="ts">
 const { projectsWithProgress } = useDashboard()
-
-function getProgressColor(color: string): string {
-  const colors: Record<string, string> = {
-    indigo: 'bg-indigo-500',
-    emerald: 'bg-emerald-500',
-    amber: 'bg-amber-500',
-    rose: 'bg-rose-500',
-    cyan: 'bg-cyan-500',
-    violet: 'bg-violet-500',
-    pink: 'bg-pink-500',
-    teal: 'bg-teal-500'
-  }
-  return colors[color] || 'bg-indigo-500'
-}
 </script>

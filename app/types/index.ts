@@ -1,10 +1,15 @@
-// Team Member
+// User Roles
+export type UserRole = 'super_admin' | 'admin'
+
+// Team Member (User)
 export interface TeamMember {
-  id: string
+  _id: string
   name: string
   email: string
-  avatar: string
-  role: 'admin' | 'manager' | 'developer' | 'designer'
+  role: UserRole
+  isActive: boolean
+  isEmailVerified: boolean
+  lastLogin?: string
   createdAt: string
 }
 
@@ -14,7 +19,7 @@ export type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done'
 
 // Task
 export interface Task {
-  id: string
+  _id: string
   title: string
   description: string
   status: TaskStatus
@@ -36,23 +41,21 @@ export interface KanbanColumn {
 }
 
 // Project Status and Priority
-export type ProjectStatus = 'planning' | 'active' | 'on_hold' | 'completed' | 'cancelled'
+export type ProjectStatus = 'active' | 'archived'
 export type ProjectPriority = 'low' | 'medium' | 'high' | 'critical'
 
 // Project
 export interface Project {
-  id: string
+  _id: string
+  workplaceId: string
   name: string
+  key: string
   description?: string
+  ownerId: string
   status: ProjectStatus
   priority: ProjectPriority
-  memberIds: string[]
   startDate?: string
   endDate?: string
-  dueDate?: string
-  progress: number
-  budget?: number
-  tags: string[]
   createdAt: string
   updatedAt: string
 }
@@ -60,16 +63,46 @@ export interface Project {
 // Project Create/Update Input (without auto-generated fields)
 export interface ProjectInput {
   name: string
+  key: string
   description?: string
   status?: ProjectStatus
   priority?: ProjectPriority
-  memberIds?: string[]
   startDate?: string
   endDate?: string
-  dueDate?: string
-  progress?: number
-  budget?: number
-  tags?: string[]
+}
+
+// Workplace
+export type WorkplacePlan = 'free' | 'pro' | 'enterprise'
+export type WorkplaceStatus = 'active' | 'archived'
+export type WorkplaceMemberRole = 'owner' | 'admin' | 'member'
+
+export interface Workplace {
+  _id: string
+  name: string
+  slug: string
+  ownerId: string
+  plan: WorkplacePlan
+  status: WorkplaceStatus
+  createdAt: string
+  updatedAt: string
+}
+
+export interface WorkplaceInput {
+  name: string
+  slug: string
+  plan?: WorkplacePlan
+}
+
+export interface WorkplaceMember {
+  _id: string
+  workplaceId: string
+  userId: string
+  role: WorkplaceMemberRole
+  joinedAt: string
+}
+
+export interface WorkplaceMemberWithUser extends WorkplaceMember {
+  user?: TeamMember
 }
 
 // Dashboard Stats

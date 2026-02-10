@@ -1,9 +1,10 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
+  ssr: false,
   devtools: { enabled: true },
   devServer: {
-    port: 3001, // Use different port than API (3000)
+    port: Number(process.env.NUXT_PORT) || 3002,
   },
   modules: ['@nuxtjs/tailwindcss'],
   components: {

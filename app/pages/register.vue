@@ -23,30 +23,23 @@
         </div>
       </div>
 
-      <!-- Name Fields -->
-      <div class="grid grid-cols-2 gap-4 mb-5">
-        <div>
-          <label for="firstName" class="block text-sm font-medium text-slate-300 mb-2">First Name</label>
+      <!-- Name Field -->
+      <div class="mb-5">
+        <label for="name" class="block text-sm font-medium text-slate-300 mb-2">Name</label>
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </div>
           <input
-            id="firstName"
-            v-model="form.firstName"
+            id="name"
+            v-model="form.name"
             type="text"
             required
-            autocomplete="given-name"
-            class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-            placeholder="John"
-          />
-        </div>
-        <div>
-          <label for="lastName" class="block text-sm font-medium text-slate-300 mb-2">Last Name</label>
-          <input
-            id="lastName"
-            v-model="form.lastName"
-            type="text"
-            required
-            autocomplete="family-name"
-            class="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-            placeholder="Doe"
+            autocomplete="name"
+            class="w-full pl-12 pr-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+            placeholder="John Doe"
           />
         </div>
       </div>
@@ -68,28 +61,6 @@
             autocomplete="email"
             class="w-full pl-12 pr-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             placeholder="you@example.com"
-          />
-        </div>
-      </div>
-
-      <!-- Phone Field (Optional) -->
-      <div class="mb-5">
-        <label for="phone" class="block text-sm font-medium text-slate-300 mb-2">
-          Phone Number <span class="text-slate-500">(optional)</span>
-        </label>
-        <div class="relative">
-          <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-            </svg>
-          </div>
-          <input
-            id="phone"
-            v-model="form.phone"
-            type="tel"
-            autocomplete="tel"
-            class="w-full pl-12 pr-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-            placeholder="+1234567890"
           />
         </div>
       </div>
@@ -213,10 +184,8 @@ const router = useRouter()
 const { register, isLoading, authError } = useAuth()
 
 const form = reactive({
-  firstName: '',
-  lastName: '',
+  name: '',
   email: '',
-  phone: '',
   password: '',
 })
 
@@ -226,8 +195,7 @@ const acceptTerms = ref(false)
 
 const isFormValid = computed(() => {
   return (
-    form.firstName &&
-    form.lastName &&
+    form.name &&
     form.email &&
     form.password &&
     form.password.length >= 6 &&
@@ -240,11 +208,9 @@ const handleRegister = async () => {
   if (!isFormValid.value) return
 
   const success = await register({
-    firstName: form.firstName,
-    lastName: form.lastName,
+    name: form.name,
     email: form.email,
     password: form.password,
-    phone: form.phone || undefined,
   })
 
   if (success) {

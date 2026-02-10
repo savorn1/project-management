@@ -1,9 +1,6 @@
 import type { Task, TaskStatus, TaskPriority } from '~/types'
-import { tasks as mockTasks } from '~/data/mockData'
-import { generateId } from '~/utils/formatters'
 
 const tasks = ref<Task[]>([])
-const isApiConnected = ref(false)
 const isLoading = ref(false)
 const apiError = ref<string | null>(null)
 
@@ -17,6 +14,7 @@ interface TaskFilters {
 
 export function useTasks() {
   const { tasksApi, error: apiRequestError } = useApi()
+  const toast = useToast()
 
   const filters = ref<TaskFilters>({
     status: null,
@@ -30,23 +28,27 @@ export function useTasks() {
     isLoading.value = true
     apiError.value = null
 
-    const apiTasks = await tasksApi.getAll()
+    const apiTasks = await tasksApi.getMyTasks()
 
-    if (apiTasks.length > 0) {
-      tasks.value = apiTasks
-      isApiConnected.value = true
-    } else if (apiRequestError.value) {
-      // API failed, use mock data
-      console.warn('API not available, using mock data')
-      tasks.value = [...mockTasks]
-      isApiConnected.value = false
+    if (apiRequestError.value) {
       apiError.value = apiRequestError.value
-    } else {
-      // API returned empty array (no tasks)
-      tasks.value = []
-      isApiConnected.value = true
     }
 
+    tasks.value = apiTasks
+    isLoading.value = false
+  }
+
+  async function loadTasksByProject(projectId: string) {
+    isLoading.value = true
+    apiError.value = null
+
+    const apiTasks = await tasksApi.getByProject(projectId)
+
+    if (apiRequestError.value) {
+      apiError.value = apiRequestError.value
+    }
+
+    tasks.value = apiTasks
     isLoading.value = false
   }
 
@@ -73,77 +75,46 @@ export function useTasks() {
     }).sort((a, b) => a.order - b.order)
   }
 
-  async function createTask(data: Partial<Task>): Promise<Task> {
-    const newTask: Task = {
-      id: generateId(),
-      title: data.title || 'New Task',
-      description: data.description || '',
-      status: data.status || 'todo',
-      priority: data.priority || 'medium',
-      dueDate: data.dueDate || null,
-      assigneeId: data.assigneeId || null,
-      projectId: data.projectId || '',
-      order: tasks.value.filter(t => t.projectId === data.projectId && t.status === (data.status || 'todo')).length + 1,
-      tags: data.tags || [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+  async function createTask(data: Partial<Task>): Promise<Task | null> {
+    const projectId = data.projectId || ''
+    const created = await tasksApi.create(data, projectId)
+    if (created) {
+      tasks.value.push(created)
+      toast.success('Task created successfully')
     }
-
-    if (isApiConnected.value) {
-      const created = await tasksApi.create(newTask)
-      if (created) {
-        tasks.value.push(created)
-        return created
-      }
-    }
-
-    tasks.value.push(newTask)
-    return newTask
+    return created
   }
 
   async function updateTask(id: string, data: Partial<Task>) {
-    const index = tasks.value.findIndex(t => t.id === id)
+    const index = tasks.value.findIndex(t => t._id === id)
     if (index === -1) return
 
-    const updatedData = {
-      ...data,
-      updatedAt: new Date().toISOString()
-    }
-
-    if (isApiConnected.value) {
-      const updated = await tasksApi.update(id, updatedData)
-      if (updated) {
-        tasks.value[index] = { ...tasks.value[index], ...updated }
-        return
-      }
-    }
-
-    tasks.value[index] = {
-      ...tasks.value[index],
-      ...updatedData
+    const updated = await tasksApi.update(id, data)
+    if (updated) {
+      tasks.value[index] = { ...tasks.value[index], ...updated }
     }
   }
 
   async function deleteTask(id: string) {
-    if (isApiConnected.value) {
-      await tasksApi.delete(id)
-    }
-
-    const index = tasks.value.findIndex(t => t.id === id)
-    if (index !== -1) {
-      tasks.value.splice(index, 1)
+    const success = await tasksApi.delete(id)
+    if (success) {
+      const index = tasks.value.findIndex(t => t._id === id)
+      if (index !== -1) {
+        tasks.value.splice(index, 1)
+      }
+      toast.success('Task deleted successfully')
     }
   }
 
   async function moveTask(taskId: string, newStatus: TaskStatus) {
-    const task = tasks.value.find(t => t.id === taskId)
+    const task = tasks.value.find(t => t._id === taskId)
     if (task) {
       await updateTask(taskId, { status: newStatus })
     }
   }
 
   async function toggleTaskComplete(id: string) {
-    const task = tasks.value.find(t => t.id === id)
+    const task = tasks.value.find(t => t._id === id)
     if (task) {
       const newStatus: TaskStatus = task.status === 'done' ? 'todo' : 'done'
       await updateTask(id, { status: newStatus })
@@ -168,10 +139,10 @@ export function useTasks() {
     tasks,
     filters,
     filteredTasks,
-    isApiConnected,
     isLoading,
     apiError,
     loadTasks,
+    loadTasksByProject,
     getTasksByProject,
     getTasksByStatus,
     createTask,

@@ -42,6 +42,10 @@
 </template>
 
 <script setup lang="ts">
+definePageMeta({
+  middleware: 'auth'
+})
+
 useSeoMeta({
   title: 'Dashboard | TaskFlow',
   description: 'Project management dashboard'

@@ -15,14 +15,14 @@
     <!-- Projects Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <ProjectCard
-        v-for="project in projectsWithStats"
-        :key="project.id"
+        v-for="project in projects"
+        :key="project._id"
         :project="project"
       />
     </div>
 
     <EmptyState
-      v-if="projectsWithStats.length === 0"
+      v-if="projects.length === 0"
       icon="📁"
       title="No projects yet"
       description="Create your first project to start organizing your work"
@@ -47,6 +47,20 @@
         </div>
 
         <div>
+          <label class="block text-gray-300 text-sm font-medium mb-2">Project Key</label>
+          <input
+            v-model="newProject.key"
+            type="text"
+            required
+            pattern="^[A-Z0-9]+$"
+            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-indigo-500 uppercase"
+            placeholder="WEB"
+            maxlength="10"
+          />
+          <p class="text-gray-500 text-xs mt-1">Uppercase letters and numbers only (max 10 chars)</p>
+        </div>
+
+        <div>
           <label class="block text-gray-300 text-sm font-medium mb-2">Description</label>
           <textarea
             v-model="newProject.description"
@@ -57,33 +71,30 @@
         </div>
 
         <div>
-          <label class="block text-gray-300 text-sm font-medium mb-2">Color</label>
-          <div class="flex gap-2">
-            <button
-              v-for="color in colorOptions"
-              :key="color"
-              type="button"
-              @click="newProject.color = color"
-              class="w-8 h-8 rounded-lg transition-transform"
-              :class="[getColorBg(color), newProject.color === color ? 'ring-2 ring-white scale-110' : '']"
-            ></button>
-          </div>
+          <label class="block text-gray-300 text-sm font-medium mb-2">Workplace</label>
+          <select
+            v-model="selectedWorkplaceId"
+            required
+            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-indigo-500"
+          >
+            <option value="" disabled>Select workplace</option>
+            <option v-for="wp in workplaces" :key="wp._id" :value="wp._id">
+              {{ wp.name }}
+            </option>
+          </select>
         </div>
 
         <div>
-          <label class="block text-gray-300 text-sm font-medium mb-2">Icon</label>
-          <div class="flex gap-2 flex-wrap">
-            <button
-              v-for="icon in iconOptions"
-              :key="icon"
-              type="button"
-              @click="newProject.icon = icon"
-              class="w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-colors"
-              :class="newProject.icon === icon ? 'bg-indigo-600' : 'bg-slate-700 hover:bg-slate-600'"
-            >
-              {{ icon }}
-            </button>
-          </div>
+          <label class="block text-gray-300 text-sm font-medium mb-2">Priority</label>
+          <select
+            v-model="newProject.priority"
+            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-indigo-500"
+          >
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="critical">Critical</option>
+          </select>
         </div>
       </form>
 
@@ -98,49 +109,42 @@
 </template>
 
 <script setup lang="ts">
-import { PROJECT_COLORS, PROJECT_ICONS } from '~/utils/constants'
+import type { ProjectPriority } from '~/types'
+
+definePageMeta({
+  middleware: 'auth'
+})
 
 useSeoMeta({
   title: 'Projects | TaskFlow',
   description: 'Manage your projects'
 })
 
-const { projectsWithStats, createProject, loadProjects, projects } = useProjects()
+const { projects, createProject, loadProjects } = useProjects()
+const { workplaces, loadWorkplaces } = useWorkplaces()
 
 onMounted(async () => {
   if (projects.value.length === 0) await loadProjects()
+  if (workplaces.value.length === 0) await loadWorkplaces()
 })
 
 const showCreateModal = ref(false)
-const colorOptions = PROJECT_COLORS
-const iconOptions = PROJECT_ICONS
+
+const selectedWorkplaceId = ref('')
 
 const newProject = ref({
   name: '',
+  key: '',
   description: '',
-  color: 'indigo',
-  icon: '📊'
+  priority: 'medium' as ProjectPriority
 })
 
-function getColorBg(color: string): string {
-  const colors: Record<string, string> = {
-    indigo: 'bg-indigo-500',
-    emerald: 'bg-emerald-500',
-    amber: 'bg-amber-500',
-    rose: 'bg-rose-500',
-    cyan: 'bg-cyan-500',
-    violet: 'bg-violet-500',
-    pink: 'bg-pink-500',
-    teal: 'bg-teal-500'
-  }
-  return colors[color] || 'bg-indigo-500'
-}
-
 function handleCreateProject() {
-  if (newProject.value.name) {
-    createProject(newProject.value)
+  if (newProject.value.name && newProject.value.key && selectedWorkplaceId.value) {
+    createProject(newProject.value, selectedWorkplaceId.value)
     showCreateModal.value = false
-    newProject.value = { name: '', description: '', color: 'indigo', icon: '📊' }
+    newProject.value = { name: '', key: '', description: '', priority: 'medium' }
+    selectedWorkplaceId.value = ''
   }
 }
 </script>

@@ -1,119 +1,70 @@
 import type { TeamMember } from '~/types'
-import { teamMembers as mockMembers, tasks } from '~/data/mockData'
-import { generateId } from '~/utils/formatters'
 
 const members = ref<TeamMember[]>([])
-const isApiConnected = ref(false)
 const isLoading = ref(false)
 const apiError = ref<string | null>(null)
 
 export function useTeam() {
-  const { teamApi } = useApi()
+  const { teamApi, error: apiRequestError } = useApi()
+  const toast = useToast()
 
   async function loadMembers() {
     isLoading.value = true
     apiError.value = null
 
-    try {
-      const apiMembers = await teamApi.getAll()
-      members.value = apiMembers
-      isApiConnected.value = true
-    } catch (err) {
-      console.warn('API not available, using mock data:', err)
-      members.value = [...mockMembers]
-      isApiConnected.value = false
-      apiError.value = err instanceof Error ? err.message : 'Failed to connect to API'
-    } finally {
-      isLoading.value = false
+    const apiMembers = await teamApi.getAll()
+
+    if (apiRequestError.value) {
+      apiError.value = apiRequestError.value
     }
+
+    members.value = apiMembers
+    isLoading.value = false
   }
 
   function getMemberById(id: string): TeamMember | undefined {
-    return members.value.find(m => m.id === id)
+    return members.value.find(m => m._id === id)
   }
 
-  async function createMember(data: Partial<TeamMember>): Promise<TeamMember> {
-    const newMember: TeamMember = {
-      id: generateId(),
-      name: data.name || 'New Member',
-      email: data.email || '',
-      avatar: data.avatar || '👤',
-      role: data.role || 'developer',
-      createdAt: new Date().toISOString()
+  async function createMember(data: Partial<TeamMember>): Promise<TeamMember | null> {
+    const created = await teamApi.create(data)
+    if (created) {
+      members.value.push(created)
+      toast.success('Member created successfully')
     }
-
-    if (isApiConnected.value) {
-      try {
-        const created = await teamApi.create(newMember)
-        members.value.push(created)
-        return created
-      } catch (err) {
-        console.warn('Failed to create member via API, using local:', err)
-      }
-    }
-
-    members.value.push(newMember)
-    return newMember
+    return created
   }
 
   async function updateMember(id: string, data: Partial<TeamMember>) {
-    const index = members.value.findIndex(m => m.id === id)
+    const index = members.value.findIndex(m => m._id === id)
     if (index === -1) return
 
-    if (isApiConnected.value) {
-      try {
-        const updated = await teamApi.update(id, data)
-        members.value[index] = { ...members.value[index], ...updated }
-        return
-      } catch (err) {
-        console.warn('Failed to update member via API, using local:', err)
-      }
-    }
-
-    members.value[index] = {
-      ...members.value[index],
-      ...data
+    const updated = await teamApi.update(id, data)
+    if (updated) {
+      members.value[index] = { ...members.value[index], ...updated }
+      toast.success('Member updated successfully')
     }
   }
 
   async function deleteMember(id: string) {
-    if (isApiConnected.value) {
-      try {
-        await teamApi.delete(id)
-      } catch (err) {
-        console.warn('Failed to delete member via API, using local:', err)
+    const success = await teamApi.delete(id)
+    if (success) {
+      const index = members.value.findIndex(m => m._id === id)
+      if (index !== -1) {
+        members.value.splice(index, 1)
       }
-    }
-
-    const index = members.value.findIndex(m => m.id === id)
-    if (index !== -1) {
-      members.value.splice(index, 1)
+      toast.success('Member deleted successfully')
     }
   }
-
-  function getMemberTasks(memberId: string) {
-    return tasks.filter(task => task.assigneeId === memberId)
-  }
-
-  const membersWithStats = computed(() => {
-    return members.value.map(member => ({
-      ...member,
-      taskCount: getMemberTasks(member.id).length,
-      activeTasks: getMemberTasks(member.id).filter(t => t.status !== 'done').length
-    }))
-  })
 
   return {
     members,
-    membersWithStats,
-    isApiConnected,
     isLoading,
     apiError,
     loadMembers,
     getMemberById,
     createMember,
     updateMember,
-    deleteMember,
-    getMemberTasks
+    deleteMember
   }
 }

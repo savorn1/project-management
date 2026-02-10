@@ -1,5 +1,5 @@
 <template>
-  <aside class="fixed left-0 top-0 h-screen w-64 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-r border-slate-800/50 flex flex-col">
+  <aside class="fixed left-0 top-0 h-screen w-64 z-40 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-r border-slate-800/50 flex flex-col">
     <!-- Logo -->
     <div class="p-6 border-b border-slate-800/50">
       <NuxtLink to="/" class="flex items-center gap-3 group">
@@ -50,6 +50,7 @@ const route = useRoute()
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: '📊' },
+  { path: '/workplaces', label: 'Workplaces', icon: '🏢' },
   { path: '/projects', label: 'Projects', icon: '📁' },
   { path: '/tasks', label: 'Tasks', icon: '✅' },
   { path: '/team', label: 'Team', icon: '👥' }

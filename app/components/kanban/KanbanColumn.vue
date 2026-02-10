@@ -29,7 +29,7 @@
     >
       <TaskCard
         v-for="task in tasks"
-        :key="task.id"
+        :key="task._id"
         :task="task"
         @toggle="$emit('toggle-task', $event)"
         @dragstart="$emit('drag-start', task)"

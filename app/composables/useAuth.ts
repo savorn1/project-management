@@ -1,12 +1,10 @@
 export interface User {
   id: string
   email: string
-  firstName: string
-  lastName: string
+  name: string
   role: string
   isActive: boolean
   isEmailVerified: boolean
-  phone?: string
   lastLogin?: string
 }
 
@@ -24,9 +22,7 @@ export interface LoginCredentials {
 export interface RegisterData {
   email: string
   password: string
-  firstName: string
-  lastName: string
-  phone?: string
+  name: string
 }
 
 interface AuthResponse {
@@ -262,16 +258,18 @@ export function useAuth() {
 
   // Full name computed
   const fullName = computed(() => {
-    if (user.value) {
-      return `${user.value.firstName} ${user.value.lastName}`
-    }
-    return ''
+    return user.value?.name || ''
   })
 
   // User initials computed
   const userInitials = computed(() => {
-    if (user.value) {
-      return `${user.value.firstName.charAt(0)}${user.value.lastName.charAt(0)}`.toUpperCase()
+    const name = user.value?.name
+    if (name) {
+      const parts = name.trim().split(/\s+/)
+      if (parts.length >= 2) {
+        return `${parts[0]!.charAt(0)}${parts[parts.length - 1]!.charAt(0)}`.toUpperCase()
+      }
+      return parts[0]!.charAt(0).toUpperCase()
     }
     return ''
   })

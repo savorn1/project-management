@@ -1,39 +1,22 @@
-import type { Task, Project, ProjectInput, TeamMember, DashboardStats } from '~/types'
+import type { Task, Project, ProjectInput, TeamMember, DashboardStats, Workplace, WorkplaceInput, WorkplaceMember as WpMember, WorkplaceMemberWithUser } from '~/types'
 
-interface TasksResponse {
+interface ListResponse<T> {
   success: boolean
-  count: number
-  tasks: Task[]
+  data: T[]
+  total: number
+  skip: number
+  limit: number
 }
 
-interface TaskResponse {
+interface SingleResponse<T> {
   success: boolean
-  task: Task
+  data: T
   message?: string
 }
 
-interface ProjectsResponse {
+interface DeleteResponse {
   success: boolean
-  count: number
-  projects: Project[]
-}
-
-interface ProjectResponse {
-  success: boolean
-  project: Project
-  message?: string
-}
-
-interface TeamResponse {
-  success: boolean
-  count: number
-  members: TeamMember[]
-}
-
-interface MemberResponse {
-  success: boolean
-  member: TeamMember
-  message?: string
+  message: string
 }
 
 interface StatsResponse {
@@ -44,7 +27,8 @@ interface StatsResponse {
 export function useApi() {
   const config = useRuntimeConfig()
   const apiBase = config.public.apiBase
-  const { getAuthHeader } = useAuth()
+  const { getAuthHeader, clearAuthState } = useAuth()
+  const toast = useToast()
 
   const loading = ref(false)
   const error = ref<string | null>(null)
@@ -58,38 +42,50 @@ export function useApi() {
 
     try {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 5000) // 5s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000) // 15s timeout
+
+      const { headers: optHeaders, ...restOptions } = options
 
       const response = await fetch(`${apiBase}${endpoint}`, {
+        ...restOptions,
         headers: {
           'Content-Type': 'application/json',
           ...getAuthHeader(),
-          ...options.headers,
+          ...(optHeaders as Record<string, string>),
         },
         signal: controller.signal,
-        ...options,
       })
 
       clearTimeout(timeoutId)
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        error.value = errorData.message || `HTTP error! status: ${response.status}`
+        const message = errorData.message || `HTTP error! status: ${response.status}`
+        error.value = message
+        toast.error(message)
+
+        if (response.status === 401) {
+          clearAuthState()
+          navigateTo('/login')
+        }
+
         return null
       }
 
       return await response.json()
     } catch (err) {
-      // Handle network errors, timeouts, etc. silently
+      let message = 'An error occurred'
       if (err instanceof Error) {
         if (err.name === 'AbortError') {
-          error.value = 'Request timeout'
+          message = 'Request timeout - server not responding'
+        } else if (err.message === 'Failed to fetch') {
+          message = 'Cannot connect to server'
         } else {
-          error.value = err.message
+          message = err.message
         }
-      } else {
-        error.value = 'An error occurred'
       }
+      error.value = message
+      toast.error(message)
       return null
     } finally {
       loading.value = false
@@ -98,44 +94,71 @@ export function useApi() {
 
   // Tasks API
   const tasksApi = {
-    async getAll(): Promise<Task[]> {
-      const response = await request<TasksResponse>('/admin/tasks')
-      return response?.tasks || []
+    async getMyTasks(): Promise<Task[]> {
+      const response = await request<ListResponse<Task>>('/admin/tasks/my-tasks?limit=100')
+      return response?.data || []
+    },
+
+    async getByProject(projectId: string): Promise<Task[]> {
+      const response = await request<ListResponse<Task>>(`/admin/tasks/project/${projectId}?limit=100`)
+      return response?.data || []
+    },
+
+    async getBySprint(sprintId: string): Promise<Task[]> {
+      const response = await request<ListResponse<Task>>(`/admin/tasks/sprint/${sprintId}?limit=100`)
+      return response?.data || []
+    },
+
+    async getBacklog(projectId: string): Promise<Task[]> {
+      const response = await request<ListResponse<Task>>(`/admin/tasks/backlog/${projectId}?limit=100`)
+      return response?.data || []
     },
 
     async getById(id: string): Promise<Task | null> {
-      const response = await request<TaskResponse>(`/admin/tasks/${id}`)
-      return response?.task || null
+      const response = await request<SingleResponse<Task>>(`/admin/tasks/${id}`)
+      return response?.data || null
     },
 
-    async getByStatus(status: string): Promise<Task[]> {
-      const response = await request<TasksResponse>(`/admin/tasks/status/${status}`)
-      return response?.tasks || []
-    },
-
-    async getByUser(username: string): Promise<Task[]> {
-      const response = await request<TasksResponse>(`/admin/tasks/user/${username}`)
-      return response?.tasks || []
-    },
-
-    async create(data: Partial<Task>): Promise<Task | null> {
-      const response = await request<TaskResponse>('/admin/tasks', {
+    async create(data: Partial<Task>, projectId: string): Promise<Task | null> {
+      const response = await request<SingleResponse<Task>>(`/admin/tasks?projectId=${projectId}`, {
         method: 'POST',
         body: JSON.stringify(data),
       })
-      return response?.task || null
+      return response?.data || null
     },
 
     async update(id: string, data: Partial<Task>): Promise<Task | null> {
-      const response = await request<TaskResponse>(`/admin/tasks/${id}`, {
+      const response = await request<SingleResponse<Task>>(`/admin/tasks/${id}`, {
         method: 'PUT',
         body: JSON.stringify(data),
       })
-      return response?.task || null
+      return response?.data || null
+    },
+
+    async updateStatus(id: string, status: string): Promise<Task | null> {
+      const response = await request<SingleResponse<Task>>(`/admin/tasks/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      })
+      return response?.data || null
+    },
+
+    async assign(id: string, assigneeId: string): Promise<Task | null> {
+      const response = await request<SingleResponse<Task>>(`/admin/tasks/${id}/assign/${assigneeId}`, {
+        method: 'PATCH',
+      })
+      return response?.data || null
+    },
+
+    async unassign(id: string): Promise<Task | null> {
+      const response = await request<SingleResponse<Task>>(`/admin/tasks/${id}/unassign`, {
+        method: 'PATCH',
+      })
+      return response?.data || null
     },
 
     async delete(id: string): Promise<boolean> {
-      const response = await request(`/admin/tasks/${id}`, {
+      const response = await request<DeleteResponse>(`/admin/tasks/${id}`, {
         method: 'DELETE',
       })
       return response !== null
@@ -150,69 +173,177 @@ export function useApi() {
   // Projects API
   const projectsApi = {
     async getAll(): Promise<Project[]> {
-      const response = await request<ProjectsResponse>('/admin/projects')
-      return response?.projects || []
+      const response = await request<ListResponse<Project>>('/admin/projects?limit=100')
+      return response?.data || []
+    },
+
+    async getByWorkplace(workplaceId: string): Promise<Project[]> {
+      const response = await request<ListResponse<Project>>(`/admin/projects/by-workplace/${workplaceId}?limit=100`)
+      return response?.data || []
+    },
+
+    async getMyProjects(): Promise<Project[]> {
+      const response = await request<ListResponse<Project>>('/admin/projects/my-projects?limit=100')
+      return response?.data || []
     },
 
     async getById(id: string): Promise<Project | null> {
-      const response = await request<ProjectResponse>(`/admin/projects/${id}`)
-      return response?.project || null
+      const response = await request<SingleResponse<Project>>(`/admin/projects/${id}`)
+      return response?.data || null
     },
 
-    async create(data: ProjectInput): Promise<Project | null> {
-      const response = await request<ProjectResponse>('/admin/projects', {
+    async create(data: ProjectInput, workplaceId: string): Promise<Project | null> {
+      const response = await request<SingleResponse<Project>>(`/admin/projects?workplaceId=${workplaceId}`, {
         method: 'POST',
         body: JSON.stringify(data),
       })
-      return response?.project || null
+      return response?.data || null
     },
 
     async update(id: string, data: Partial<ProjectInput>): Promise<Project | null> {
-      const response = await request<ProjectResponse>(`/admin/projects/${id}`, {
+      const response = await request<SingleResponse<Project>>(`/admin/projects/${id}`, {
         method: 'PUT',
         body: JSON.stringify(data),
       })
-      return response?.project || null
+      return response?.data || null
     },
 
     async delete(id: string): Promise<boolean> {
-      const response = await request(`/admin/projects/${id}`, {
+      const response = await request<DeleteResponse>(`/admin/projects/${id}`, {
+        method: 'DELETE',
+      })
+      return response !== null
+    },
+
+    async archive(id: string): Promise<Project | null> {
+      const response = await request<SingleResponse<Project>>(`/admin/projects/${id}/archive`, {
+        method: 'PUT',
+      })
+      return response?.data || null
+    },
+
+    async activate(id: string): Promise<Project | null> {
+      const response = await request<SingleResponse<Project>>(`/admin/projects/${id}/activate`, {
+        method: 'PUT',
+      })
+      return response?.data || null
+    },
+  }
+
+  // Team API (Users)
+  const teamApi = {
+    async getAll(): Promise<TeamMember[]> {
+      const response = await request<ListResponse<TeamMember>>('/admin/users?limit=100')
+      return response?.data || []
+    },
+
+    async getById(id: string): Promise<TeamMember | null> {
+      const response = await request<SingleResponse<TeamMember>>(`/admin/users/${id}`)
+      return response?.data || null
+    },
+
+    async create(data: Partial<TeamMember>): Promise<TeamMember | null> {
+      const response = await request<SingleResponse<TeamMember>>('/admin/users', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      })
+      return response?.data || null
+    },
+
+    async update(id: string, data: Partial<TeamMember>): Promise<TeamMember | null> {
+      const response = await request<SingleResponse<TeamMember>>(`/admin/users/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      })
+      return response?.data || null
+    },
+
+    async delete(id: string): Promise<boolean> {
+      const response = await request<DeleteResponse>(`/admin/users/${id}`, {
         method: 'DELETE',
       })
       return response !== null
     },
   }
 
-  // Team API
-  const teamApi = {
-    async getAll(): Promise<TeamMember[]> {
-      const response = await request<TeamResponse>('/admin/users')
-      return response?.members || []
+  // Workplaces API
+  // Note: Backend workplace controller returns raw responses (no { success, data } wrapping)
+  // - List endpoints return { data: [...], total: N } from findWithPagination
+  // - Single endpoints return the raw document
+  interface RawListResponse<T> {
+    data: T[]
+    total: number
+  }
+
+  const workplacesApi = {
+    async getAll(): Promise<Workplace[]> {
+      const response = await request<RawListResponse<Workplace>>('/admin/workplaces?limit=100')
+      return response?.data || []
     },
 
-    async getById(id: string): Promise<TeamMember | null> {
-      const response = await request<MemberResponse>(`/admin/users/${id}`)
-      return response?.member || null
+    async getById(id: string): Promise<Workplace | null> {
+      return await request<Workplace>(`/admin/workplaces/${id}`)
     },
 
-    async create(data: Partial<TeamMember>): Promise<TeamMember | null> {
-      const response = await request<MemberResponse>('/admin/users', {
+    async getBySlug(slug: string): Promise<Workplace | null> {
+      return await request<Workplace>(`/admin/workplaces/slug/${slug}`)
+    },
+
+    async create(data: WorkplaceInput): Promise<Workplace | null> {
+      return await request<Workplace>('/admin/workplaces', {
         method: 'POST',
         body: JSON.stringify(data),
       })
-      return response?.member || null
     },
 
-    async update(id: string, data: Partial<TeamMember>): Promise<TeamMember | null> {
-      const response = await request<MemberResponse>(`/admin/users/${id}`, {
+    async update(id: string, data: Partial<WorkplaceInput>): Promise<Workplace | null> {
+      return await request<Workplace>(`/admin/workplaces/${id}`, {
         method: 'PUT',
         body: JSON.stringify(data),
       })
-      return response?.member || null
     },
 
     async delete(id: string): Promise<boolean> {
-      const response = await request(`/admin/users/${id}`, {
+      const response = await request(`/admin/workplaces/${id}`, {
+        method: 'DELETE',
+      })
+      return response !== null
+    },
+  }
+
+  // Workplace Members API
+  const workplaceMembersApi = {
+    async getAll(workplaceId: string): Promise<WpMember[]> {
+      const response = await request<RawListResponse<WpMember>>(`/admin/workplaces/${workplaceId}/members?limit=100`)
+      return response?.data || []
+    },
+
+    async getAllWithDetails(workplaceId: string): Promise<WorkplaceMemberWithUser[]> {
+      const response = await request<RawListResponse<WorkplaceMemberWithUser>>(`/admin/workplaces/${workplaceId}/members/details?limit=100`)
+      return response?.data || []
+    },
+
+    async getMemberRole(workplaceId: string, userId: string): Promise<string | null> {
+      const response = await request<{ role: string }>(`/admin/workplaces/${workplaceId}/members/${userId}/role`)
+      return response?.role || null
+    },
+
+    async addMember(workplaceId: string, userId: string, role?: string): Promise<WpMember | null> {
+      return await request<WpMember>(`/admin/workplaces/${workplaceId}/members`, {
+        method: 'POST',
+        body: JSON.stringify({ userId, role }),
+      })
+    },
+
+    async updateRole(workplaceId: string, userId: string, role: string): Promise<WpMember | null> {
+      return await request<WpMember>(`/admin/workplaces/${workplaceId}/members/${userId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ role }),
+      })
+    },
+
+    async removeMember(workplaceId: string, userId: string): Promise<boolean> {
+      const response = await request(`/admin/workplaces/${workplaceId}/members/${userId}`, {
         method: 'DELETE',
       })
       return response !== null
@@ -232,6 +363,8 @@ export function useApi() {
     tasksApi,
     projectsApi,
     teamApi,
+    workplacesApi,
+    workplaceMembersApi,
     checkHealth,
   }
 }

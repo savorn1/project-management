@@ -8,7 +8,7 @@
   >
     <div class="flex items-start gap-3">
       <button
-        @click.stop="$emit('toggle', task.id)"
+        @click.stop="$emit('toggle', task._id)"
         class="mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0"
         :class="task.status === 'done' ? 'bg-emerald-500 border-emerald-500' : 'border-gray-500 hover:border-indigo-500'"
       >
@@ -50,8 +50,9 @@
 
 <script setup lang="ts">
 import type { Task } from '~/types'
-import { getMemberById } from '~/data/mockData'
 import { formatShortDate, getDueDateStatus } from '~/utils/formatters'
+
+const { getMemberById } = useTeam()
 
 interface Props {
   task: Task
