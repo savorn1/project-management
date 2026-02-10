@@ -31,7 +31,7 @@
           <option :value="null">All Status</option>
           <option value="todo">To Do</option>
           <option value="in_progress">In Progress</option>
-          <option value="review">Review</option>
+          <option value="in_review">In Review</option>
           <option value="done">Done</option>
         </select>
 

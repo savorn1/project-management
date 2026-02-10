@@ -15,7 +15,7 @@ export interface TeamMember {
 
 // Task Priority and Status
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent'
-export type TaskStatus = 'todo' | 'in_progress' | 'review' | 'done'
+export type TaskStatus = 'todo' | 'in_progress' | 'in_review' | 'done'
 
 // Task
 export interface Task {

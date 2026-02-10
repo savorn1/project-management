@@ -77,7 +77,8 @@ export function useTasks() {
 
   async function createTask(data: Partial<Task>): Promise<Task | null> {
     const projectId = data.projectId || ''
-    const created = await tasksApi.create(data, projectId)
+    const { projectId: _, ...body } = data
+    const created = await tasksApi.create(body, projectId)
     if (created) {
       tasks.value.push(created)
       toast.success('Task created successfully')

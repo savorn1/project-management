@@ -29,8 +29,8 @@
           <p class="text-gray-400 text-sm mt-1">In Progress</p>
         </div>
         <div class="p-4 bg-slate-700/50 rounded-lg text-center">
-          <p class="text-3xl font-bold text-amber-400">{{ tasksByStatus.review }}</p>
-          <p class="text-gray-400 text-sm mt-1">Review</p>
+          <p class="text-3xl font-bold text-amber-400">{{ tasksByStatus.in_review }}</p>
+          <p class="text-gray-400 text-sm mt-1">In Review</p>
         </div>
         <div class="p-4 bg-slate-700/50 rounded-lg text-center">
           <p class="text-3xl font-bold text-emerald-400">{{ tasksByStatus.done }}</p>

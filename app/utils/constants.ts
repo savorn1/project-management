@@ -9,7 +9,7 @@ type StyleConfig = {
 export const KANBAN_COLUMNS: KanbanColumn[] = [
   { id: 'todo', title: 'To Do', color: 'slate' },
   { id: 'in_progress', title: 'In Progress', color: 'blue' },
-  { id: 'review', title: 'Review', color: 'amber' },
+  { id: 'in_review', title: 'In Review', color: 'amber' },
   { id: 'done', title: 'Done', color: 'emerald' },
 ]
 

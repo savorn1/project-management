@@ -64,7 +64,7 @@ export function useDashboard() {
     return {
       todo: tasks.value.filter(t => t.status === 'todo').length,
       in_progress: tasks.value.filter(t => t.status === 'in_progress').length,
-      review: tasks.value.filter(t => t.status === 'review').length,
+      in_review: tasks.value.filter(t => t.status === 'in_review').length,
       done: tasks.value.filter(t => t.status === 'done').length
     }
   })
