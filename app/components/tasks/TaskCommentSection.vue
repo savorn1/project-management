@@ -6,14 +6,48 @@
         {{ currentUserInitials }}
       </div>
       <div class="flex-1">
-        <textarea
-          v-model="newComment"
-          placeholder="Write a comment..."
-          rows="2"
-          class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-indigo-500 text-sm resize-none"
-          @keydown.meta.enter="submitComment"
-          @keydown.ctrl.enter="submitComment"
-        ></textarea>
+        <div class="relative">
+          <textarea
+            ref="textareaRef"
+            v-model="newComment"
+            placeholder="Write a comment... Use @ to mention"
+            rows="2"
+            class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-indigo-500 text-sm resize-none"
+            @input="handleInput"
+            @keydown="onKeydown"
+          ></textarea>
+
+          <!-- Mention Dropdown -->
+          <div
+            v-if="showDropdown && filteredOptions.length > 0"
+            class="absolute bottom-full left-0 mb-1 w-64 max-h-48 overflow-y-auto bg-slate-700 border border-slate-600 rounded-lg shadow-lg z-50"
+          >
+            <button
+              v-for="(option, index) in filteredOptions"
+              :key="option.id"
+              :ref="el => { if (index === selectedIndex) selectedEl = el as HTMLElement }"
+              @mousedown.prevent="selectOption(option)"
+              :class="[
+                'w-full px-3 py-2 flex items-center gap-2 text-left text-sm transition-colors',
+                index === selectedIndex ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-slate-600'
+              ]"
+            >
+              <div
+                v-if="option.type === 'everyone'"
+                class="w-6 h-6 bg-amber-600 rounded-full flex items-center justify-center text-xs text-white flex-shrink-0"
+              >
+                @
+              </div>
+              <div
+                v-else
+                class="w-6 h-6 bg-slate-500 rounded-full flex items-center justify-center text-xs text-white flex-shrink-0"
+              >
+                {{ getInitials(option.name) }}
+              </div>
+              <span class="truncate">{{ option.type === 'everyone' ? '@everyone' : option.name }}</span>
+            </button>
+          </div>
+        </div>
         <div class="flex justify-end mt-2">
           <button
             @click="submitComment"
@@ -72,12 +106,46 @@
 
           <!-- Edit mode -->
           <div v-if="editingId === comment._id" class="mt-1">
-            <textarea
-              v-model="editContent"
-              rows="2"
-              class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm resize-none focus:outline-none focus:border-indigo-500"
-              @keydown.escape="cancelEdit"
-            ></textarea>
+            <div class="relative">
+              <textarea
+                ref="editTextareaRef"
+                v-model="editContent"
+                rows="2"
+                class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white text-sm resize-none focus:outline-none focus:border-indigo-500"
+                @input="editMention.handleInput"
+                @keydown="onEditKeydown"
+              ></textarea>
+
+              <!-- Edit Mention Dropdown -->
+              <div
+                v-if="editMention.showDropdown.value && editMention.filteredOptions.value.length > 0"
+                class="absolute bottom-full left-0 mb-1 w-64 max-h-48 overflow-y-auto bg-slate-700 border border-slate-600 rounded-lg shadow-lg z-50"
+              >
+                <button
+                  v-for="(option, index) in editMention.filteredOptions.value"
+                  :key="option.id"
+                  @mousedown.prevent="editMention.selectOption(option)"
+                  :class="[
+                    'w-full px-3 py-2 flex items-center gap-2 text-left text-sm transition-colors',
+                    index === editMention.selectedIndex.value ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-slate-600'
+                  ]"
+                >
+                  <div
+                    v-if="option.type === 'everyone'"
+                    class="w-6 h-6 bg-amber-600 rounded-full flex items-center justify-center text-xs text-white flex-shrink-0"
+                  >
+                    @
+                  </div>
+                  <div
+                    v-else
+                    class="w-6 h-6 bg-slate-500 rounded-full flex items-center justify-center text-xs text-white flex-shrink-0"
+                  >
+                    {{ getInitials(option.name) }}
+                  </div>
+                  <span class="truncate">{{ option.type === 'everyone' ? '@everyone' : option.name }}</span>
+                </button>
+              </div>
+            </div>
             <div class="flex gap-2 mt-1">
               <button
                 @click="saveEdit(comment._id)"
@@ -96,7 +164,7 @@
           </div>
 
           <!-- Display mode -->
-          <p v-else class="text-sm text-gray-300 mt-1 whitespace-pre-wrap">{{ comment.content }}</p>
+          <p v-else class="text-sm text-gray-300 mt-1 whitespace-pre-wrap"><template v-for="(seg, i) in parseMentions(comment.content)" :key="i"><span v-if="seg.type === 'everyone'" class="text-amber-400 font-medium bg-amber-400/10 rounded px-0.5">@everyone</span><span v-else-if="seg.type === 'mention'" class="text-indigo-400 font-medium bg-indigo-400/10 rounded px-0.5">@{{ seg.value }}</span><template v-else>{{ seg.value }}</template></template></p>
         </div>
       </div>
     </div>
@@ -110,6 +178,7 @@
 
 <script setup lang="ts">
 import type { TaskComment } from '~/types'
+import { parseMentions } from '~/utils/mentionRenderer'
 
 interface Props {
   taskId: string
@@ -118,6 +187,7 @@ interface Props {
 const props = defineProps<Props>()
 
 const { user } = useAuth()
+const { members } = useTeam()
 const { comments, isLoading, loadComments, addComment, editComment, removeComment } = useTaskComments()
 
 const newComment = ref('')
@@ -125,7 +195,29 @@ const isSubmitting = ref(false)
 const editingId = ref<string | null>(null)
 const editContent = ref('')
 
+const textareaRef = ref<HTMLTextAreaElement | null>(null)
+const editTextareaRef = ref<HTMLTextAreaElement | null>(null)
+const selectedEl = ref<HTMLElement | null>(null)
+
+// Mention input for new comment
+const {
+  showDropdown,
+  filteredOptions,
+  selectedIndex,
+  handleInput,
+  handleKeydown: mentionKeydown,
+  selectOption,
+} = useMentionInput(textareaRef, members, newComment)
+
+// Mention input for edit comment
+const editMention = useMentionInput(editTextareaRef, members, editContent)
+
 const currentUserInitials = computed(() => getInitials(user.value?.name))
+
+// Scroll selected dropdown item into view
+watch(selectedIndex, () => {
+  nextTick(() => selectedEl.value?.scrollIntoView({ block: 'nearest' }))
+})
 
 watch(() => props.taskId, (id) => {
   if (id) loadComments(id)
@@ -157,6 +249,22 @@ function isOwnComment(comment: TaskComment): boolean {
   return comment.userId === user.value?.id
 }
 
+function onKeydown(event: KeyboardEvent) {
+  mentionKeydown(event)
+  if (event.defaultPrevented) return
+  if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+    submitComment()
+  }
+}
+
+function onEditKeydown(event: KeyboardEvent) {
+  editMention.handleKeydown(event)
+  if (event.defaultPrevented) return
+  if (event.key === 'Escape') {
+    cancelEdit()
+  }
+}
+
 async function submitComment() {
   if (!newComment.value.trim() || isSubmitting.value) return
   isSubmitting.value = true
@@ -173,6 +281,7 @@ function startEdit(comment: TaskComment) {
 function cancelEdit() {
   editingId.value = null
   editContent.value = ''
+  editMention.closeDropdown()
 }
 
 async function saveEdit(commentId: string) {
