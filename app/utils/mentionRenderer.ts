@@ -1,7 +1,7 @@
 import type { TeamMember } from '~/types'
 
 export interface MentionSegment {
-  type: 'text' | 'mention' | 'everyone'
+  type: 'text' | 'mention' | 'everyone' | 'image' | 'video' | 'link'
   value: string
   userId?: string
 }
@@ -36,6 +36,54 @@ export function parseMentions(content: string): MentionSegment[] {
   }
 
   return segments
+}
+
+// URL detection regex
+const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`[\]]+/g
+
+const IMAGE_EXTENSIONS = /\.(png|jpe?g|gif|webp|svg|bmp|ico)(\?[^\s]*)?$/i
+const VIDEO_EXTENSIONS = /\.(mp4|webm|mov|ogg|avi)(\?[^\s]*)?$/i
+
+function classifyUrl(url: string): 'image' | 'video' | 'link' {
+  if (IMAGE_EXTENSIONS.test(url)) return 'image'
+  if (VIDEO_EXTENSIONS.test(url)) return 'video'
+  return 'link'
+}
+
+function parseUrls(segments: MentionSegment[]): MentionSegment[] {
+  const result: MentionSegment[] = []
+
+  for (const seg of segments) {
+    if (seg.type !== 'text') {
+      result.push(seg)
+      continue
+    }
+
+    let lastIndex = 0
+    for (const match of seg.value.matchAll(URL_REGEX)) {
+      const matchIndex = match.index!
+      if (matchIndex > lastIndex) {
+        result.push({ type: 'text', value: seg.value.slice(lastIndex, matchIndex) })
+      }
+
+      const url = match[0]
+      result.push({ type: classifyUrl(url), value: url })
+      lastIndex = matchIndex + url.length
+    }
+
+    if (lastIndex < seg.value.length) {
+      result.push({ type: 'text', value: seg.value.slice(lastIndex) })
+    }
+  }
+
+  return result
+}
+
+/**
+ * Parse comment content into rich segments: text, mentions, @everyone, images, videos, links.
+ */
+export function parseCommentContent(content: string): MentionSegment[] {
+  return parseUrls(parseMentions(content))
 }
 
 /**

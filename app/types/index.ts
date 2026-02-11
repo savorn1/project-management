@@ -20,6 +20,7 @@ export type TaskStatus = 'todo' | 'in_progress' | 'in_review' | 'done'
 // Task
 export interface Task {
   _id: string
+  key: string
   title: string
   description: string
   status: TaskStatus
