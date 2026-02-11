@@ -215,29 +215,85 @@
                 <!-- Details Section -->
                 <div class="bg-slate-800/40 rounded-xl border border-slate-700/30 divide-y divide-slate-700/30">
                   <!-- Assignee -->
-                  <div class="flex items-center gap-3 px-4 py-3">
+                  <div class="flex items-center gap-3 px-4 py-3 relative" ref="assigneeDropdownRef">
                     <svg class="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                     <span class="text-xs text-gray-500 w-20 flex-shrink-0">Assignee</span>
-                    <div class="flex-1 flex items-center gap-2">
+                    <div
+                      class="flex-1 flex items-center gap-2 cursor-pointer group"
+                      @click="showAssigneeDropdown = !showAssigneeDropdown"
+                    >
                       <div
                         v-if="selectedTask.assigneeId && getAssigneeName(selectedTask.assigneeId)"
-                        class="w-6 h-6 bg-indigo-600 rounded-full flex items-center justify-center text-[10px] text-white font-medium flex-shrink-0"
+                        class="w-6 h-6 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-[10px] text-white font-medium flex-shrink-0 ring-2 ring-indigo-500/20"
                       >
                         {{ getInitials(getAssigneeName(selectedTask.assigneeId)) }}
                       </div>
-                      <select
-                        :value="selectedTask.assigneeId || ''"
-                        @change="handleAssigneeChange(($event.target as HTMLSelectElement).value || null)"
-                        class="flex-1 bg-transparent text-sm text-gray-300 hover:text-white focus:outline-none cursor-pointer transition-colors appearance-none"
-                      >
-                        <option value="" class="bg-slate-800">Unassigned</option>
-                        <option v-for="member in members" :key="member._id" :value="member._id" class="bg-slate-800">
-                          {{ member.name }}
-                        </option>
-                      </select>
+                      <div v-else class="w-6 h-6 bg-slate-700 rounded-full flex items-center justify-center flex-shrink-0 ring-2 ring-slate-600/30">
+                        <svg class="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                      </div>
+                      <span class="text-sm transition-colors" :class="selectedTask.assigneeId ? 'text-gray-300 group-hover:text-white' : 'text-gray-500 group-hover:text-gray-300'">
+                        {{ getAssigneeName(selectedTask.assigneeId) || 'Unassigned' }}
+                      </span>
+                      <svg class="w-3 h-3 text-gray-600 group-hover:text-gray-400 ml-auto transition-colors" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                      </svg>
                     </div>
+
+                    <!-- Assignee Dropdown -->
+                    <Transition
+                      enter-active-class="transition ease-out duration-150"
+                      enter-from-class="opacity-0 scale-95"
+                      enter-to-class="opacity-100 scale-100"
+                      leave-active-class="transition ease-in duration-100"
+                      leave-from-class="opacity-100 scale-100"
+                      leave-to-class="opacity-0 scale-95"
+                    >
+                      <div v-if="showAssigneeDropdown" class="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700/50 rounded-xl shadow-2xl shadow-black/40 z-50 py-1 overflow-hidden max-h-60 overflow-y-auto">
+                        <!-- Unassigned option -->
+                        <button
+                          @click="handleAssigneeChange(null); showAssigneeDropdown = false"
+                          class="w-full flex items-center gap-3 px-3 py-2.5 text-sm transition-all duration-150"
+                          :class="!selectedTask.assigneeId ? 'bg-slate-700/60 text-white' : 'text-gray-400 hover:bg-slate-700/40 hover:text-gray-200'"
+                        >
+                          <div class="w-7 h-7 bg-slate-700 rounded-full flex items-center justify-center flex-shrink-0">
+                            <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                          </div>
+                          <span>Unassigned</span>
+                          <svg v-if="!selectedTask.assigneeId" class="w-3.5 h-3.5 ml-auto text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                          </svg>
+                        </button>
+
+                        <!-- Divider -->
+                        <div class="border-t border-slate-700/40 my-1"></div>
+
+                        <!-- Members -->
+                        <button
+                          v-for="member in members"
+                          :key="member._id"
+                          @click="handleAssigneeChange(member._id); showAssigneeDropdown = false"
+                          class="w-full flex items-center gap-3 px-3 py-2.5 text-sm transition-all duration-150"
+                          :class="selectedTask.assigneeId === member._id ? 'bg-slate-700/60 text-white' : 'text-gray-300 hover:bg-slate-700/40 hover:text-white'"
+                        >
+                          <div class="w-7 h-7 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-[10px] text-white font-semibold flex-shrink-0 ring-2 ring-indigo-500/20">
+                            {{ getInitials(member.name) }}
+                          </div>
+                          <div class="flex flex-col min-w-0">
+                            <span class="truncate">{{ member.name }}</span>
+                            <span v-if="member.email" class="text-[10px] text-gray-500 truncate">{{ member.email }}</span>
+                          </div>
+                          <svg v-if="selectedTask.assigneeId === member._id" class="w-3.5 h-3.5 ml-auto flex-shrink-0 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                          </svg>
+                        </button>
+                      </div>
+                    </Transition>
                   </div>
 
                   <!-- Due Date -->
@@ -453,8 +509,10 @@ const selectedTask = ref<Task | null>(null)
 const previewTab = ref<'comments' | 'activity'>('comments')
 const showStatusDropdown = ref(false)
 const showPriorityDropdown = ref(false)
+const showAssigneeDropdown = ref(false)
 const statusDropdownRef = ref<HTMLElement | null>(null)
 const priorityDropdownRef = ref<HTMLElement | null>(null)
+const assigneeDropdownRef = ref<HTMLElement | null>(null)
 
 const statusOptions = [
   { value: 'todo' as TaskStatus, label: 'To Do', dot: 'bg-slate-400' },
@@ -493,6 +551,9 @@ function handleClickOutside(event: MouseEvent) {
   }
   if (priorityDropdownRef.value && !priorityDropdownRef.value.contains(event.target as Node)) {
     showPriorityDropdown.value = false
+  }
+  if (assigneeDropdownRef.value && !assigneeDropdownRef.value.contains(event.target as Node)) {
+    showAssigneeDropdown.value = false
   }
 }
 
