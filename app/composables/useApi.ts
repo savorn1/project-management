@@ -28,6 +28,7 @@ export function useApi() {
   const config = useRuntimeConfig()
   const apiBase = config.public.apiBase
   const { getAuthHeader, clearAuthState } = useAuth()
+  const { clientId } = useSocket()
   const toast = useToast()
 
   const loading = ref(false)
@@ -50,6 +51,7 @@ export function useApi() {
         ...restOptions,
         headers: {
           'Content-Type': 'application/json',
+          'x-client-id': clientId,
           ...getAuthHeader(),
           ...(optHeaders as Record<string, string>),
         },

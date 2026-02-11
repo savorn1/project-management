@@ -325,11 +325,17 @@ const projectId = route.params.id as string
 const { createTask, updateTask, deleteTask, getTasksByProject, loadTasksByProject } = useTasks()
 const { getProjectById, loadProjects, projects } = useProjects()
 const { members, loadMembers } = useTeam()
+const { subscribe, unsubscribe, isConnected } = useTaskRealtime(projectId)
 
 onMounted(async () => {
   if (projects.value.length === 0) await loadProjects()
   if (members.value.length === 0) await loadMembers()
   await loadTasksByProject(projectId)
+  subscribe()
+})
+
+onUnmounted(() => {
+  unsubscribe()
 })
 
 const project = computed(() => getProjectById(projectId))

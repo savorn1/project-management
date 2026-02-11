@@ -181,6 +181,8 @@ export function useAuth() {
     } catch {
       // Ignore logout errors
     } finally {
+      const { disconnect } = useSocket()
+      disconnect()
       clearAuthState()
       router.push('/login')
     }
