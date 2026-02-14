@@ -73,7 +73,7 @@
     </BaseCard>
 
     <!-- Task List -->
-    <TaskList :tasks="filteredTasks" @toggle="toggleTaskComplete" @select="openPreview" />
+    <TaskList :tasks="filteredTasks" @toggle="toggleTaskComplete" @select="openPreview" @reorder="reorderTasks" />
 
     <!-- Task Preview Slide-over -->
     <Teleport to="body">
@@ -366,18 +366,13 @@
                     </svg>
                     <span class="text-xs text-gray-500 uppercase tracking-wide font-medium">Description</span>
                   </div>
-                  <ClientOnly>
-                    <WysiwygEditor
-                      :model-value="selectedTask.description || ''"
-                      @update:model-value="handleDescriptionUpdate"
-                      placeholder="Add a description..."
-                    />
-                    <template #fallback>
-                      <div class="w-full min-h-[100px] px-4 py-3 bg-slate-800/50 border border-slate-700/30 rounded-xl text-gray-500 animate-pulse">
-                        Loading editor...
-                      </div>
-                    </template>
-                  </ClientOnly>
+                  <textarea
+                    :value="selectedTask.description || ''"
+                    @input="handleDescriptionUpdate(($event.target as HTMLTextAreaElement).value)"
+                    placeholder="Add a description..."
+                    rows="4"
+                    class="w-full px-4 py-3 bg-slate-800/50 border border-slate-700/30 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500/50 resize-y transition-colors"
+                  ></textarea>
                 </div>
 
                 <!-- Labels -->
@@ -450,17 +445,12 @@
 
         <div>
           <label class="block text-gray-300 text-sm font-medium mb-2">Description</label>
-          <ClientOnly>
-            <WysiwygEditor
-              v-model="newTask.description"
-              placeholder="Task description..."
-            />
-            <template #fallback>
-              <div class="w-full min-h-[120px] px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-gray-400 animate-pulse">
-                Loading editor...
-              </div>
-            </template>
-          </ClientOnly>
+          <textarea
+            v-model="newTask.description"
+            placeholder="Task description..."
+            rows="4"
+            class="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-indigo-500 resize-y"
+          ></textarea>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
@@ -495,10 +485,11 @@
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-gray-300 text-sm font-medium mb-2">Due Date</label>
-            <input
-              v-model="newTask.dueDate"
-              type="date"
-              class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-indigo-500"
+            <DatePicker
+              :model-value="newTask.dueDate || null"
+              @update:model-value="newTask.dueDate = $event || ''"
+              placeholder="Set due date"
+              trigger-class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg hover:border-slate-500 transition-colors"
             />
           </div>
 
@@ -564,7 +555,7 @@ useSeoMeta({
   description: 'Manage all your tasks'
 })
 
-const { filteredTasks, filters, toggleTaskComplete, createTask, updateTask, deleteTask, clearFilters, loadTasks, tasks } = useTasks()
+const { filteredTasks, filters, toggleTaskComplete, createTask, updateTask, deleteTask, reorderTasks, clearFilters, loadTasks, tasks } = useTasks()
 const { projects, loadProjects, getProjectById } = useProjects()
 const { members, loadMembers, getMemberById } = useTeam()
 

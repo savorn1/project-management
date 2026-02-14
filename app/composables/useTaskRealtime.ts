@@ -28,8 +28,8 @@ export function useTaskRealtime(projectId: string) {
       tasks.value[index] = {
         ...tasks.value[index],
         status: payload.data.status as TaskStatus,
-        ...taskData,
-      }
+        ...(Object.keys(taskData).length > 0 ? taskData : {}),
+      } as Task
     }
   }
 
@@ -37,7 +37,7 @@ export function useTaskRealtime(projectId: string) {
     if (isSelf(payload)) return
     const index = tasks.value.findIndex(t => t._id === payload.taskId)
     if (index !== -1 && payload.data.task) {
-      tasks.value[index] = { ...tasks.value[index], ...(payload.data.task as Partial<Task>) }
+      tasks.value[index] = { ...tasks.value[index], ...(payload.data.task as Partial<Task>) } as Task
     }
   }
 

@@ -19,8 +19,9 @@
 
     <!-- Title -->
     <h4
-      class="text-sm font-medium text-white leading-snug mb-2"
+      class="text-sm font-medium text-white leading-snug mb-2 line-clamp-2"
       :class="{ 'line-through text-gray-500': task.status === 'done' }"
+      :title="task.title"
     >
       {{ task.title }}
     </h4>

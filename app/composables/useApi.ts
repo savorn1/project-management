@@ -171,6 +171,13 @@ export function useApi() {
       return response !== null
     },
 
+    async reorder(projectId: string, taskOrders: { taskId: string; order: number }[]): Promise<void> {
+      await request('/admin/tasks/reorder', {
+        method: 'PATCH',
+        body: JSON.stringify({ projectId, taskOrders }),
+      })
+    },
+
     async getStatistics(): Promise<DashboardStats | null> {
       const response = await request<StatsResponse>('/admin/tasks/statistics')
       return response?.statistics || null

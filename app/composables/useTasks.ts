@@ -74,7 +74,7 @@ export function useTasks() {
       }
 
       return true
-    })
+    }).sort((a, b) => a.order - b.order)
   })
 
   function getTasksByProject(projectId: string): Task[] {
@@ -136,6 +136,23 @@ export function useTasks() {
     }
   }
 
+  async function reorderTasks(orderedTasks: Task[]) {
+    // Optimistic update: assign new order values locally
+    const taskOrders: { taskId: string; order: number }[] = []
+    orderedTasks.forEach((task, index) => {
+      const order = index + 1
+      if (task.order !== order) {
+        const t = tasks.value.find(t => t._id === task._id)
+        if (t) t.order = order
+        taskOrders.push({ taskId: task._id, order })
+      }
+    })
+
+    if (taskOrders.length > 0 && orderedTasks[0]) {
+      await tasksApi.reorder(orderedTasks[0].projectId, taskOrders)
+    }
+  }
+
   function setFilter(key: keyof TaskFilters, value: TaskFilters[keyof TaskFilters]) {
     filters.value[key] = value as never
   }
@@ -166,6 +183,7 @@ export function useTasks() {
     deleteTask,
     moveTask,
     toggleTaskComplete,
+    reorderTasks,
     setFilter,
     clearFilters
   }
