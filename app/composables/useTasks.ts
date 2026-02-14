@@ -18,6 +18,7 @@ interface TaskFilters {
 export function useTasks() {
   const { tasksApi, error: apiRequestError } = useApi()
   const toast = useToast()
+  const socket = useSocket()
 
   const filters = ref<TaskFilters>({
     status: null,
@@ -27,6 +28,70 @@ export function useTasks() {
     search: '',
     parentFilter: 'all'
   })
+
+  // Socket event handlers
+  function handleTaskCreated(data: { task: Task; userId?: string }) {
+    // Skip if this client created the task
+    if (data.userId && data.userId === socket.clientId) return
+
+    const exists = tasks.value.find(t => t._id === data.task._id)
+    if (!exists) {
+      tasks.value.push(data.task)
+      toast.info('New task created')
+    }
+  }
+
+  function handleTaskUpdated(data: { task: Task }) {
+    const index = tasks.value.findIndex(t => t._id === data.task._id)
+    if (index !== -1) {
+      tasks.value[index] = { ...tasks.value[index], ...data.task }
+    } else {
+      // Task might have been moved to a project we're viewing
+      tasks.value.push(data.task)
+    }
+  }
+
+  function handleTaskDeleted(data: { task: { _id: string } }) {
+    const index = tasks.value.findIndex(t => t._id === data.task._id)
+    if (index !== -1) {
+      tasks.value.splice(index, 1)
+      toast.info('Task deleted')
+    }
+  }
+
+  function handleTaskReordered(data: { task: { taskOrders: { taskId: string; order: number }[] } }) {
+    data.task.taskOrders.forEach(({ taskId, order }) => {
+      const task = tasks.value.find(t => t._id === taskId)
+      if (task) {
+        task.order = order
+      }
+    })
+  }
+
+  // Setup socket listeners for a project
+  function setupRealtimeUpdates(projectId: string) {
+    if (!socket.isConnected.value) {
+      socket.connect()
+    }
+
+    // Join project room
+    socket.joinRoom(`project:${projectId}`)
+
+    // Listen to events
+    socket.on('task:created', handleTaskCreated)
+    socket.on('task:updated', handleTaskUpdated)
+    socket.on('task:deleted', handleTaskDeleted)
+    socket.on('task:reordered', handleTaskReordered)
+  }
+
+  // Cleanup socket listeners
+  function cleanupRealtimeUpdates(projectId: string) {
+    socket.leaveRoom(`project:${projectId}`)
+    socket.off('task:created', handleTaskCreated)
+    socket.off('task:updated', handleTaskUpdated)
+    socket.off('task:deleted', handleTaskDeleted)
+    socket.off('task:reordered', handleTaskReordered)
+  }
 
   async function loadTasks() {
     isLoading.value = true
@@ -185,6 +250,8 @@ export function useTasks() {
     toggleTaskComplete,
     reorderTasks,
     setFilter,
-    clearFilters
+    clearFilters,
+    setupRealtimeUpdates,
+    cleanupRealtimeUpdates
   }
 }

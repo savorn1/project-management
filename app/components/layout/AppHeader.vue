@@ -19,6 +19,9 @@
         </span>
       </div>
 
+      <!-- Connection Status -->
+      <ConnectionStatus />
+
       <!-- Notifications -->
       <button class="w-10 h-10 bg-slate-800/50 border border-slate-700/50 rounded-xl flex items-center justify-center text-gray-400 hover:text-white hover:bg-slate-700/50 hover:border-slate-600/50 transition-all duration-200 relative group">
         <svg class="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">

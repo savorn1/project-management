@@ -15,4 +15,15 @@
 </template>
 
 <script setup lang="ts">
+const socket = useSocket()
+
+onMounted(() => {
+  // Initialize WebSocket connection
+  socket.connect()
+})
+
+onUnmounted(() => {
+  // Disconnect WebSocket when layout unmounts
+  socket.disconnect()
+})
 </script>
