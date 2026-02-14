@@ -38,6 +38,17 @@
         <p class="text-xs text-gray-500 mt-0.5 truncate">{{ getProjectName(task.projectId) }}</p>
       </div>
 
+      <!-- Sprint badge -->
+      <span
+        v-if="task.sprintId && getSprintName(task.sprintId, task.projectId)"
+        class="flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-indigo-500/15 text-indigo-400 ring-1 ring-indigo-500/25"
+      >
+        <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+        {{ getSprintName(task.sprintId, task.projectId) }}
+      </span>
+
       <!-- Assignee -->
       <div v-if="getAssignee(task.assigneeId)" class="flex-shrink-0">
         <div
@@ -89,9 +100,15 @@ defineEmits<{
 
 const { getProjectById } = useProjects()
 const { getMemberById } = useTeam()
+const { getProjectSprints } = useSprints()
 
 function getProjectName(projectId: string): string {
   return getProjectById(projectId)?.name || 'Unknown Project'
+}
+
+function getSprintName(sprintId: string, projectId: string): string | null {
+  const sprints = getProjectSprints(projectId)
+  return sprints.find(s => s._id === sprintId)?.name || null
 }
 
 function getAssignee(assigneeId: string | null) {

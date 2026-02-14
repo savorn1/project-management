@@ -1,4 +1,4 @@
-import type { Task, TaskComment, TaskActivity, Project, ProjectInput, TeamMember, DashboardStats, Workplace, WorkplaceInput, WorkplaceMember as WpMember, WorkplaceMemberWithUser } from '~/types'
+import type { Task, TaskComment, TaskActivity, Project, ProjectInput, TeamMember, DashboardStats, Workplace, WorkplaceInput, WorkplaceMember as WpMember, WorkplaceMemberWithUser, Label, Sprint } from '~/types'
 
 interface ListResponse<T> {
   success: boolean
@@ -113,6 +113,11 @@ export function useApi() {
 
     async getBacklog(projectId: string): Promise<Task[]> {
       const response = await request<ListResponse<Task>>(`/admin/tasks/backlog/${projectId}?limit=100`)
+      return response?.data || []
+    },
+
+    async getSubtasks(taskId: string): Promise<Task[]> {
+      const response = await request<ListResponse<Task>>(`/admin/tasks/${taskId}/subtasks?limit=100`)
       return response?.data || []
     },
 
@@ -364,6 +369,76 @@ export function useApi() {
     },
   }
 
+  // Labels API
+  const labelsApi = {
+    async getAll(projectId: string): Promise<Label[]> {
+      const response = await request<Label[]>(`/admin/projects/${projectId}/labels/all`)
+      return response || []
+    },
+
+    async create(projectId: string, data: { name: string; color: string }): Promise<Label | null> {
+      return await request<Label>(`/admin/projects/${projectId}/labels`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      })
+    },
+
+    async update(projectId: string, labelId: string, data: { name?: string; color?: string }): Promise<Label | null> {
+      return await request<Label>(`/admin/projects/${projectId}/labels/${labelId}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      })
+    },
+
+    async delete(projectId: string, labelId: string): Promise<boolean> {
+      const response = await request(`/admin/projects/${projectId}/labels/${labelId}`, {
+        method: 'DELETE',
+      })
+      return response !== null
+    },
+  }
+
+  // Sprints API
+  const sprintsApi = {
+    async getAll(projectId: string): Promise<Sprint[]> {
+      const response = await request<RawListResponse<Sprint>>(`/admin/projects/${projectId}/sprints?limit=100`)
+      return response?.data || []
+    },
+
+    async create(projectId: string, data: { name: string; startDate?: string; endDate?: string; goal?: string }): Promise<Sprint | null> {
+      return await request<Sprint>(`/admin/projects/${projectId}/sprints`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      })
+    },
+
+    async update(projectId: string, sprintId: string, data: { name?: string; startDate?: string; endDate?: string; goal?: string }): Promise<Sprint | null> {
+      return await request<Sprint>(`/admin/projects/${projectId}/sprints/${sprintId}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      })
+    },
+
+    async start(projectId: string, sprintId: string): Promise<Sprint | null> {
+      return await request<Sprint>(`/admin/projects/${projectId}/sprints/${sprintId}/start`, {
+        method: 'PUT',
+      })
+    },
+
+    async close(projectId: string, sprintId: string): Promise<Sprint | null> {
+      return await request<Sprint>(`/admin/projects/${projectId}/sprints/${sprintId}/close`, {
+        method: 'PUT',
+      })
+    },
+
+    async delete(projectId: string, sprintId: string): Promise<boolean> {
+      const response = await request(`/admin/projects/${projectId}/sprints/${sprintId}`, {
+        method: 'DELETE',
+      })
+      return response !== null
+    },
+  }
+
   // Task Comments API
   // Note: Backend returns populated userId as { _id, name, email } object
   // We map it to the `user` field for frontend consumption
@@ -427,6 +502,8 @@ export function useApi() {
     tasksApi,
     projectsApi,
     teamApi,
+    labelsApi,
+    sprintsApi,
     commentsApi,
     activityApi,
     workplacesApi,

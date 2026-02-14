@@ -56,6 +56,16 @@
           </option>
         </select>
 
+        <select
+          v-model="filters.parentFilter"
+          class="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-indigo-500"
+        >
+          <option value="all">All Tasks</option>
+          <option value="top_level">Top-level Only</option>
+          <option value="parent_only">Has Sub-tasks</option>
+          <option value="subtask_only">Sub-tasks Only</option>
+        </select>
+
         <BaseButton variant="ghost" @click="clearFilters" size="sm">
           Clear
         </BaseButton>
@@ -299,12 +309,42 @@
                   <!-- Due Date -->
                   <div class="flex items-center gap-3 px-4 py-3">
                     <span class="text-xs text-gray-500 w-20 flex-shrink-0">Due Date</span>
-                    <BaseDatePicker
+                    <DatePicker
                       class="flex-1"
                       :model-value="selectedTask.dueDate ? selectedTask.dueDate.split('T')[0] : null"
                       @update:model-value="handleFieldUpdate('dueDate', $event)"
                       placeholder="Set due date"
                       trigger-class="cursor-pointer hover:text-white"
+                    />
+                  </div>
+
+                  <!-- Sprint -->
+                  <div class="flex items-center gap-3 px-4 py-3">
+                    <svg class="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    <span class="text-xs text-gray-500 w-20 flex-shrink-0">Sprint</span>
+                    <SprintPicker
+                      class="flex-1"
+                      :project-id="selectedTask.projectId"
+                      :model-value="selectedTask.sprintId || null"
+                      @update:model-value="handleSprintChange($event)"
+                    />
+                  </div>
+
+                  <!-- Parent Task -->
+                  <div class="flex items-center gap-3 px-4 py-3">
+                    <svg class="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    <span class="text-xs text-gray-500 w-20 flex-shrink-0">Parent</span>
+                    <ParentTaskPicker
+                      class="flex-1"
+                      :project-id="selectedTask.projectId"
+                      :model-value="selectedTask.parentId || null"
+                      :exclude-task-id="selectedTask._id"
+                      @update:model-value="handleParentChange($event)"
                     />
                   </div>
 
@@ -340,23 +380,29 @@
                   </ClientOnly>
                 </div>
 
-                <!-- Tags -->
-                <div v-if="selectedTask.tags && selectedTask.tags.length > 0">
+                <!-- Labels -->
+                <div>
                   <div class="flex items-center gap-2 mb-3">
                     <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                     </svg>
-                    <span class="text-xs text-gray-500 uppercase tracking-wide font-medium">Tags</span>
+                    <span class="text-xs text-gray-500 uppercase tracking-wide font-medium">Labels</span>
                   </div>
-                  <div class="flex flex-wrap gap-2">
-                    <span
-                      v-for="tag in selectedTask.tags"
-                      :key="tag"
-                      class="px-2.5 py-1 bg-slate-700/50 text-gray-300 text-xs rounded-full ring-1 ring-slate-600/30"
-                    >
-                      {{ tag }}
-                    </span>
-                  </div>
+                  <LabelPicker
+                    :project-id="selectedTask.projectId"
+                    :model-value="selectedTask.labelIds || []"
+                    @update:model-value="handleLabelsChange($event)"
+                  />
+                </div>
+
+                <!-- Sub-tasks -->
+                <div>
+                  <SubtaskList
+                    :task-id="selectedTask._id"
+                    :tasks="tasks"
+                    @select="openPreview"
+                    @add="openCreateSubtask(selectedTask)"
+                  />
                 </div>
 
                 <!-- Comments / Activity Tabs -->
@@ -469,6 +515,30 @@
             </select>
           </div>
         </div>
+
+        <div v-if="newTask.projectId">
+          <label class="block text-gray-300 text-sm font-medium mb-2">Labels</label>
+          <LabelPicker
+            :project-id="newTask.projectId"
+            v-model="newTask.labelIds"
+          />
+        </div>
+
+        <div v-if="newTask.projectId">
+          <label class="block text-gray-300 text-sm font-medium mb-2">Sprint</label>
+          <SprintPicker
+            :project-id="newTask.projectId"
+            v-model="newTask.sprintId"
+          />
+        </div>
+
+        <div v-if="newTask.projectId">
+          <label class="block text-gray-300 text-sm font-medium mb-2">Parent Task</label>
+          <ParentTaskPicker
+            :project-id="newTask.projectId"
+            v-model="newTask.parentId"
+          />
+        </div>
       </form>
 
       <template #footer>
@@ -571,7 +641,10 @@ const newTask = ref({
   projectId: '',
   priority: 'medium' as TaskPriority,
   dueDate: '',
-  assigneeId: null as string | null
+  assigneeId: null as string | null,
+  labelIds: [] as string[],
+  sprintId: null as string | null,
+  parentId: null as string | null,
 })
 
 function openPreview(task: Task) {
@@ -632,6 +705,30 @@ async function handleAssigneeChange(assigneeId: string | null) {
   selectedTask.value = { ...selectedTask.value, assigneeId }
 }
 
+async function handleLabelsChange(labelIds: string[]) {
+  if (!selectedTask.value) return
+  await updateTask(selectedTask.value._id, { labelIds } as any)
+  selectedTask.value = { ...selectedTask.value, labelIds }
+}
+
+async function handleSprintChange(sprintId: string | null) {
+  if (!selectedTask.value) return
+  await updateTask(selectedTask.value._id, { sprintId } as any)
+  selectedTask.value = { ...selectedTask.value, sprintId: sprintId || undefined }
+}
+
+async function handleParentChange(parentId: string | null) {
+  if (!selectedTask.value) return
+  await updateTask(selectedTask.value._id, { parentId } as any)
+  selectedTask.value = { ...selectedTask.value, parentId: parentId || undefined }
+}
+
+function openCreateSubtask(parentTask: Task) {
+  newTask.value.projectId = parentTask.projectId
+  newTask.value.parentId = parentTask._id
+  showCreateModal.value = true
+}
+
 async function handleFieldUpdate(field: string, value: string | null) {
   if (!selectedTask.value) return
   if (field === 'title' && value === selectedTask.value.title) return
@@ -662,7 +759,9 @@ function handleCreateTask() {
   if (newTask.value.title && newTask.value.projectId) {
     createTask({
       ...newTask.value,
-      dueDate: newTask.value.dueDate || null
+      dueDate: newTask.value.dueDate || null,
+      sprintId: newTask.value.sprintId || undefined,
+      parentId: newTask.value.parentId || undefined,
     })
     showCreateModal.value = false
     newTask.value = {
@@ -671,7 +770,10 @@ function handleCreateTask() {
       projectId: '',
       priority: 'medium',
       dueDate: '',
-      assigneeId: null
+      assigneeId: null,
+      labelIds: [],
+      sprintId: null,
+      parentId: null,
     }
   }
 }

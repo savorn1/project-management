@@ -4,12 +4,15 @@ const tasks = ref<Task[]>([])
 const isLoading = ref(false)
 const apiError = ref<string | null>(null)
 
+export type ParentFilter = 'all' | 'top_level' | 'parent_only' | 'subtask_only'
+
 interface TaskFilters {
   status: TaskStatus | null
   priority: TaskPriority | null
   projectId: string | null
   assigneeId: string | null
   search: string
+  parentFilter: ParentFilter
 }
 
 export function useTasks() {
@@ -21,7 +24,8 @@ export function useTasks() {
     priority: null,
     projectId: null,
     assigneeId: null,
-    search: ''
+    search: '',
+    parentFilter: 'all'
   })
 
   async function loadTasks() {
@@ -59,6 +63,16 @@ export function useTasks() {
       if (filters.value.projectId && task.projectId !== filters.value.projectId) return false
       if (filters.value.assigneeId && task.assigneeId !== filters.value.assigneeId) return false
       if (filters.value.search && !task.title.toLowerCase().includes(filters.value.search.toLowerCase())) return false
+
+      // Parent/subtask filter
+      const pf = filters.value.parentFilter
+      if (pf === 'top_level' && task.parentId) return false
+      if (pf === 'subtask_only' && !task.parentId) return false
+      if (pf === 'parent_only') {
+        const hasChildren = tasks.value.some(t => t.parentId === task._id)
+        if (!hasChildren) return false
+      }
+
       return true
     })
   })
@@ -132,7 +146,8 @@ export function useTasks() {
       priority: null,
       projectId: null,
       assigneeId: null,
-      search: ''
+      search: '',
+      parentFilter: 'all'
     }
   }
 

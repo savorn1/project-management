@@ -17,6 +17,29 @@ export interface TeamMember {
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent'
 export type TaskStatus = 'todo' | 'in_progress' | 'in_review' | 'done'
 
+// Sprint
+export type SprintStatus = 'planning' | 'active' | 'closed'
+
+export interface Sprint {
+  _id: string
+  projectId: string
+  name: string
+  startDate?: string
+  endDate?: string
+  status: SprintStatus
+  goal?: string
+  createdAt: string
+}
+
+// Label
+export interface Label {
+  _id: string
+  projectId: string
+  name: string
+  color: string
+  createdAt: string
+}
+
 // Task
 export interface Task {
   _id: string
@@ -30,6 +53,9 @@ export interface Task {
   projectId: string
   order: number
   tags: string[]
+  sprintId?: string
+  parentId?: string
+  labelIds: string[]
   createdAt: string
   updatedAt: string
 }

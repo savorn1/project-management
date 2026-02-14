@@ -18,10 +18,40 @@
         </div>
       </div>
 
-      <BaseButton variant="secondary">
+      <BaseButton variant="secondary" @click="showSettings = !showSettings">
         ⚙️ Settings
       </BaseButton>
     </div>
+
+    <!-- Project Settings Panel -->
+    <Transition
+      enter-active-class="transition ease-out duration-200"
+      enter-from-class="opacity-0 -translate-y-2"
+      enter-to-class="opacity-100 translate-y-0"
+      leave-active-class="transition ease-in duration-150"
+      leave-from-class="opacity-100 translate-y-0"
+      leave-to-class="opacity-0 -translate-y-2"
+    >
+      <div v-if="showSettings" class="bg-slate-800/50 border border-slate-700/30 rounded-xl overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-700/30 flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-white">Project Settings</h3>
+          <button @click="showSettings = false" class="p-1.5 text-gray-500 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="p-6">
+          <h4 class="text-sm font-medium text-gray-400 uppercase tracking-wide mb-4">Labels</h4>
+          <LabelManager :project-id="projectId" />
+
+          <div class="mt-8 pt-6 border-t border-slate-700/30">
+            <h4 class="text-sm font-medium text-gray-400 uppercase tracking-wide mb-4">Sprints</h4>
+            <SprintManager :project-id="projectId" />
+          </div>
+        </div>
+      </div>
+    </Transition>
 
     <!-- Project Stats -->
     <div class="grid grid-cols-4 gap-4">
@@ -288,12 +318,42 @@
                   <!-- Due Date -->
                   <div class="flex items-center gap-3 px-4 py-3">
                     <span class="text-xs text-gray-500 w-20 flex-shrink-0">Due Date</span>
-                    <BaseDatePicker
+                    <DatePicker
                       class="flex-1"
                       :model-value="selectedTask.dueDate ? selectedTask.dueDate.split('T')[0] : null"
                       @update:model-value="handleFieldUpdate('dueDate', $event)"
                       placeholder="Set due date"
                       trigger-class="cursor-pointer hover:text-white"
+                    />
+                  </div>
+
+                  <!-- Sprint -->
+                  <div class="flex items-center gap-3 px-4 py-3">
+                    <svg class="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    <span class="text-xs text-gray-500 w-20 flex-shrink-0">Sprint</span>
+                    <SprintPicker
+                      class="flex-1"
+                      :project-id="selectedTask.projectId"
+                      :model-value="selectedTask.sprintId || null"
+                      @update:model-value="handleSprintChange($event)"
+                    />
+                  </div>
+
+                  <!-- Parent Task -->
+                  <div class="flex items-center gap-3 px-4 py-3">
+                    <svg class="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    <span class="text-xs text-gray-500 w-20 flex-shrink-0">Parent</span>
+                    <ParentTaskPicker
+                      class="flex-1"
+                      :project-id="selectedTask.projectId"
+                      :model-value="selectedTask.parentId || null"
+                      :exclude-task-id="selectedTask._id"
+                      @update:model-value="handleParentChange($event)"
                     />
                   </div>
 
@@ -329,23 +389,29 @@
                   </ClientOnly>
                 </div>
 
-                <!-- Tags -->
-                <div v-if="selectedTask.tags && selectedTask.tags.length > 0">
+                <!-- Labels -->
+                <div>
                   <div class="flex items-center gap-2 mb-3">
                     <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                     </svg>
-                    <span class="text-xs text-gray-500 uppercase tracking-wide font-medium">Tags</span>
+                    <span class="text-xs text-gray-500 uppercase tracking-wide font-medium">Labels</span>
                   </div>
-                  <div class="flex flex-wrap gap-2">
-                    <span
-                      v-for="tag in selectedTask.tags"
-                      :key="tag"
-                      class="px-2.5 py-1 bg-slate-700/50 text-gray-300 text-xs rounded-full ring-1 ring-slate-600/30"
-                    >
-                      {{ tag }}
-                    </span>
-                  </div>
+                  <LabelPicker
+                    :project-id="selectedTask.projectId"
+                    :model-value="selectedTask.labelIds || []"
+                    @update:model-value="handleLabelsChange($event)"
+                  />
+                </div>
+
+                <!-- Sub-tasks -->
+                <div>
+                  <SubtaskList
+                    :task-id="selectedTask._id"
+                    :tasks="projectTasks"
+                    @select="openPreview"
+                    @add="openCreateSubtask(selectedTask)"
+                  />
                 </div>
 
                 <!-- Comments / Activity Tabs -->
@@ -442,6 +508,30 @@
             </option>
           </select>
         </div>
+
+        <div>
+          <label class="block text-gray-300 text-sm font-medium mb-2">Labels</label>
+          <LabelPicker
+            :project-id="projectId"
+            v-model="newTask.labelIds"
+          />
+        </div>
+
+        <div>
+          <label class="block text-gray-300 text-sm font-medium mb-2">Sprint</label>
+          <SprintPicker
+            :project-id="projectId"
+            v-model="newTask.sprintId"
+          />
+        </div>
+
+        <div>
+          <label class="block text-gray-300 text-sm font-medium mb-2">Parent Task</label>
+          <ParentTaskPicker
+            :project-id="projectId"
+            v-model="newTask.parentId"
+          />
+        </div>
       </form>
 
       <template #footer>
@@ -508,6 +598,8 @@ const progress = computed(() => {
 
 const completedTasks = computed(() => projectTasks.value.filter(t => t.status === 'done').length)
 const inProgressTasks = computed(() => projectTasks.value.filter(t => t.status === 'in_progress').length)
+
+const showSettings = ref(false)
 
 useSeoMeta({
   title: () => project.value ? `${project.value.name} | TaskFlow` : 'Project | TaskFlow',
@@ -621,6 +713,29 @@ async function handleAssigneeChange(assigneeId: string | null) {
   selectedTask.value = { ...selectedTask.value, assigneeId }
 }
 
+async function handleLabelsChange(labelIds: string[]) {
+  if (!selectedTask.value) return
+  await updateTask(selectedTask.value._id, { labelIds } as any)
+  selectedTask.value = { ...selectedTask.value, labelIds }
+}
+
+async function handleSprintChange(sprintId: string | null) {
+  if (!selectedTask.value) return
+  await updateTask(selectedTask.value._id, { sprintId } as any)
+  selectedTask.value = { ...selectedTask.value, sprintId: sprintId || undefined }
+}
+
+async function handleParentChange(parentId: string | null) {
+  if (!selectedTask.value) return
+  await updateTask(selectedTask.value._id, { parentId } as any)
+  selectedTask.value = { ...selectedTask.value, parentId: parentId || undefined }
+}
+
+function openCreateSubtask(parentTask: Task) {
+  newTask.value.parentId = parentTask._id
+  showAddTaskModal.value = true
+}
+
 async function handleFieldUpdate(field: string, value: string | null) {
   if (!selectedTask.value) return
   if (field === 'title' && value === selectedTask.value.title) return
@@ -656,7 +771,10 @@ const newTask = ref({
   description: '',
   priority: 'medium' as TaskPriority,
   dueDate: '',
-  assigneeId: null as string | null
+  assigneeId: null as string | null,
+  labelIds: [] as string[],
+  sprintId: null as string | null,
+  parentId: null as string | null,
 })
 
 function handleAddTask(status: TaskStatus) {
@@ -670,7 +788,9 @@ function handleCreateTask() {
       ...newTask.value,
       projectId,
       status: newTaskStatus.value,
-      dueDate: newTask.value.dueDate || null
+      dueDate: newTask.value.dueDate || null,
+      sprintId: newTask.value.sprintId || undefined,
+      parentId: newTask.value.parentId || undefined,
     })
     showAddTaskModal.value = false
     newTask.value = {
@@ -678,7 +798,10 @@ function handleCreateTask() {
       description: '',
       priority: 'medium',
       dueDate: '',
-      assigneeId: null
+      assigneeId: null,
+      labelIds: [],
+      sprintId: null,
+      parentId: null,
     }
   }
 }
