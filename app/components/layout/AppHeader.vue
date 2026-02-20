@@ -143,6 +143,9 @@ const pageTitle = computed(() => {
   if (path.startsWith('/projects/')) return 'Project Details'
   if (path === '/tasks') return 'Tasks'
   if (path === '/team') return 'Team'
+  if (path === '/workplaces') return 'Workplaces'
+  if (path.startsWith('/workplaces/')) return 'Workplace Details'
+  if (path === '/dev-tools') return 'Developer Tools'
   return 'TaskFlow'
 })
 

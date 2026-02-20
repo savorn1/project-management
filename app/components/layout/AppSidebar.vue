@@ -11,7 +11,7 @@
     </div>
 
     <!-- Navigation -->
-    <nav class="flex-1 p-4">
+    <nav class="flex-1 p-4 overflow-y-auto">
       <ul class="space-y-2">
         <li v-for="item in navItems" :key="item.path">
           <NuxtLink
@@ -28,20 +28,6 @@
         </li>
       </ul>
     </nav>
-
-    <!-- User section -->
-    <div class="p-4 border-t border-slate-800/50">
-      <div class="flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-slate-800/80 to-slate-800/40 border border-slate-700/50 hover:border-slate-600/50 transition-colors cursor-pointer">
-        <div class="w-10 h-10 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/20">
-          <span class="text-lg">👨‍💻</span>
-        </div>
-        <div class="flex-1">
-          <p class="text-white font-medium text-sm">Alex Johnson</p>
-          <p class="text-emerald-400 text-xs font-medium">Admin</p>
-        </div>
-        <span class="text-gray-500">⋮</span>
-      </div>
-    </div>
   </aside>
 </template>
 
@@ -53,7 +39,8 @@ const navItems = [
   { path: '/workplaces', label: 'Workplaces', icon: '🏢' },
   { path: '/projects', label: 'Projects', icon: '📁' },
   { path: '/tasks', label: 'Tasks', icon: '✅' },
-  { path: '/team', label: 'Team', icon: '👥' }
+  { path: '/team', label: 'Team', icon: '👥' },
+  { path: '/dev-tools', label: 'Dev Tools', icon: '🛠️' }
 ]
 
 function isActive(path: string): boolean {
