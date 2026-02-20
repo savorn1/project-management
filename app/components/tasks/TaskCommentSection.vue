@@ -48,11 +48,36 @@
             </button>
           </div>
         </div>
+        <!-- Staged attachment preview -->
+        <div v-if="stagedFile" class="mt-2 flex items-center gap-2 bg-slate-800/50 border border-slate-700/40 rounded-lg px-3 py-2">
+          <span class="text-base">{{ fileIcon(stagedFile.type) }}</span>
+          <div class="flex-1 min-w-0">
+            <div class="text-xs text-white truncate">{{ stagedFile.name }}</div>
+            <div class="text-[11px] text-gray-500">{{ formatBytes(stagedFile.size) }}</div>
+          </div>
+          <button @click="stagedFile = null" class="text-gray-600 hover:text-rose-400 text-xs ml-1">✕</button>
+        </div>
+
         <div class="flex items-center justify-between mt-2">
-          <span class="text-[11px] text-gray-600">Ctrl+Enter to send</span>
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] text-gray-600">Ctrl+Enter to send</span>
+            <!-- Attach file button -->
+            <button
+              type="button"
+              @click="attachInput?.click()"
+              class="flex items-center gap-1 text-[11px] text-gray-500 hover:text-indigo-400 transition-colors px-1.5 py-0.5 rounded hover:bg-indigo-500/10"
+              title="Attach file"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+              </svg>
+              Attach
+            </button>
+            <input ref="attachInput" type="file" class="hidden" @change="onAttach" />
+          </div>
           <button
             @click="submitComment"
-            :disabled="!newComment.trim() || isSubmitting"
+            :disabled="(!newComment.trim() && !stagedFile) || isSubmitting"
             class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-xs font-medium text-white transition-all duration-200 shadow-lg shadow-indigo-600/20 hover:shadow-indigo-500/30 disabled:shadow-none"
           >
             {{ isSubmitting ? 'Sending...' : 'Comment' }}
@@ -169,14 +194,41 @@
 
           <!-- Display mode -->
           <div v-else class="mt-1.5 px-3 py-2 bg-slate-800/30 rounded-xl">
-            <p class="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed"><template v-for="(seg, i) in parseCommentContent(comment.content)" :key="i"><span v-if="seg.type === 'everyone'" class="text-amber-400 font-medium bg-amber-400/10 rounded px-1 py-0.5">@everyone</span><span v-else-if="seg.type === 'mention'" class="text-indigo-400 font-medium bg-indigo-400/10 rounded px-1 py-0.5">@{{ seg.value }}</span><a v-else-if="seg.type === 'link'" :href="seg.value" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:text-indigo-300 underline underline-offset-2 decoration-indigo-400/30 hover:decoration-indigo-300/50 transition-colors">{{ seg.value }}</a><template v-else>{{ seg.value }}</template></template></p>
+            <p v-if="comment.content" class="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed"><template v-for="(seg, i) in parseCommentContent(comment.content)" :key="i"><span v-if="seg.type === 'everyone'" class="text-amber-400 font-medium bg-amber-400/10 rounded px-1 py-0.5">@everyone</span><span v-else-if="seg.type === 'mention'" class="text-indigo-400 font-medium bg-indigo-400/10 rounded px-1 py-0.5">@{{ seg.value }}</span><a v-else-if="seg.type === 'link'" :href="seg.value" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:text-indigo-300 underline underline-offset-2 decoration-indigo-400/30 hover:decoration-indigo-300/50 transition-colors">{{ seg.value }}</a><template v-else>{{ seg.value }}</template></template></p>
             <!-- Media embeds (rendered below the text) -->
-            <template v-for="(seg, i) in parseCommentContent(comment.content)" :key="'media-' + i">
+            <template v-if="comment.content" v-for="(seg, i) in parseCommentContent(comment.content)" :key="'media-' + i">
               <a v-if="seg.type === 'image'" :href="seg.value" target="_blank" rel="noopener noreferrer" class="block mt-2">
                 <img :src="seg.value" :alt="seg.value" class="max-w-full max-h-64 rounded-lg border border-slate-700/30 hover:border-slate-600/50 transition-all duration-200 cursor-pointer" loading="lazy" />
               </a>
               <video v-else-if="seg.type === 'video'" :src="seg.value" controls preload="metadata" class="max-w-full max-h-64 rounded-lg border border-slate-700/30 mt-2"></video>
             </template>
+            <!-- File attachments -->
+            <div v-if="comment.attachments?.length" :class="comment.content ? 'mt-2' : ''" class="space-y-1.5">
+              <template v-for="att in comment.attachments" :key="att.fileId">
+                <!-- Image preview -->
+                <a v-if="att.mimeType.startsWith('image/')" :href="att.url" target="_blank" rel="noopener noreferrer" class="block">
+                  <img :src="att.url" :alt="att.originalName" class="max-w-full max-h-48 rounded-lg border border-slate-700/30 hover:border-indigo-500/40 transition-all duration-200 cursor-pointer" loading="lazy" />
+                  <div class="text-[11px] text-gray-500 mt-0.5">{{ att.originalName }} · {{ formatBytes(att.size) }}</div>
+                </a>
+                <!-- Other file types -->
+                <a
+                  v-else
+                  :href="att.url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="flex items-center gap-2.5 px-3 py-2 bg-slate-900/60 border border-slate-700/40 hover:border-indigo-500/40 rounded-lg transition-all duration-200 group/att"
+                >
+                  <span class="text-lg flex-shrink-0">{{ fileIcon(att.mimeType) }}</span>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-xs text-white truncate group-hover/att:text-indigo-300 transition-colors">{{ att.originalName }}</div>
+                    <div class="text-[11px] text-gray-500">{{ formatBytes(att.size) }} · {{ att.mimeType }}</div>
+                  </div>
+                  <svg class="w-3.5 h-3.5 text-gray-600 group-hover/att:text-indigo-400 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                </a>
+              </template>
+            </div>
           </div>
         </div>
       </div>
@@ -213,9 +265,11 @@ const newComment = ref('')
 const isSubmitting = ref(false)
 const editingId = ref<string | null>(null)
 const editContent = ref('')
+const stagedFile = ref<File | null>(null)
 
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const editTextareaRef = ref<HTMLTextAreaElement | null>(null)
+const attachInput = ref<HTMLInputElement | null>(null)
 const selectedEl = ref<HTMLElement | null>(null)
 
 // Mention input for new comment
@@ -272,7 +326,7 @@ function onKeydown(event: KeyboardEvent) {
   mentionKeydown(event)
   if (event.defaultPrevented) return
   if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
-    submitComment()
+    if (newComment.value.trim() || stagedFile.value) submitComment()
   }
 }
 
@@ -284,11 +338,40 @@ function onEditKeydown(event: KeyboardEvent) {
   }
 }
 
+function onAttach(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0] ?? null
+  stagedFile.value = file
+  input.value = ''
+}
+
+function fileIcon(mimeType: string): string {
+  if (mimeType?.startsWith('image/')) return '🖼️'
+  if (mimeType?.startsWith('video/')) return '🎬'
+  if (mimeType === 'application/pdf') return '📄'
+  if (mimeType?.includes('word') || mimeType?.includes('document')) return '📝'
+  if (mimeType?.includes('sheet') || mimeType?.includes('excel')) return '📊'
+  if (mimeType?.includes('zip') || mimeType?.includes('tar')) return '📦'
+  return '📎'
+}
+
+function formatBytes(bytes: number): string {
+  if (!bytes) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
+}
+
 async function submitComment() {
-  if (!newComment.value.trim() || isSubmitting.value) return
+  if (!newComment.value.trim() && !stagedFile.value) return
+  if (isSubmitting.value) return
   isSubmitting.value = true
-  const success = await addComment(props.taskId, newComment.value.trim())
-  if (success) newComment.value = ''
+  const success = await addComment(props.taskId, newComment.value.trim(), stagedFile.value ?? undefined)
+  if (success) {
+    newComment.value = ''
+    stagedFile.value = null
+  }
   isSubmitting.value = false
 }
 

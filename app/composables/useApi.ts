@@ -455,7 +455,32 @@ export function useApi() {
       return (response?.data || []).map(mapComment)
     },
 
-    async create(taskId: string, content: string): Promise<TaskComment | null> {
+    async create(taskId: string, content: string, file?: File): Promise<TaskComment | null> {
+      if (file) {
+        // Must use fetch directly — request() always injects Content-Type: application/json
+        // which breaks multipart/form-data (browser needs to set boundary itself)
+        const fd = new FormData()
+        if (content.trim()) fd.append('content', content.trim())
+        fd.append('file', file)
+        try {
+          const res = await fetch(`${apiBase}/admin/tasks/${taskId}/comments`, {
+            method: 'POST',
+            headers: { 'x-client-id': clientId, ...getAuthHeader() },
+            body: fd,
+          })
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}))
+            toast.error(err.message || 'Upload failed')
+            return null
+          }
+          const raw = await res.json()
+          return mapComment(raw)
+        } catch {
+          toast.error('Failed to upload attachment')
+          return null
+        }
+      }
+
       const response = await request<any>(`/admin/tasks/${taskId}/comments`, {
         method: 'POST',
         body: JSON.stringify({ content }),
@@ -485,6 +510,7 @@ export function useApi() {
       ...raw,
       user,
       userId: user?._id || raw.userId,
+      attachments: raw.attachments ?? [],
     }
   }
 

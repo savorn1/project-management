@@ -17,8 +17,8 @@ export function useTaskComments() {
     }
   }
 
-  async function addComment(taskId: string, content: string): Promise<boolean> {
-    const created = await commentsApi.create(taskId, content)
+  async function addComment(taskId: string, content: string, file?: File): Promise<boolean> {
+    const created = await commentsApi.create(taskId, content, file)
     if (created) {
       // Backend returns raw doc without populate, so inject current user info
       if (!created.user && user.value) {
@@ -65,4 +65,5 @@ export function useTaskComments() {
     editComment,
     removeComment,
   }
+
 }

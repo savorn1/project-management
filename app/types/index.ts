@@ -133,12 +133,22 @@ export interface WorkplaceMemberWithUser extends WorkplaceMember {
 }
 
 // Task Comment
+export interface CommentAttachment {
+  fileId: string
+  originalName: string
+  url: string
+  mimeType: string
+  size: number
+  s3Key: string
+}
+
 export interface TaskComment {
   _id: string
   taskId: string
   userId: string
   user?: { _id: string; name: string; email: string }
   content: string
+  attachments: CommentAttachment[]
   createdAt: string
   updatedAt: string
 }
