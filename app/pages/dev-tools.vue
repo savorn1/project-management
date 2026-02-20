@@ -89,6 +89,13 @@
       >
         Backpressure
       </button>
+      <button
+        @click="activeTab = 'cache'"
+        class="flex-1 text-sm font-medium py-2.5 px-4 rounded-md transition-all duration-200"
+        :class="activeTab === 'cache' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'text-gray-400 hover:text-white'"
+      >
+        Cache
+      </button>
     </div>
 
     <!-- Tab Content -->
@@ -102,6 +109,7 @@
     <OutboxTestPanel v-else-if="activeTab === 'outbox'" />
     <CircuitBreakerTestPanel v-else-if="activeTab === 'cb'" />
     <BackpressureTestPanel v-else-if="activeTab === 'bp'" />
+    <CacheTestPanel v-else-if="activeTab === 'cache'" />
   </div>
 </template>
 
@@ -118,5 +126,5 @@ useSeoMeta({
 const socket = useSocket()
 const isConnected = computed(() => socket.isConnected.value)
 
-const activeTab = ref<'testing' | 'nats' | 'loadtest' | 'spike' | 'rabbitmq' | 'saga' | 'dlq' | 'outbox' | 'cb' | 'bp'>('testing')
+const activeTab = ref<'testing' | 'nats' | 'loadtest' | 'spike' | 'rabbitmq' | 'saga' | 'dlq' | 'outbox' | 'cb' | 'bp' | 'cache'>('testing')
 </script>
