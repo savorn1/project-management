@@ -41,7 +41,8 @@ const navItems = [
   { path: '/tasks', label: 'Tasks', icon: '✅' },
   { path: '/team', label: 'Team', icon: '👥' },
   { path: '/dev-tools', label: 'Dev Tools', icon: '🛠️' },
-  { path: '/health', label: 'System Health', icon: '🩺' }
+  { path: '/health', label: 'System Health', icon: '🩺' },
+  { path: '/feature-flags', label: 'Feature Flags', icon: '🏳️' }
 ]
 
 function isActive(path: string): boolean {
