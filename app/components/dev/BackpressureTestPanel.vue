@@ -305,7 +305,8 @@
 </template>
 
 <script setup lang="ts">
-const API = '/api/rabbitmq'
+const runtimeConfig = useRuntimeConfig()
+const API = `${runtimeConfig.public.apiBase}/rabbitmq`
 
 interface Config {
   producerRatePerSec: number
