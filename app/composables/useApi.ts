@@ -1,4 +1,4 @@
-import type { Task, TaskComment, TaskActivity, Project, ProjectInput, TeamMember, DashboardStats, Workplace, WorkplaceInput, WorkplaceMember as WpMember, WorkplaceMemberWithUser, Label, Sprint } from '~/types'
+import type { Task, TaskComment, TaskActivity, Project, ProjectInput, TeamMember, DashboardStats, Workplace, WorkplaceInput, WorkplaceMember as WpMember, WorkplaceMemberWithUser, Label, Sprint, AppNotification } from '~/types'
 
 interface ListResponse<T> {
   success: boolean
@@ -496,6 +496,11 @@ export function useApi() {
       return response ? mapComment(response) : null
     },
 
+    async getById(taskId: string, commentId: string): Promise<TaskComment | null> {
+      const response = await request<any>(`/admin/tasks/${taskId}/comments/${commentId}`)
+      return response ? mapComment(response) : null
+    },
+
     async delete(taskId: string, commentId: string): Promise<boolean> {
       const response = await request<DeleteResponse>(`/admin/tasks/${taskId}/comments/${commentId}`, {
         method: 'DELETE',
@@ -522,6 +527,24 @@ export function useApi() {
     },
   }
 
+  // Notifications API
+  const notificationsApi = {
+    async getAll(limit = 30): Promise<AppNotification[]> {
+      const response = await request<AppNotification[]>(`/admin/notifications?limit=${limit}`)
+      return response ?? []
+    },
+    async getUnreadCount(): Promise<number> {
+      const response = await request<{ count: number }>('/admin/notifications/unread-count')
+      return response?.count ?? 0
+    },
+    async markRead(id: string): Promise<void> {
+      await request(`/admin/notifications/${id}/read`, { method: 'PATCH' })
+    },
+    async markAllRead(): Promise<void> {
+      await request('/admin/notifications/read-all', { method: 'PATCH' })
+    },
+  }
+
   // Health check
   async function checkHealth(): Promise<boolean> {
     const response = await request('/health')
@@ -541,6 +564,7 @@ export function useApi() {
     activityApi,
     workplacesApi,
     workplaceMembersApi,
+    notificationsApi,
     checkHealth,
   }
 }

@@ -153,6 +153,21 @@ export interface TaskComment {
   updatedAt: string
 }
 
+// Notification
+export type NotificationType = 'mentioned' | 'assigned'
+
+export interface AppNotification {
+  _id: string
+  recipientId: string
+  actorId?: string
+  taskId?: string
+  taskTitle?: string
+  type: NotificationType
+  message: string
+  isRead: boolean
+  createdAt: string
+}
+
 // Task Activity
 export interface TaskActivity {
   _id: string

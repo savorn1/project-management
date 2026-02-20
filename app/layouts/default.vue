@@ -16,14 +16,16 @@
 
 <script setup lang="ts">
 const socket = useSocket()
+const { initAuth } = useAuth()
+const { startListening } = useNotifications()
 
 onMounted(() => {
-  // Initialize WebSocket connection
+  initAuth()
   socket.connect()
+  startListening()
 })
 
 onUnmounted(() => {
-  // Disconnect WebSocket when layout unmounts
   socket.disconnect()
 })
 </script>

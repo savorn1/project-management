@@ -259,7 +259,9 @@ const props = defineProps<Props>()
 
 const { user } = useAuth()
 const { members } = useTeam()
-const { comments, isLoading, loadComments, addComment, editComment, removeComment } = useTaskComments()
+const { comments, isLoading, loadComments, stopListening, addComment, editComment, removeComment } = useTaskComments()
+
+onUnmounted(() => stopListening())
 
 const newComment = ref('')
 const isSubmitting = ref(false)
