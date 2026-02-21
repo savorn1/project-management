@@ -1,5 +1,8 @@
 <template>
-  <div class="space-y-6" v-if="project">
+  <div v-if="isPageLoading" class="flex items-center justify-center py-16">
+    <div class="text-gray-400">Loading project...</div>
+  </div>
+  <div class="space-y-6" v-else-if="project">
     <!-- Project Header -->
     <div class="flex items-start justify-between">
       <div class="flex items-center gap-4">
@@ -18,7 +21,7 @@
         </div>
       </div>
 
-      <BaseButton variant="secondary" @click="showSettings = !showSettings">
+      <BaseButton v-if="memberStatus.isMember" variant="secondary" @click="showSettings = !showSettings">
         ⚙️ Settings
       </BaseButton>
     </div>
@@ -32,7 +35,7 @@
       leave-from-class="opacity-100 translate-y-0"
       leave-to-class="opacity-0 -translate-y-2"
     >
-      <div v-if="showSettings" class="bg-slate-800/50 border border-slate-700/30 rounded-xl overflow-hidden">
+      <div v-if="memberStatus.isMember && showSettings" class="bg-slate-800/50 border border-slate-700/30 rounded-xl overflow-hidden">
         <div class="px-6 py-4 border-b border-slate-700/30 flex items-center justify-between">
           <h3 class="text-lg font-semibold text-white">Project Settings</h3>
           <button @click="showSettings = false" class="p-1.5 text-gray-500 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors">
@@ -49,12 +52,29 @@
             <h4 class="text-sm font-medium text-gray-400 uppercase tracking-wide mb-4">Sprints</h4>
             <SprintManager :project-id="projectId" />
           </div>
+
         </div>
       </div>
     </Transition>
 
-    <!-- Project Stats -->
-    <div class="grid grid-cols-4 gap-4">
+    <!-- Non-member Join Request Banner -->
+    <div v-if="memberStatus && !memberStatus.isMember" class="rounded-xl border bg-indigo-500/10 border-indigo-500/30 p-4 flex items-center gap-4">
+      <div class="text-2xl">🔒</div>
+      <div class="flex-1">
+        <p class="font-medium text-white text-sm">You are not a member of this project</p>
+        <p class="text-xs mt-0.5 text-indigo-400">Join to contribute to tasks and discussions.</p>
+      </div>
+      <button
+        @click="joinProject"
+        :disabled="joinLoading"
+        class="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-lg transition-colors flex-shrink-0"
+      >
+        {{ joinLoading ? 'Joining...' : 'Join Project' }}
+      </button>
+    </div>
+
+    <!-- Project Stats (members only) -->
+    <div v-if="memberStatus.isMember" class="grid grid-cols-4 gap-4">
       <BaseCard>
         <div class="text-center">
           <p class="text-3xl font-bold text-white">{{ projectTasks.length }}</p>
@@ -81,8 +101,8 @@
       </BaseCard>
     </div>
 
-    <!-- Kanban Board -->
-    <KanbanBoard :project-id="projectId" @add-task="handleAddTask" @select-task="openPreview" />
+    <!-- Kanban Board (members only) -->
+    <KanbanBoard v-if="memberStatus.isMember" :project-id="projectId" @add-task="handleAddTask" @select-task="openPreview" />
 
     <!-- Task Preview Slide-over -->
     <Teleport to="body">
@@ -320,7 +340,7 @@
                     <span class="text-xs text-gray-500 w-20 flex-shrink-0">Due Date</span>
                     <DatePicker
                       class="flex-1"
-                      :model-value="selectedTask.dueDate ? selectedTask.dueDate.split('T')[0] : null"
+                      :model-value="selectedTask.dueDate?.split('T')[0] ?? null"
                       @update:model-value="handleFieldUpdate('dueDate', $event)"
                       placeholder="Set due date"
                       trigger-class="cursor-pointer hover:text-white"
@@ -565,12 +585,23 @@ const { createTask, updateTask, deleteTask, getTasksByProject, loadTasksByProjec
 const { getProjectById, loadProjects, projects } = useProjects()
 const { members, loadMembers, getMemberById } = useTeam()
 const { subscribe, unsubscribe, isConnected } = useTaskRealtime(projectId)
+const { membershipApi, projectsApi } = useApi()
 
 onMounted(async () => {
   if (projects.value.length === 0) await loadProjects()
-  if (members.value.length === 0) await loadMembers()
-  await loadTasksByProject(projectId)
-  subscribe()
+  // Fallback: fetch directly if project isn't in the store (e.g., navigated from workplace page)
+  if (!getProjectById(projectId)) {
+    const fetched = await projectsApi.getById(projectId)
+    if (fetched) projects.value = [...projects.value, fetched]
+  }
+  // Check membership before rendering to avoid content flash for non-members
+  await loadMemberStatus()
+  isPageLoading.value = false
+  if (memberStatus.value.isMember) {
+    if (members.value.length === 0) await loadMembers()
+    await loadTasksByProject(projectId)
+    subscribe()
+  }
   document.addEventListener('click', handleClickOutside)
 })
 
@@ -590,7 +621,23 @@ const progress = computed(() => {
 const completedTasks = computed(() => projectTasks.value.filter(t => t.status === 'done').length)
 const inProgressTasks = computed(() => projectTasks.value.filter(t => t.status === 'in_progress').length)
 
+const isPageLoading = ref(true)
 const showSettings = ref(false)
+
+// Join state
+const memberStatus = ref<{ isMember: boolean; role: string | null }>({ isMember: false, role: null })
+const joinLoading = ref(false)
+
+async function loadMemberStatus() {
+  memberStatus.value = await membershipApi.getMyMembership(projectId)
+}
+
+async function joinProject() {
+  joinLoading.value = true
+  await membershipApi.join(projectId)
+  joinLoading.value = false
+  await loadMemberStatus()
+}
 
 useSeoMeta({
   title: () => project.value ? `${project.value.name} | TaskFlow` : 'Project | TaskFlow',

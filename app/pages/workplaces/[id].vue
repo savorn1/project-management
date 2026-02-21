@@ -79,6 +79,15 @@
                 <span class="text-gray-500 text-sm">{{ project.priority }}</span>
               </div>
             </NuxtLink>
+            <div v-if="memberStatusMap[project._id] && !memberStatusMap[project._id]!.isMember" class="mt-3 pt-3 border-t border-slate-700/50">
+              <button
+                @click.prevent.stop="handleJoinProject(project._id)"
+                :disabled="joiningProjectId === project._id"
+                class="w-full py-1.5 text-xs font-medium bg-indigo-600/80 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-lg transition-colors"
+              >
+                {{ joiningProjectId === project._id ? 'Joining...' : '+ Join' }}
+              </button>
+            </div>
           </BaseCard>
         </div>
 
@@ -343,11 +352,13 @@ const {
   removeMember
 } = useWorkplaces()
 
-const { projectsApi } = useApi()
+const { projectsApi, membershipApi } = useApi()
 const { createProject } = useProjects()
 const { members: allUsers, loadMembers } = useTeam()
 
 const workplaceProjects = ref<Project[]>([])
+const memberStatusMap = ref<Record<string, { isMember: boolean; role: string | null }>>({})
+const joiningProjectId = ref<string | null>(null)
 const activeTab = ref('projects')
 const showEditModal = ref(false)
 const showAddMemberModal = ref(false)
@@ -397,6 +408,7 @@ onMounted(async () => {
     loadWorkplaceProjects(),
     allUsers.value.length === 0 ? loadMembers() : Promise.resolve()
   ])
+  await loadMemberStatuses()
 
   if (currentWorkplace.value) {
     editForm.value.name = currentWorkplace.value.name
@@ -406,6 +418,24 @@ onMounted(async () => {
 
 async function loadWorkplaceProjects() {
   workplaceProjects.value = await projectsApi.getByWorkplace(workplaceId)
+}
+
+async function loadMemberStatuses() {
+  if (workplaceProjects.value.length === 0) return
+  const results = await Promise.all(
+    workplaceProjects.value.map(p =>
+      membershipApi.getMyMembership(p._id).then(s => ({ id: p._id, status: s }))
+    )
+  )
+  memberStatusMap.value = Object.fromEntries(results.map(r => [r.id, r.status]))
+}
+
+async function handleJoinProject(projectId: string) {
+  joiningProjectId.value = projectId
+  await membershipApi.join(projectId)
+  const updated = await membershipApi.getMyMembership(projectId)
+  memberStatusMap.value = { ...memberStatusMap.value, [projectId]: updated }
+  joiningProjectId.value = null
 }
 
 async function handleUpdate() {
@@ -425,6 +455,8 @@ async function handleCreateProject() {
     const created = await createProject(newProjectForm.value, workplaceId)
     if (created) {
       workplaceProjects.value.push(created)
+      const status = await membershipApi.getMyMembership(created._id)
+      memberStatusMap.value = { ...memberStatusMap.value, [created._id]: status }
     }
     showCreateProjectModal.value = false
     newProjectForm.value = { name: '', key: '', description: '', priority: 'medium' }

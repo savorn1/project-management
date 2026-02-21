@@ -188,3 +188,4 @@ export interface DashboardStats {
   teamMembers: number
   tasksThisWeek: number
 }
+

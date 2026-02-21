@@ -545,6 +545,18 @@ export function useApi() {
     },
   }
 
+  // Project membership (join / check status)
+  const membershipApi = {
+    async getMyMembership(projectId: string): Promise<{ isMember: boolean; role: string | null }> {
+      const response = await request<{ isMember: boolean; role: string | null }>(`/admin/projects/${projectId}/members/me`)
+      return response ?? { isMember: false, role: null }
+    },
+    async join(projectId: string): Promise<boolean> {
+      const response = await request(`/admin/projects/${projectId}/members/join`, { method: 'POST' })
+      return response !== null
+    },
+  }
+
   // Health check
   async function checkHealth(): Promise<boolean> {
     const response = await request('/health')
@@ -565,6 +577,7 @@ export function useApi() {
     workplacesApi,
     workplaceMembersApi,
     notificationsApi,
+    membershipApi,
     checkHealth,
   }
 }

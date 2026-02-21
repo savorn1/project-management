@@ -12,9 +12,19 @@
       </div>
 
       <div class="flex items-center justify-between mt-4 pt-4 border-t border-slate-700">
-        <BaseBadge :color="project.status === 'active' ? 'emerald' : 'slate'">
-          {{ project.status }}
-        </BaseBadge>
+        <div class="flex items-center gap-2">
+          <BaseBadge :color="project.status === 'active' ? 'emerald' : 'slate'">
+            {{ project.status }}
+          </BaseBadge>
+          <!-- Non-member join button -->
+          <button
+            v-if="memberStatus && !memberStatus.isMember"
+            @click.prevent.stop="emit('request-join', project._id)"
+            class="px-2.5 py-0.5 text-xs font-medium bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 rounded-full ring-1 ring-indigo-500/30 transition-colors"
+          >
+            + Join
+          </button>
+        </div>
         <span class="text-gray-500 text-sm font-mono">{{ project.key }}</span>
       </div>
     </BaseCard>
@@ -26,7 +36,9 @@ import type { Project } from '~/types'
 
 interface Props {
   project: Project
+  memberStatus?: { isMember: boolean; role: string | null }
 }
 
 defineProps<Props>()
+const emit = defineEmits<{ 'request-join': [projectId: string] }>()
 </script>

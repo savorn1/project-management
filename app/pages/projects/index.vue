@@ -18,6 +18,8 @@
         v-for="project in projects"
         :key="project._id"
         :project="project"
+        :member-status="memberStatusMap[project._id]"
+        @request-join="handleRequestJoin"
       />
     </div>
 
@@ -122,11 +124,28 @@ useSeoMeta({
 
 const { projects, createProject, loadProjects } = useProjects()
 const { workplaces, loadWorkplaces } = useWorkplaces()
+const { membershipApi } = useApi()
+
+const memberStatusMap = ref<Record<string, { isMember: boolean; role: string | null }>>({})
+
+async function loadMemberStatuses() {
+  const results = await Promise.all(
+    projects.value.map(p => membershipApi.getMyMembership(p._id).then(s => ({ id: p._id, status: s })))
+  )
+  memberStatusMap.value = Object.fromEntries(results.map(r => [r.id, r.status]))
+}
 
 onMounted(async () => {
   if (projects.value.length === 0) await loadProjects()
   if (workplaces.value.length === 0) await loadWorkplaces()
+  await loadMemberStatuses()
 })
+
+async function handleRequestJoin(projectId: string) {
+  await membershipApi.join(projectId)
+  const updated = await membershipApi.getMyMembership(projectId)
+  memberStatusMap.value = { ...memberStatusMap.value, [projectId]: updated }
+}
 
 const showCreateModal = ref(false)
 
