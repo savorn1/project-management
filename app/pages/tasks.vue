@@ -14,61 +14,219 @@
 
     <!-- Filters -->
     <BaseCard>
-      <div class="flex flex-wrap items-center gap-4">
-        <div class="flex-1 min-w-[200px]">
+      <div class="flex flex-wrap items-center gap-2">
+        <!-- Search -->
+        <div class="flex-1 min-w-[200px] relative">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
           <input
             v-model="filters.search"
             type="text"
             placeholder="Search tasks..."
-            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-indigo-500"
+            class="w-full pl-10 pr-4 py-2 bg-slate-700/30 border border-slate-600/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500/50 text-sm transition-colors"
           />
         </div>
 
-        <select
-          v-model="filters.status"
-          class="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-indigo-500"
-        >
-          <option :value="null">All Status</option>
-          <option value="todo">To Do</option>
-          <option value="in_progress">In Progress</option>
-          <option value="in_review">In Review</option>
-          <option value="done">Done</option>
-        </select>
+        <!-- Divider -->
+        <div class="h-6 w-px bg-slate-700/50 hidden sm:block"></div>
 
-        <select
-          v-model="filters.priority"
-          class="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-indigo-500"
-        >
-          <option :value="null">All Priority</option>
-          <option value="low">Low</option>
-          <option value="medium">Medium</option>
-          <option value="high">High</option>
-          <option value="urgent">Urgent</option>
-        </select>
+        <!-- Status filter -->
+        <div class="relative" ref="filterStatusRef">
+          <button
+            type="button"
+            @click="showFilterStatusDropdown = !showFilterStatusDropdown; showFilterPriorityDropdown = false; showFilterProjectDropdown = false; showFilterParentDropdown = false"
+            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm border transition-all whitespace-nowrap"
+            :class="filters.status ? 'bg-indigo-500/10 border-indigo-500/40 text-indigo-300' : 'bg-slate-700/30 border-slate-600/30 text-gray-400 hover:text-gray-300 hover:border-slate-500/50'"
+          >
+            <span v-if="filters.status" class="w-2 h-2 rounded-full flex-shrink-0" :class="statusDotClass(filters.status)"></span>
+            <svg v-else class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{{ filters.status ? statusLabel(filters.status) : 'Status' }}</span>
+            <svg class="w-3 h-3 opacity-50" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+          </button>
+          <div v-if="showFilterStatusDropdown" class="absolute top-full left-0 mt-1.5 w-44 bg-slate-800 border border-slate-700/50 rounded-xl shadow-2xl z-50 overflow-hidden py-1">
+            <button
+              type="button"
+              @click="filters.status = null; showFilterStatusDropdown = false"
+              class="w-full flex items-center gap-2 px-3 py-2 text-sm transition-all"
+              :class="!filters.status ? 'bg-slate-700/60 text-white' : 'text-gray-400 hover:bg-slate-700/40 hover:text-white'"
+            >
+              <span class="w-2 h-2 rounded-full bg-slate-600 flex-shrink-0"></span>
+              All Statuses
+              <svg v-if="!filters.status" class="w-3 h-3 ml-auto text-indigo-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+              </svg>
+            </button>
+            <button
+              v-for="opt in statusOptions"
+              :key="opt.value"
+              type="button"
+              @click="filters.status = opt.value; showFilterStatusDropdown = false"
+              class="w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-all"
+              :class="filters.status === opt.value ? 'bg-slate-700/60 text-white' : 'text-gray-300 hover:bg-slate-700/40 hover:text-white'"
+            >
+              <span class="w-2 h-2 rounded-full flex-shrink-0" :class="opt.dot"></span>
+              {{ opt.label }}
+              <svg v-if="filters.status === opt.value" class="w-3 h-3 ml-auto text-indigo-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
 
-        <select
-          v-model="filters.projectId"
-          class="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-indigo-500"
-        >
-          <option :value="null">All Projects</option>
-          <option v-for="project in projects" :key="project._id" :value="project._id">
-            {{ project.name }}
-          </option>
-        </select>
+        <!-- Priority filter -->
+        <div class="relative" ref="filterPriorityRef">
+          <button
+            type="button"
+            @click="showFilterPriorityDropdown = !showFilterPriorityDropdown; showFilterStatusDropdown = false; showFilterProjectDropdown = false; showFilterParentDropdown = false"
+            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm border transition-all whitespace-nowrap"
+            :class="filters.priority ? 'bg-indigo-500/10 border-indigo-500/40 text-indigo-300' : 'bg-slate-700/30 border-slate-600/30 text-gray-400 hover:text-gray-300 hover:border-slate-500/50'"
+          >
+            <span v-if="filters.priority" class="w-2 h-2 rounded-full flex-shrink-0" :class="priorityDotClass(filters.priority)"></span>
+            <svg v-else class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+            </svg>
+            <span>{{ filters.priority ? priorityLabel(filters.priority) : 'Priority' }}</span>
+            <svg class="w-3 h-3 opacity-50" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+          </button>
+          <div v-if="showFilterPriorityDropdown" class="absolute top-full left-0 mt-1.5 w-44 bg-slate-800 border border-slate-700/50 rounded-xl shadow-2xl z-50 overflow-hidden py-1">
+            <button
+              type="button"
+              @click="filters.priority = null; showFilterPriorityDropdown = false"
+              class="w-full flex items-center gap-2 px-3 py-2 text-sm transition-all"
+              :class="!filters.priority ? 'bg-slate-700/60 text-white' : 'text-gray-400 hover:bg-slate-700/40 hover:text-white'"
+            >
+              <span class="w-2 h-2 rounded-full bg-slate-600 flex-shrink-0"></span>
+              All Priorities
+              <svg v-if="!filters.priority" class="w-3 h-3 ml-auto text-indigo-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+              </svg>
+            </button>
+            <button
+              v-for="opt in priorityOptions"
+              :key="opt.value"
+              type="button"
+              @click="filters.priority = opt.value; showFilterPriorityDropdown = false"
+              class="w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-all"
+              :class="filters.priority === opt.value ? 'bg-slate-700/60 text-white' : 'text-gray-300 hover:bg-slate-700/40 hover:text-white'"
+            >
+              <span class="w-2 h-2 rounded-full flex-shrink-0" :class="opt.dot"></span>
+              {{ opt.label }}
+              <svg v-if="filters.priority === opt.value" class="w-3 h-3 ml-auto text-indigo-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
 
-        <select
-          v-model="filters.parentFilter"
-          class="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-indigo-500"
-        >
-          <option value="all">All Tasks</option>
-          <option value="top_level">Top-level Only</option>
-          <option value="parent_only">Has Sub-tasks</option>
-          <option value="subtask_only">Sub-tasks Only</option>
-        </select>
+        <!-- Project filter -->
+        <div class="relative" ref="filterProjectRef">
+          <button
+            type="button"
+            @click="showFilterProjectDropdown = !showFilterProjectDropdown; filterProjectSearch = ''; showFilterStatusDropdown = false; showFilterPriorityDropdown = false; showFilterParentDropdown = false"
+            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm border transition-all whitespace-nowrap"
+            :class="filters.projectId ? 'bg-indigo-500/10 border-indigo-500/40 text-indigo-300' : 'bg-slate-700/30 border-slate-600/30 text-gray-400 hover:text-gray-300 hover:border-slate-500/50'"
+          >
+            <svg class="w-3.5 h-3.5 flex-shrink-0" :class="filters.projectId ? 'text-indigo-400' : 'text-gray-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+            </svg>
+            <span class="max-w-[120px] truncate">{{ filters.projectId ? (projects.find(p => p._id === filters.projectId)?.name ?? 'Project') : 'Project' }}</span>
+            <svg class="w-3 h-3 opacity-50" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+          </button>
+          <div v-if="showFilterProjectDropdown" class="absolute top-full left-0 mt-1.5 w-56 bg-slate-800 border border-slate-700/50 rounded-xl shadow-2xl z-50 overflow-hidden">
+            <div class="p-2 border-b border-slate-700/30">
+              <input
+                v-model="filterProjectSearch"
+                type="text"
+                placeholder="Search projects..."
+                class="w-full bg-slate-700/50 border border-slate-600/30 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500/50"
+                @click.stop
+                autofocus
+              />
+            </div>
+            <div class="max-h-56 overflow-y-auto py-1">
+              <button
+                type="button"
+                @click="filters.projectId = null; showFilterProjectDropdown = false"
+                class="w-full flex items-center gap-2 px-3 py-2 text-sm transition-all"
+                :class="!filters.projectId ? 'bg-slate-700/60 text-white' : 'text-gray-400 hover:bg-slate-700/40 hover:text-white'"
+              >
+                All Projects
+                <svg v-if="!filters.projectId" class="w-3 h-3 ml-auto text-indigo-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                </svg>
+              </button>
+              <button
+                v-for="project in filteredFilterProjects"
+                :key="project._id"
+                type="button"
+                @click="filters.projectId = project._id; showFilterProjectDropdown = false"
+                class="w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-all"
+                :class="filters.projectId === project._id ? 'bg-slate-700/60 text-white' : 'text-gray-300 hover:bg-slate-700/40 hover:text-white'"
+              >
+                <span class="w-5 h-5 rounded bg-indigo-500/20 text-indigo-400 text-[10px] font-bold flex items-center justify-center flex-shrink-0">{{ project.key?.slice(0,2) }}</span>
+                <span class="truncate">{{ project.name }}</span>
+                <svg v-if="filters.projectId === project._id" class="w-3 h-3 ml-auto text-indigo-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                </svg>
+              </button>
+              <div v-if="filteredFilterProjects.length === 0" class="px-3 py-3 text-xs text-gray-500 text-center">No projects found</div>
+            </div>
+          </div>
+        </div>
 
-        <BaseButton variant="ghost" @click="clearFilters" size="sm">
-          Clear
-        </BaseButton>
+        <!-- Task Type filter -->
+        <div class="relative" ref="filterParentRef">
+          <button
+            type="button"
+            @click="showFilterParentDropdown = !showFilterParentDropdown; showFilterStatusDropdown = false; showFilterPriorityDropdown = false; showFilterProjectDropdown = false"
+            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm border transition-all whitespace-nowrap"
+            :class="filters.parentFilter && filters.parentFilter !== 'all' ? 'bg-indigo-500/10 border-indigo-500/40 text-indigo-300' : 'bg-slate-700/30 border-slate-600/30 text-gray-400 hover:text-gray-300 hover:border-slate-500/50'"
+          >
+            <svg class="w-3.5 h-3.5 flex-shrink-0" :class="filters.parentFilter && filters.parentFilter !== 'all' ? 'text-indigo-400' : 'text-gray-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" />
+            </svg>
+            <span>{{ parentFilterOptions.find(o => o.value === (filters.parentFilter || 'all'))?.label ?? 'Type' }}</span>
+            <svg class="w-3 h-3 opacity-50" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+          </button>
+          <div v-if="showFilterParentDropdown" class="absolute top-full left-0 mt-1.5 w-48 bg-slate-800 border border-slate-700/50 rounded-xl shadow-2xl z-50 overflow-hidden py-1">
+            <button
+              v-for="opt in parentFilterOptions"
+              :key="opt.value"
+              type="button"
+              @click="filters.parentFilter = opt.value; showFilterParentDropdown = false"
+              class="w-full flex items-center gap-2 px-3 py-2 text-sm transition-all"
+              :class="(filters.parentFilter || 'all') === opt.value ? 'bg-slate-700/60 text-white' : 'text-gray-300 hover:bg-slate-700/40 hover:text-white'"
+            >
+              {{ opt.label }}
+              <svg v-if="(filters.parentFilter || 'all') === opt.value" class="w-3 h-3 ml-auto text-indigo-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Active filter count badge + Clear -->
+        <button
+          v-if="filters.search || filters.status || filters.priority || filters.projectId || (filters.parentFilter && filters.parentFilter !== 'all')"
+          @click="clearFilters"
+          class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs text-gray-500 hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+          Clear filters
+        </button>
       </div>
     </BaseCard>
 
@@ -713,6 +871,30 @@ const filteredNewTaskAssignees = computed(() => {
   return members.value.filter(m => m.name.toLowerCase().includes(q))
 })
 
+// Filter bar dropdowns
+const showFilterStatusDropdown = ref(false)
+const showFilterPriorityDropdown = ref(false)
+const showFilterProjectDropdown = ref(false)
+const showFilterParentDropdown = ref(false)
+const filterStatusRef = ref<HTMLElement | null>(null)
+const filterPriorityRef = ref<HTMLElement | null>(null)
+const filterProjectRef = ref<HTMLElement | null>(null)
+const filterParentRef = ref<HTMLElement | null>(null)
+const filterProjectSearch = ref('')
+
+const filteredFilterProjects = computed(() => {
+  const q = filterProjectSearch.value.toLowerCase().trim()
+  if (!q) return projects.value
+  return projects.value.filter(p => p.name.toLowerCase().includes(q))
+})
+
+const parentFilterOptions: { value: 'all' | 'top_level' | 'parent_only' | 'subtask_only', label: string }[] = [
+  { value: 'all', label: 'All Tasks' },
+  { value: 'top_level', label: 'Top-level Only' },
+  { value: 'parent_only', label: 'Has Sub-tasks' },
+  { value: 'subtask_only', label: 'Sub-tasks Only' },
+]
+
 const statusOptions = [
   { value: 'todo' as TaskStatus, label: 'To Do', dot: 'bg-slate-400' },
   { value: 'in_progress' as TaskStatus, label: 'In Progress', dot: 'bg-blue-400' },
@@ -766,6 +948,18 @@ function handleClickOutside(event: MouseEvent) {
   }
   if (newTaskProjectRef.value && !newTaskProjectRef.value.contains(event.target as Node)) {
     showNewTaskProjectDropdown.value = false
+  }
+  if (filterStatusRef.value && !filterStatusRef.value.contains(event.target as Node)) {
+    showFilterStatusDropdown.value = false
+  }
+  if (filterPriorityRef.value && !filterPriorityRef.value.contains(event.target as Node)) {
+    showFilterPriorityDropdown.value = false
+  }
+  if (filterProjectRef.value && !filterProjectRef.value.contains(event.target as Node)) {
+    showFilterProjectDropdown.value = false
+  }
+  if (filterParentRef.value && !filterParentRef.value.contains(event.target as Node)) {
+    showFilterParentDropdown.value = false
   }
 }
 
