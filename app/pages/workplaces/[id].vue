@@ -287,38 +287,88 @@
 
     <!-- Add Member Modal -->
     <BaseModal v-model="showAddMemberModal" title="Add Member" size="md">
-      <form @submit.prevent="handleAddMember" class="space-y-4">
-        <div>
-          <label class="block text-gray-300 text-sm font-medium mb-2">Select User</label>
-          <select
-            v-model="newMemberForm.userId"
-            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-indigo-500"
+      <div class="space-y-5">
+        <!-- Search -->
+        <div class="relative">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            v-model="memberSearchQuery"
+            type="text"
+            placeholder="Search by name or email..."
+            class="w-full pl-9 pr-4 py-2.5 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500 focus:bg-slate-700 transition-colors"
+          />
+        </div>
+
+        <!-- User List -->
+        <div class="max-h-52 overflow-y-auto space-y-1.5 pr-0.5">
+          <div v-if="filteredAvailableUsers.length === 0" class="text-center py-8 text-gray-500 text-sm">
+            No users available
+          </div>
+          <button
+            v-for="user in filteredAvailableUsers"
+            :key="user._id"
+            type="button"
+            @click="newMemberForm.userId = user._id"
+            class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all border"
+            :class="newMemberForm.userId === user._id
+              ? 'bg-indigo-600/15 border-indigo-500/40 text-white'
+              : 'bg-slate-700/30 border-transparent hover:bg-slate-700/60 text-gray-300 hover:text-white'"
           >
-            <option value="" disabled>Choose a user...</option>
-            <option
-              v-for="user in availableUsers"
-              :key="user._id"
-              :value="user._id"
+            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-sm font-semibold text-white flex-shrink-0">
+              {{ getMemberInitials(user.name) }}
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate">{{ user.name }}</p>
+              <p class="text-xs text-gray-500 truncate">{{ user.email }}</p>
+            </div>
+            <svg v-if="newMemberForm.userId === user._id" class="w-4 h-4 text-indigo-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Role Selection -->
+        <div>
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Role</p>
+          <div class="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              @click="newMemberForm.role = 'member'"
+              class="flex flex-col items-center gap-2 p-4 rounded-xl border transition-all text-center"
+              :class="newMemberForm.role === 'member'
+                ? 'bg-indigo-600/15 border-indigo-500/50 text-white'
+                : 'bg-slate-700/30 border-slate-600/30 text-gray-400 hover:border-slate-500/50 hover:text-gray-300'"
             >
-              {{ user.name }} ({{ user.email }})
-            </option>
-          </select>
+              <span class="text-2xl">👤</span>
+              <div>
+                <p class="text-sm font-semibold">Member</p>
+                <p class="text-xs text-gray-500 mt-0.5">View & contribute</p>
+              </div>
+            </button>
+            <button
+              type="button"
+              @click="newMemberForm.role = 'admin'"
+              class="flex flex-col items-center gap-2 p-4 rounded-xl border transition-all text-center"
+              :class="newMemberForm.role === 'admin'
+                ? 'bg-indigo-600/15 border-indigo-500/50 text-white'
+                : 'bg-slate-700/30 border-slate-600/30 text-gray-400 hover:border-slate-500/50 hover:text-gray-300'"
+            >
+              <span class="text-2xl">🛡️</span>
+              <div>
+                <p class="text-sm font-semibold">Admin</p>
+                <p class="text-xs text-gray-500 mt-0.5">Full management</p>
+              </div>
+            </button>
+          </div>
         </div>
-        <div>
-          <label class="block text-gray-300 text-sm font-medium mb-2">Role</label>
-          <select
-            v-model="newMemberForm.role"
-            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-indigo-500"
-          >
-            <option value="member">Member</option>
-            <option value="admin">Admin</option>
-          </select>
-        </div>
-      </form>
+      </div>
+
       <template #footer>
         <div class="flex justify-end gap-3">
           <BaseButton variant="ghost" @click="showAddMemberModal = false">Cancel</BaseButton>
-          <BaseButton @click="handleAddMember">Add Member</BaseButton>
+          <BaseButton :disabled="!newMemberForm.userId" @click="handleAddMember">Add Member</BaseButton>
         </div>
       </template>
     </BaseModal>
@@ -380,6 +430,8 @@ const newMemberForm = ref({
   role: 'member'
 })
 
+const memberSearchQuery = ref('')
+
 const newProjectForm = ref({
   name: '',
   key: '',
@@ -399,6 +451,14 @@ const planColor = computed((): 'slate' | 'blue' | 'amber' => {
 const availableUsers = computed(() => {
   const memberUserIds = workplaceMembers.value.map(m => m.userId)
   return allUsers.value.filter(u => !memberUserIds.includes(u._id))
+})
+
+const filteredAvailableUsers = computed(() => {
+  const q = memberSearchQuery.value.trim().toLowerCase()
+  if (!q) return availableUsers.value
+  return availableUsers.value.filter(u =>
+    u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
+  )
 })
 
 onMounted(async () => {
@@ -468,6 +528,7 @@ async function handleAddMember() {
     await addMember(workplaceId, newMemberForm.value.userId, newMemberForm.value.role)
     showAddMemberModal.value = false
     newMemberForm.value = { userId: '', role: 'member' }
+    memberSearchQuery.value = ''
   }
 }
 

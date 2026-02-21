@@ -508,96 +508,183 @@
     </Teleport>
 
     <!-- Add Task Modal -->
-    <BaseModal v-model="showAddTaskModal" title="Add Task" size="2xl">
-      <form @submit.prevent="handleCreateTask" class="space-y-4">
-        <div>
-          <label class="block text-gray-300 text-sm font-medium mb-2">Title</label>
+    <BaseModal v-model="showAddTaskModal" title="New Task" size="2xl">
+      <div class="flex gap-6">
+        <!-- Left: Content -->
+        <div class="flex-1 min-w-0 space-y-4">
+          <!-- Status chip -->
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-gray-500">Adding to</span>
+            <span
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+              :class="{
+                'bg-slate-500/20 text-slate-300': newTaskStatus === 'todo',
+                'bg-blue-500/20 text-blue-300': newTaskStatus === 'in_progress',
+                'bg-amber-500/20 text-amber-300': newTaskStatus === 'in_review',
+                'bg-emerald-500/20 text-emerald-300': newTaskStatus === 'done',
+              }"
+            >
+              <span class="w-1.5 h-1.5 rounded-full"
+                :class="{
+                  'bg-slate-400': newTaskStatus === 'todo',
+                  'bg-blue-400': newTaskStatus === 'in_progress',
+                  'bg-amber-400': newTaskStatus === 'in_review',
+                  'bg-emerald-400': newTaskStatus === 'done',
+                }"
+              ></span>
+              {{ { todo: 'To Do', in_progress: 'In Progress', in_review: 'In Review', done: 'Done' }[newTaskStatus] }}
+            </span>
+          </div>
+
+          <!-- Title -->
           <input
             v-model="newTask.title"
             type="text"
-            required
-            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-indigo-500"
-            placeholder="Task title"
+            autofocus
+            placeholder="Task title..."
+            class="w-full bg-transparent text-xl font-semibold text-white placeholder-gray-600 border-b-2 border-transparent hover:border-slate-700 focus:border-indigo-500 focus:outline-none pb-2 transition-all"
           />
-        </div>
 
-        <div>
-          <label class="block text-gray-300 text-sm font-medium mb-2">Description</label>
+          <!-- Description -->
           <textarea
             v-model="newTask.description"
-            placeholder="Task description..."
-            rows="4"
-            class="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-indigo-500 resize-y"
+            placeholder="Add a description..."
+            rows="6"
+            class="w-full bg-slate-700/30 border border-slate-700/50 rounded-xl px-4 py-3 text-sm text-gray-300 placeholder-gray-600 focus:outline-none focus:border-indigo-500/50 focus:bg-slate-700/50 resize-none transition-colors"
           ></textarea>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <!-- Right: Attributes -->
+        <div class="w-52 flex-shrink-0 space-y-5">
+          <!-- Priority -->
           <div>
-            <label class="block text-gray-300 text-sm font-medium mb-2">Priority</label>
-            <select
-              v-model="newTask.priority"
-              class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-indigo-500"
-            >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="urgent">Urgent</option>
-            </select>
+            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Priority</p>
+            <div class="grid grid-cols-2 gap-1.5">
+              <button
+                v-for="p in priorityOptions"
+                :key="p.value"
+                type="button"
+                @click="newTask.priority = p.value"
+                class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all"
+                :class="newTask.priority === p.value
+                  ? p.activeClass
+                  : 'bg-slate-700/30 border-slate-600/30 text-gray-400 hover:text-gray-300 hover:border-slate-500/50'"
+              >
+                <span class="w-2 h-2 rounded-full flex-shrink-0" :class="p.dot"></span>
+                {{ p.label }}
+              </button>
+            </div>
           </div>
 
+          <!-- Due Date -->
           <div>
-            <label class="block text-gray-300 text-sm font-medium mb-2">Due Date</label>
+            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Due Date</p>
             <DatePicker
               :model-value="newTask.dueDate || null"
               @update:model-value="newTask.dueDate = $event || ''"
-              placeholder="Set due date"
-              trigger-class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg hover:border-slate-500 transition-colors"
+              placeholder="No due date"
+              trigger-class="w-full px-3 py-2 bg-slate-700/30 border border-slate-600/30 rounded-lg hover:border-slate-500/50 transition-colors text-sm"
             />
           </div>
-        </div>
 
-        <div>
-          <label class="block text-gray-300 text-sm font-medium mb-2">Assignee</label>
-          <select
-            v-model="newTask.assigneeId"
-            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-indigo-500"
-          >
-            <option :value="null">Unassigned</option>
-            <option v-for="member in members" :key="member._id" :value="member._id">
-              {{ member.name }}
-            </option>
-          </select>
-        </div>
+          <!-- Assignee -->
+          <div class="relative" ref="projectTaskAssigneeRef">
+            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Assignee</p>
+            <!-- Trigger -->
+            <button
+              type="button"
+              @click="showProjectTaskAssigneeDropdown = !showProjectTaskAssigneeDropdown; projectTaskAssigneeSearch = ''"
+              class="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs border bg-slate-700/30 border-slate-600/30 hover:border-slate-500/50 transition-colors"
+            >
+              <div v-if="newTaskAssigneeMember" class="w-5 h-5 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-[9px] font-semibold text-white flex-shrink-0">
+                {{ getMemberInitials(newTaskAssigneeMember.user?.name) }}
+              </div>
+              <div v-else class="w-5 h-5 rounded-full bg-slate-600 flex items-center justify-center flex-shrink-0">
+                <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <span class="flex-1 text-left truncate" :class="newTask.assigneeId ? 'text-gray-300' : 'text-gray-500'">
+                {{ newTaskAssigneeMember?.user?.name || 'Unassigned' }}
+              </span>
+              <svg class="w-3 h-3 text-gray-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+              </svg>
+            </button>
+            <!-- Dropdown -->
+            <div v-if="showProjectTaskAssigneeDropdown" class="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700/50 rounded-xl shadow-xl z-50 overflow-hidden">
+              <div class="p-2 border-b border-slate-700/30">
+                <input
+                  v-model="projectTaskAssigneeSearch"
+                  type="text"
+                  placeholder="Search members..."
+                  class="w-full bg-slate-700/50 border border-slate-600/30 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500/50"
+                  @click.stop
+                  autofocus
+                />
+              </div>
+              <div class="max-h-44 overflow-y-auto py-1">
+                <button
+                  type="button"
+                  @click="newTask.assigneeId = null; showProjectTaskAssigneeDropdown = false; projectTaskAssigneeSearch = ''"
+                  class="w-full flex items-center gap-2 px-3 py-2 text-xs transition-all"
+                  :class="newTask.assigneeId === null ? 'bg-slate-700/60 text-white' : 'text-gray-400 hover:bg-slate-700/40 hover:text-gray-200'"
+                >
+                  <div class="w-6 h-6 rounded-full bg-slate-600 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                  <span>Unassigned</span>
+                  <svg v-if="newTask.assigneeId === null" class="w-3 h-3 ml-auto text-indigo-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                  </svg>
+                </button>
+                <button
+                  v-for="member in filteredProjectAssignees"
+                  :key="member._id"
+                  type="button"
+                  @click="newTask.assigneeId = typeof member.userId === 'string' ? member.userId : member.userId._id; showProjectTaskAssigneeDropdown = false; projectTaskAssigneeSearch = ''"
+                  class="w-full flex items-center gap-2 px-3 py-2 text-xs transition-all"
+                  :class="newTask.assigneeId === (typeof member.userId === 'string' ? member.userId : member.userId._id) ? 'bg-slate-700/60 text-white' : 'text-gray-300 hover:bg-slate-700/40 hover:text-white'"
+                >
+                  <div class="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-[10px] font-semibold text-white flex-shrink-0">
+                    {{ getMemberInitials(member.user?.name) }}
+                  </div>
+                  <span class="truncate">{{ member.user?.name || 'Unknown' }}</span>
+                  <svg v-if="newTask.assigneeId === (typeof member.userId === 'string' ? member.userId : member.userId._id)" class="w-3 h-3 ml-auto text-indigo-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                  </svg>
+                </button>
+                <div v-if="filteredProjectAssignees.length === 0 && projectTaskAssigneeSearch" class="px-3 py-2 text-xs text-gray-500 text-center">No members found</div>
+              </div>
+            </div>
+          </div>
 
-        <div>
-          <label class="block text-gray-300 text-sm font-medium mb-2">Labels</label>
-          <LabelPicker
-            :project-id="projectId"
-            v-model="newTask.labelIds"
-          />
-        </div>
+          <!-- Labels -->
+          <div>
+            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Labels</p>
+            <LabelPicker :project-id="projectId" v-model="newTask.labelIds" />
+          </div>
 
-        <div>
-          <label class="block text-gray-300 text-sm font-medium mb-2">Sprint</label>
-          <SprintPicker
-            :project-id="projectId"
-            v-model="newTask.sprintId"
-          />
-        </div>
+          <!-- Sprint -->
+          <div>
+            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Sprint</p>
+            <SprintPicker :project-id="projectId" v-model="newTask.sprintId" />
+          </div>
 
-        <div>
-          <label class="block text-gray-300 text-sm font-medium mb-2">Parent Task</label>
-          <ParentTaskPicker
-            :project-id="projectId"
-            v-model="newTask.parentId"
-          />
+          <!-- Parent Task -->
+          <div>
+            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Parent Task</p>
+            <ParentTaskPicker :project-id="projectId" v-model="newTask.parentId" />
+          </div>
         </div>
-      </form>
+      </div>
 
       <template #footer>
         <div class="flex justify-end gap-3">
           <BaseButton variant="ghost" @click="showAddTaskModal = false">Cancel</BaseButton>
-          <BaseButton @click="handleCreateTask">Add Task</BaseButton>
+          <BaseButton :disabled="!newTask.title.trim()" @click="handleCreateTask">Create Task</BaseButton>
         </div>
       </template>
     </BaseModal>
@@ -734,10 +821,10 @@ const statusOptions = [
 ]
 
 const priorityOptions = [
-  { value: 'low' as TaskPriority, label: 'Low', dot: 'bg-slate-400' },
-  { value: 'medium' as TaskPriority, label: 'Medium', dot: 'bg-blue-400' },
-  { value: 'high' as TaskPriority, label: 'High', dot: 'bg-amber-400' },
-  { value: 'urgent' as TaskPriority, label: 'Urgent', dot: 'bg-rose-400' },
+  { value: 'low' as TaskPriority, label: 'Low', dot: 'bg-slate-400', activeClass: 'bg-slate-500/20 border-slate-500/40 text-slate-300' },
+  { value: 'medium' as TaskPriority, label: 'Medium', dot: 'bg-blue-400', activeClass: 'bg-blue-500/20 border-blue-500/40 text-blue-300' },
+  { value: 'high' as TaskPriority, label: 'High', dot: 'bg-amber-400', activeClass: 'bg-amber-500/20 border-amber-500/40 text-amber-300' },
+  { value: 'urgent' as TaskPriority, label: 'Urgent', dot: 'bg-rose-400', activeClass: 'bg-rose-500/20 border-rose-500/40 text-rose-300' },
 ]
 
 function statusLabel(status: TaskStatus): string {
@@ -766,6 +853,9 @@ function handleClickOutside(event: MouseEvent) {
   }
   if (assigneeDropdownRef.value && !assigneeDropdownRef.value.contains(event.target as Node)) {
     showAssigneeDropdown.value = false
+  }
+  if (projectTaskAssigneeRef.value && !projectTaskAssigneeRef.value.contains(event.target as Node)) {
+    showProjectTaskAssigneeDropdown.value = false
   }
 }
 
@@ -875,6 +965,25 @@ async function handleDeleteFromPreview() {
 // Add task modal
 const showAddTaskModal = ref(false)
 const newTaskStatus = ref<TaskStatus>('todo')
+
+// Assignee search dropdown
+const showProjectTaskAssigneeDropdown = ref(false)
+const projectTaskAssigneeSearch = ref('')
+const projectTaskAssigneeRef = ref<HTMLElement | null>(null)
+
+const newTaskAssigneeMember = computed(() => {
+  if (!newTask.value.assigneeId) return null
+  return projectMembers.value.find(m => {
+    const uid = typeof m.userId === 'string' ? m.userId : m.userId._id
+    return uid === newTask.value.assigneeId
+  }) || null
+})
+
+const filteredProjectAssignees = computed(() => {
+  const q = projectTaskAssigneeSearch.value.toLowerCase().trim()
+  if (!q) return projectMembers.value
+  return projectMembers.value.filter(m => (m.user?.name || '').toLowerCase().includes(q))
+})
 
 const newTask = ref({
   title: '',

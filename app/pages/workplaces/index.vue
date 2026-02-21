@@ -6,7 +6,7 @@
         <h1 class="text-2xl font-bold text-white">Workplaces</h1>
         <p class="text-gray-400 mt-1">Manage your workplaces and teams</p>
       </div>
-      <BaseButton @click="showCreateModal = true">
+      <BaseButton @click="openCreateModal">
         <span>➕</span>
         New Workplace
       </BaseButton>
@@ -35,55 +35,72 @@
       description="Create your first workplace to start organizing your projects and teams"
     >
       <template #action>
-        <BaseButton @click="showCreateModal = true">Create Workplace</BaseButton>
+        <BaseButton @click="openCreateModal">Create Workplace</BaseButton>
       </template>
     </EmptyState>
 
     <!-- Create Workplace Modal -->
-    <BaseModal v-model="showCreateModal" title="Create New Workplace" size="md">
-      <form @submit.prevent="handleCreate" class="space-y-4">
+    <BaseModal v-model="showCreateModal" title="New Workplace" size="md">
+      <div class="space-y-5">
+        <!-- Name -->
         <div>
-          <label class="block text-gray-300 text-sm font-medium mb-2">Workplace Name</label>
           <input
             v-model="newWorkplace.name"
             type="text"
-            required
-            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-indigo-500"
-            placeholder="Acme Corp"
+            autofocus
+            placeholder="Workplace name..."
+            class="w-full bg-transparent text-xl font-semibold text-white placeholder-gray-600 border-b-2 border-transparent hover:border-slate-700 focus:border-indigo-500 focus:outline-none pb-2 transition-all"
             @input="autoGenerateSlug"
           />
         </div>
 
+        <!-- Slug -->
         <div>
-          <label class="block text-gray-300 text-sm font-medium mb-2">Slug</label>
-          <input
-            v-model="newWorkplace.slug"
-            type="text"
-            required
-            pattern="^[a-z0-9-]+$"
-            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-indigo-500"
-            placeholder="acme-corp"
-          />
-          <p class="text-gray-500 text-xs mt-1">Lowercase letters, numbers, and hyphens only</p>
+          <div class="flex items-center gap-2 mb-1.5">
+            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Slug</p>
+            <span v-if="!slugManuallyEdited" class="text-[10px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-1.5 py-0.5 rounded font-mono">auto</span>
+          </div>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs font-mono select-none">taskflow.io/</span>
+            <input
+              v-model="newWorkplace.slug"
+              @input="onSlugInput"
+              type="text"
+              placeholder="acme-corp"
+              class="w-full pl-[5.5rem] pr-3 py-2 bg-slate-700/30 border border-slate-600/30 rounded-lg text-white font-mono placeholder-gray-600 focus:outline-none focus:border-indigo-500/50 text-sm transition-colors"
+            />
+          </div>
+          <p class="text-gray-600 text-xs mt-1">Lowercase letters, numbers, and hyphens only</p>
         </div>
 
+        <!-- Plan -->
         <div>
-          <label class="block text-gray-300 text-sm font-medium mb-2">Plan</label>
-          <select
-            v-model="newWorkplace.plan"
-            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-indigo-500"
-          >
-            <option value="free">Free</option>
-            <option value="pro">Pro</option>
-            <option value="enterprise">Enterprise</option>
-          </select>
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Plan</p>
+          <div class="grid grid-cols-3 gap-2">
+            <button
+              v-for="plan in planOptions"
+              :key="plan.value"
+              type="button"
+              @click="newWorkplace.plan = plan.value"
+              class="flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl border transition-all text-center"
+              :class="newWorkplace.plan === plan.value
+                ? plan.activeClass
+                : 'bg-slate-700/20 border-slate-600/30 text-gray-500 hover:text-gray-300 hover:bg-slate-700/40 hover:border-slate-500/50'"
+            >
+              <span class="text-lg leading-none">{{ plan.icon }}</span>
+              <span class="text-xs font-semibold">{{ plan.label }}</span>
+              <span class="text-[10px] leading-tight opacity-70">{{ plan.description }}</span>
+            </button>
+          </div>
         </div>
-      </form>
+      </div>
 
       <template #footer>
         <div class="flex justify-end gap-3">
           <BaseButton variant="ghost" @click="showCreateModal = false">Cancel</BaseButton>
-          <BaseButton @click="handleCreate">Create Workplace</BaseButton>
+          <BaseButton :disabled="!newWorkplace.name.trim() || !newWorkplace.slug.trim()" @click="handleCreate">
+            Create Workplace
+          </BaseButton>
         </div>
       </template>
     </BaseModal>
@@ -118,6 +135,30 @@ const newWorkplace = ref({
 
 const slugManuallyEdited = ref(false)
 
+const planOptions = [
+  {
+    value: 'free' as WorkplacePlan,
+    label: 'Free',
+    icon: '🌱',
+    description: 'Up to 3 projects',
+    activeClass: 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300',
+  },
+  {
+    value: 'pro' as WorkplacePlan,
+    label: 'Pro',
+    icon: '⚡',
+    description: 'Unlimited projects',
+    activeClass: 'bg-indigo-500/10 border-indigo-500/40 text-indigo-300',
+  },
+  {
+    value: 'enterprise' as WorkplacePlan,
+    label: 'Enterprise',
+    icon: '🏆',
+    description: 'SSO & advanced',
+    activeClass: 'bg-amber-500/10 border-amber-500/40 text-amber-300',
+  },
+]
+
 function autoGenerateSlug() {
   if (!slugManuallyEdited.value) {
     newWorkplace.value.slug = newWorkplace.value.name
@@ -125,6 +166,18 @@ function autoGenerateSlug() {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '')
   }
+}
+
+function onSlugInput(event: Event) {
+  slugManuallyEdited.value = true
+  const input = event.target as HTMLInputElement
+  newWorkplace.value.slug = input.value.toLowerCase().replace(/[^a-z0-9-]/g, '')
+}
+
+function openCreateModal() {
+  newWorkplace.value = { name: '', slug: '', plan: 'free' }
+  slugManuallyEdited.value = false
+  showCreateModal.value = true
 }
 
 async function handleCreate() {
