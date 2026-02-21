@@ -1,4 +1,20 @@
-import type { Task, TaskComment, TaskActivity, Project, ProjectInput, TeamMember, DashboardStats, Workplace, WorkplaceInput, WorkplaceMember as WpMember, WorkplaceMemberWithUser, Label, Sprint, AppNotification } from '~/types'
+import type {
+  AppNotification,
+  DashboardStats,
+  Label,
+  Project,
+  ProjectInput,
+  ProjectMember,
+  Sprint,
+  Task,
+  TaskActivity,
+  TaskComment,
+  TeamMember,
+  Workplace,
+  WorkplaceInput,
+  WorkplaceMemberWithUser,
+  WorkplaceMember as WpMember
+} from '~/types'
 
 interface ListResponse<T> {
   success: boolean
@@ -545,6 +561,18 @@ export function useApi() {
     },
   }
 
+  // Project members API
+  const projectMembersApi = {
+    async getWithDetails(projectId: string): Promise<ProjectMember[]> {
+      const response = await request<{ data: ProjectMember[] }>(`/admin/projects/${projectId}/members/details?limit=100`)
+      return (response?.data || []).map(m => ({
+        ...m,
+        user: typeof m.userId === 'object' ? m.userId : undefined,
+        userId: typeof m.userId === 'object' ? (m.userId as any)._id : m.userId,
+      }))
+    },
+  }
+
   // Project membership (join / check status)
   const membershipApi = {
     async getMyMembership(projectId: string): Promise<{ isMember: boolean; role: string | null }> {
@@ -578,6 +606,7 @@ export function useApi() {
     workplaceMembersApi,
     notificationsApi,
     membershipApi,
+    projectMembersApi,
     checkHealth,
   }
 }

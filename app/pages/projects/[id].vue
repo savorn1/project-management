@@ -101,6 +101,55 @@
       </BaseCard>
     </div>
 
+    <!-- Project Members (members only) -->
+    <div v-if="memberStatus.isMember && projectMembers.length > 0" class="bg-slate-800/30 border border-slate-700/30 rounded-xl p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wide">Members ({{ projectMembers.length }})</h3>
+        <span v-if="memberTotalPages > 1" class="text-xs text-gray-500">Page {{ memberPage }} of {{ memberTotalPages }}</span>
+      </div>
+      <div class="flex flex-wrap gap-3">
+        <div
+          v-for="member in pagedMembers"
+          :key="member._id"
+          class="flex items-center gap-2.5 bg-slate-800/60 border border-slate-700/30 rounded-lg px-3 py-2"
+        >
+          <div class="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-semibold text-white flex-shrink-0">
+            {{ getMemberInitials(member.user?.name) }}
+          </div>
+          <div class="min-w-0">
+            <p class="text-sm text-white font-medium truncate">{{ member.user?.name || 'Unknown' }}</p>
+            <p class="text-xs text-gray-500 capitalize">{{ member.role }}</p>
+          </div>
+        </div>
+      </div>
+      <!-- Pagination -->
+      <div v-if="memberTotalPages > 1" class="flex items-center justify-center gap-2 mt-4 pt-4 border-t border-slate-700/30">
+        <button
+          @click="memberPage--"
+          :disabled="memberPage === 1"
+          class="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-700/50 text-gray-400 hover:text-white hover:border-slate-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        >
+          ← Prev
+        </button>
+        <button
+          v-for="p in memberTotalPages"
+          :key="p"
+          @click="memberPage = p"
+          class="w-7 h-7 text-xs font-medium rounded-lg transition-colors"
+          :class="p === memberPage ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white hover:bg-slate-700/50'"
+        >
+          {{ p }}
+        </button>
+        <button
+          @click="memberPage++"
+          :disabled="memberPage === memberTotalPages"
+          class="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-700/50 text-gray-400 hover:text-white hover:border-slate-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        >
+          Next →
+        </button>
+      </div>
+    </div>
+
     <!-- Kanban Board (members only) -->
     <KanbanBoard v-if="memberStatus.isMember" :project-id="projectId" @add-task="handleAddTask" @select-task="openPreview" />
 
@@ -571,7 +620,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Task, TaskStatus, TaskPriority } from '~/types'
+import type { Task, TaskStatus, TaskPriority, ProjectMember } from '~/types'
 import { formatDate } from '~/utils/formatters'
 
 definePageMeta({
@@ -585,7 +634,7 @@ const { createTask, updateTask, deleteTask, getTasksByProject, loadTasksByProjec
 const { getProjectById, loadProjects, projects } = useProjects()
 const { members, loadMembers, getMemberById } = useTeam()
 const { subscribe, unsubscribe, isConnected } = useTaskRealtime(projectId)
-const { membershipApi, projectsApi } = useApi()
+const { membershipApi, projectsApi, projectMembersApi } = useApi()
 
 onMounted(async () => {
   if (projects.value.length === 0) await loadProjects()
@@ -599,7 +648,7 @@ onMounted(async () => {
   isPageLoading.value = false
   if (memberStatus.value.isMember) {
     if (members.value.length === 0) await loadMembers()
-    await loadTasksByProject(projectId)
+    await Promise.all([loadTasksByProject(projectId), loadProjectMembers()])
     subscribe()
   }
   document.addEventListener('click', handleClickOutside)
@@ -623,6 +672,29 @@ const inProgressTasks = computed(() => projectTasks.value.filter(t => t.status =
 
 const isPageLoading = ref(true)
 const showSettings = ref(false)
+
+// Project members
+const projectMembers = ref<ProjectMember[]>([])
+const memberPage = ref(1)
+const MEMBERS_PER_PAGE = 10
+
+const memberTotalPages = computed(() => Math.ceil(projectMembers.value.length / MEMBERS_PER_PAGE))
+const pagedMembers = computed(() => {
+  const start = (memberPage.value - 1) * MEMBERS_PER_PAGE
+  return projectMembers.value.slice(start, start + MEMBERS_PER_PAGE)
+})
+
+async function loadProjectMembers() {
+  projectMembers.value = await projectMembersApi.getWithDetails(projectId)
+  memberPage.value = 1
+}
+
+function getMemberInitials(name?: string): string {
+  if (!name) return '?'
+  const parts = name.trim().split(/\s+/)
+  if (parts.length >= 2) return `${parts[0]!.charAt(0)}${parts[parts.length - 1]!.charAt(0)}`.toUpperCase()
+  return parts[0]!.charAt(0).toUpperCase()
+}
 
 // Join state
 const memberStatus = ref<{ isMember: boolean; role: string | null }>({ isMember: false, role: null })

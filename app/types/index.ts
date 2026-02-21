@@ -132,6 +132,17 @@ export interface WorkplaceMemberWithUser extends WorkplaceMember {
   user?: TeamMember
 }
 
+export type ProjectMemberRole = 'manager' | 'developer' | 'viewer'
+
+export interface ProjectMember {
+  _id: string
+  projectId: string
+  userId: string | { _id: string; name: string; email: string }
+  role: ProjectMemberRole
+  joinedAt: string
+  user?: { _id: string; name: string; email: string }
+}
+
 // Task Comment
 export interface CommentAttachment {
   fileId: string
