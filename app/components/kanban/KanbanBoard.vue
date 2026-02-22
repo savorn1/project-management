@@ -12,7 +12,7 @@
       @drag-start="onDragStart"
       @drag-end="onDragEnd"
       @drag-over="onDragOver(column.id)"
-      @drag-leave="onDragLeave"
+      @drag-leave="onDragLeave(column.id)"
       @drop="onDrop(column.id)"
     />
   </div>

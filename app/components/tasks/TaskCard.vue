@@ -1,11 +1,16 @@
 <template>
   <div
-    class="group relative p-4 bg-slate-800/60 rounded-xl border border-slate-700/40 hover:border-slate-600/60 hover:bg-slate-800/80 hover:shadow-lg hover:shadow-black/20 transition-all duration-200 cursor-pointer"
-    :class="{ 'opacity-50': task.status === 'done' }"
+    class="group relative p-4 bg-slate-800/60 rounded-xl border border-slate-700/40 hover:border-slate-600/60 hover:bg-slate-800/80 hover:shadow-lg hover:shadow-black/20 transition-all duration-150 select-none"
+    :class="[
+      isDragging
+        ? 'opacity-40 scale-[0.97] rotate-1 shadow-2xl border-indigo-500/40 cursor-grabbing'
+        : 'cursor-grab',
+      !isDragging && task.status === 'done' ? 'opacity-50' : '',
+    ]"
     draggable="true"
-    @dragstart="$emit('dragstart', task)"
-    @dragend="$emit('dragend')"
-    @click="$emit('select', task)"
+    @dragstart="handleDragStart"
+    @dragend="handleDragEnd"
+    @click="!isDragging && $emit('select', task)"
   >
     <!-- Top row: key + priority -->
     <div class="flex items-center justify-between mb-2">
@@ -68,12 +73,24 @@ interface Props {
 
 const props = defineProps<Props>()
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'toggle', id: string): void
   (e: 'select', task: Task): void
   (e: 'dragstart', task: Task): void
   (e: 'dragend'): void
 }>()
+
+const isDragging = ref(false)
+
+function handleDragStart() {
+  isDragging.value = true
+  emit('dragstart', props.task)
+}
+
+function handleDragEnd() {
+  isDragging.value = false
+  emit('dragend')
+}
 
 const assignee = computed(() => {
   if (!props.task.assigneeId) return null

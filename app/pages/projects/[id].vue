@@ -9,15 +9,15 @@
         <NuxtLink to="/projects" class="text-gray-400 hover:text-white transition-colors">
           ← Back
         </NuxtLink>
-        <div class="w-14 h-14 rounded-xl bg-indigo-500/20 flex items-center justify-center text-3xl">
-          📁
+        <div :class="`w-14 h-14 rounded-xl bg-gradient-to-br ${getProjectGradient(project.key)} flex items-center justify-center text-sm font-bold text-white flex-shrink-0 shadow-lg`">
+          {{ project.key.slice(0, 3) }}
         </div>
         <div>
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2.5">
             <h1 class="text-2xl font-bold text-white">{{ project.name }}</h1>
-            <span class="text-gray-500 text-sm font-mono">{{ project.key }}</span>
+            <span class="text-[11px] font-mono text-gray-500 bg-slate-700/60 px-2 py-0.5 rounded tracking-widest">{{ project.key }}</span>
           </div>
-          <p class="text-gray-400 mt-1">{{ project.description }}</p>
+          <p class="text-gray-400 text-sm mt-1">{{ project.description }}</p>
         </div>
       </div>
 
@@ -75,50 +75,30 @@
 
     <!-- Project Stats (members only) -->
     <div v-if="memberStatus.isMember" class="grid grid-cols-4 gap-4">
-      <BaseCard>
-        <div class="text-center">
-          <p class="text-3xl font-bold text-white">{{ projectTasks.length }}</p>
-          <p class="text-gray-400 text-sm mt-1">Total Tasks</p>
-        </div>
-      </BaseCard>
-      <BaseCard>
-        <div class="text-center">
-          <p class="text-3xl font-bold text-emerald-400">{{ completedTasks }}</p>
-          <p class="text-gray-400 text-sm mt-1">Completed</p>
-        </div>
-      </BaseCard>
-      <BaseCard>
-        <div class="text-center">
-          <p class="text-3xl font-bold text-blue-400">{{ inProgressTasks }}</p>
-          <p class="text-gray-400 text-sm mt-1">In Progress</p>
-        </div>
-      </BaseCard>
-      <BaseCard>
-        <div class="text-center">
-          <p class="text-3xl font-bold text-indigo-400">{{ progress }}%</p>
-          <p class="text-gray-400 text-sm mt-1">Progress</p>
-        </div>
-      </BaseCard>
+      <StatCard label="Total Tasks" :value="projectTasks.length" icon="📋" color="blue" />
+      <StatCard label="Completed" :value="completedTasks" icon="✅" color="emerald" />
+      <StatCard label="In Progress" :value="inProgressTasks" icon="⚡" color="amber" />
+      <StatCard label="Progress" :value="`${progress}%`" icon="📊" color="indigo" />
     </div>
 
     <!-- Project Members (members only) -->
     <div v-if="memberStatus.isMember && projectMembers.length > 0" class="bg-slate-800/30 border border-slate-700/30 rounded-xl p-5">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wide">Members ({{ projectMembers.length }})</h3>
+        <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Members ({{ projectMembers.length }})</h3>
         <span v-if="memberTotalPages > 1" class="text-xs text-gray-500">Page {{ memberPage }} of {{ memberTotalPages }}</span>
       </div>
-      <div class="flex flex-wrap gap-3">
+      <div class="flex flex-wrap gap-2.5">
         <div
           v-for="member in pagedMembers"
           :key="member._id"
-          class="flex items-center gap-2.5 bg-slate-800/60 border border-slate-700/30 rounded-lg px-3 py-2"
+          class="flex items-center gap-2.5 bg-slate-800/60 border border-slate-700/30 hover:border-slate-600/50 rounded-lg px-3 py-2 transition-colors"
         >
-          <div class="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-semibold text-white flex-shrink-0">
+          <div class="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs font-semibold text-white flex-shrink-0 shadow-sm">
             {{ getMemberInitials(member.user?.name) }}
           </div>
           <div class="min-w-0">
-            <p class="text-sm text-white font-medium truncate">{{ member.user?.name || 'Unknown' }}</p>
-            <p class="text-xs text-gray-500 capitalize">{{ member.role }}</p>
+            <p class="text-sm text-white font-medium truncate leading-snug">{{ member.user?.name || 'Unknown' }}</p>
+            <p class="text-[10px] text-gray-500 capitalize">({{ member.user?.email || member.role }})</p>
           </div>
         </div>
       </div>
@@ -781,6 +761,18 @@ function getMemberInitials(name?: string): string {
   const parts = name.trim().split(/\s+/)
   if (parts.length >= 2) return `${parts[0]!.charAt(0)}${parts[parts.length - 1]!.charAt(0)}`.toUpperCase()
   return parts[0]!.charAt(0).toUpperCase()
+}
+
+function getProjectGradient(key: string): string {
+  const gradients = [
+    'from-violet-500 to-indigo-600',
+    'from-blue-500 to-cyan-600',
+    'from-emerald-500 to-teal-600',
+    'from-amber-500 to-orange-600',
+    'from-rose-500 to-pink-600',
+    'from-indigo-500 to-purple-600',
+  ]
+  return gradients[(key.charCodeAt(0) || 0) % gradients.length]!
 }
 
 // Join state

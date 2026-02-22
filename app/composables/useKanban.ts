@@ -25,8 +25,10 @@ export function useKanban(projectId: string) {
     dropTargetColumn.value = columnId
   }
 
-  function onDragLeave() {
-    dropTargetColumn.value = null
+  function onDragLeave(columnId: TaskStatus) {
+    if (dropTargetColumn.value === columnId) {
+      dropTargetColumn.value = null
+    }
   }
 
   function onDrop(columnId: TaskStatus) {

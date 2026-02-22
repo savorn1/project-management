@@ -4,7 +4,7 @@
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-2xl font-bold text-white">Projects</h1>
-        <p class="text-gray-400 mt-1">Manage and track all your projects</p>
+        <p class="text-gray-400 mt-1">{{ projects.length }} project{{ projects.length !== 1 ? 's' : '' }} across all workplaces</p>
       </div>
       <BaseButton @click="openCreateModal">
         <span>➕</span>
@@ -13,7 +13,7 @@
     </div>
 
     <!-- Projects Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       <ProjectCard
         v-for="project in projects"
         :key="project._id"
