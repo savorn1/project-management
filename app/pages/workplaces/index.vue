@@ -7,7 +7,9 @@
         <p class="text-gray-400 mt-1">Manage your workplaces and teams</p>
       </div>
       <BaseButton @click="openCreateModal">
-        <span>➕</span>
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+        </svg>
         New Workplace
       </BaseButton>
     </div>
@@ -18,7 +20,7 @@
     </div>
 
     <!-- Workplaces Grid -->
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       <WorkplaceCard
         v-for="workplace in workplaces"
         :key="workplace._id"

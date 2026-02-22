@@ -12,19 +12,30 @@
           <NuxtLink to="/workplaces" class="text-gray-400 hover:text-white transition-colors">
             ← Back
           </NuxtLink>
-          <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-violet-500/20 to-indigo-500/20 flex items-center justify-center text-3xl">
-            🏢
+          <div :class="`w-14 h-14 rounded-xl bg-gradient-to-br ${getWorkplaceGradient(currentWorkplace.name)} flex items-center justify-center text-base font-bold text-white flex-shrink-0 shadow-lg`">
+            {{ getWorkplaceInitials(currentWorkplace.name) }}
           </div>
           <div>
-            <h1 class="text-2xl font-bold text-white">{{ currentWorkplace.name }}</h1>
-            <p class="text-gray-400 text-sm mt-1">{{ currentWorkplace.slug }}</p>
+            <div class="flex items-center gap-2.5">
+              <h1 class="text-2xl font-bold text-white">{{ currentWorkplace.name }}</h1>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize" :class="planBadgeClass">
+                {{ currentWorkplace.plan }}
+              </span>
+            </div>
+            <p class="text-[11px] font-mono text-gray-500 mt-1">taskflow.io/{{ currentWorkplace.slug }}</p>
           </div>
-          <BaseBadge :color="planColor">{{ currentWorkplace.plan }}</BaseBadge>
         </div>
         <div class="flex gap-2">
-          <BaseButton variant="ghost" @click="showEditModal = true">Edit</BaseButton>
+          <BaseButton variant="ghost" @click="showEditModal = true">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            Edit
+          </BaseButton>
           <BaseButton @click="showAddMemberModal = true">
-            <span>👥</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+            </svg>
             Add Member
           </BaseButton>
         </div>
@@ -38,18 +49,30 @@
       </div>
 
       <!-- Tabs -->
-      <div class="border-b border-slate-700">
-        <div class="flex gap-6">
+      <div class="border-b border-slate-700/30">
+        <div class="flex gap-1">
           <button
             v-for="tab in tabs"
             :key="tab.id"
             @click="activeTab = tab.id"
-            class="pb-3 text-sm font-medium transition-colors border-b-2"
+            class="flex items-center gap-2 px-4 pb-3 pt-1 text-sm font-medium transition-all border-b-2 -mb-px"
             :class="activeTab === tab.id
               ? 'text-white border-indigo-500'
               : 'text-gray-400 hover:text-white border-transparent'"
           >
-            {{ tab.icon }} {{ tab.label }}
+            <!-- folder icon -->
+            <svg v-if="tab.id === 'projects'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+            </svg>
+            <!-- users icon -->
+            <svg v-else-if="tab.id === 'members'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <!-- gear icon -->
+            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            {{ tab.label }}
           </button>
         </div>
       </div>
@@ -59,96 +82,144 @@
         <div class="flex items-center justify-between">
           <p class="text-sm text-gray-500">{{ workplaceProjects.length }} project{{ workplaceProjects.length !== 1 ? 's' : '' }}</p>
           <BaseButton @click="showCreateProjectModal = true">
-            <span>➕</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+            </svg>
             New Project
           </BaseButton>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <BaseCard
-            v-for="project in workplaceProjects"
-            :key="project._id"
-            class="hover:border-indigo-500/40 hover:bg-slate-800/30 transition-all duration-200 cursor-pointer"
-          >
-            <NuxtLink :to="`/projects/${project._id}`" class="block">
-              <!-- Header -->
-              <div class="flex items-start gap-3">
-                <div :class="`w-10 h-10 rounded-lg bg-gradient-to-br ${getProjectGradient(project.key)} flex items-center justify-center text-xs font-bold text-white flex-shrink-0 shadow-md`">
-                  {{ project.key.slice(0, 3) }}
+        <div class="flex gap-5 items-start">
+          <!-- Project cards grid -->
+          <div class="flex-1 min-w-0">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <BaseCard
+                v-for="project in workplaceProjects"
+                :key="project._id"
+                class="hover:border-indigo-500/40 hover:bg-slate-800/30 transition-all duration-200 cursor-pointer flex flex-col"
+              >
+                <NuxtLink :to="`/projects/${project._id}`" class="block flex-1">
+                  <!-- Header -->
+                  <div class="flex items-start gap-3">
+                    <div :class="`w-10 h-10 rounded-lg bg-gradient-to-br ${getProjectGradient(project.key)} flex items-center justify-center text-xs font-bold text-white flex-shrink-0 shadow-md`">
+                      {{ project.key.slice(0, 3) }}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2">
+                        <h3 class="text-white font-semibold truncate">{{ project.name }}</h3>
+                        <span class="text-[10px] font-mono text-gray-500 bg-slate-700/60 px-1.5 py-0.5 rounded flex-shrink-0">{{ project.key }}</span>
+                      </div>
+                      <p
+                        class="text-xs mt-0.5 line-clamp-2"
+                        :class="project.description ? 'text-gray-500' : 'text-gray-600 italic'"
+                      >
+                        {{ project.description || 'Describe your vision...' }}
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Footer -->
+                  <div class="flex items-center justify-between mt-4 pt-3 border-t border-slate-700/50">
+                    <BaseBadge :color="project.status === 'active' ? 'emerald' : 'slate'">
+                      {{ project.status }}
+                    </BaseBadge>
+                    <div class="flex items-center gap-2">
+                      <span class="text-[10px] text-gray-600">{{ formatRelativeTime(project.updatedAt) }}</span>
+                      <div class="flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full flex-shrink-0" :class="getPriorityDotClass(project.priority)"></span>
+                        <span :class="`text-xs font-medium capitalize ${getPriorityTextColor(project.priority)}`">{{ project.priority }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </NuxtLink>
+
+                <!-- Join button -->
+                <div v-if="memberStatusMap[project._id] && !memberStatusMap[project._id]!.isMember" class="mt-3 pt-3 border-t border-slate-700/40">
+                  <button
+                    @click.prevent.stop="handleJoinProject(project._id)"
+                    :disabled="joiningProjectId === project._id"
+                    class="w-full py-1.5 text-xs font-medium bg-indigo-600/15 border border-indigo-500/25 hover:bg-indigo-600/30 hover:border-indigo-500/40 disabled:opacity-50 text-indigo-400 rounded-lg transition-all"
+                  >
+                    {{ joiningProjectId === project._id ? 'Joining...' : '+ Join Project' }}
+                  </button>
+                </div>
+              </BaseCard>
+            </div>
+
+            <EmptyState
+              v-if="workplaceProjects.length === 0"
+              icon="📁"
+              title="No projects yet"
+              description="Create a project in this workplace to get started"
+            >
+              <template #action>
+                <BaseButton @click="showCreateProjectModal = true">Create Project</BaseButton>
+              </template>
+            </EmptyState>
+          </div>
+
+          <!-- Recent Activity sidebar -->
+          <div v-if="recentProjects.length > 0" class="w-56 flex-shrink-0 bg-slate-800/30 border border-slate-700/30 rounded-xl p-4 sticky top-4">
+            <div class="flex items-center gap-2 mb-3">
+              <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Recent Activity</h3>
+            </div>
+            <div class="space-y-0.5">
+              <NuxtLink
+                v-for="project in recentProjects"
+                :key="project._id"
+                :to="`/projects/${project._id}`"
+                class="flex items-center gap-2.5 p-2 rounded-lg hover:bg-slate-700/40 transition-colors group"
+              >
+                <div :class="`w-7 h-7 rounded-lg bg-gradient-to-br ${getProjectGradient(project.key)} flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0`">
+                  {{ project.key.slice(0, 2) }}
                 </div>
                 <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2">
-                    <h3 class="text-white font-semibold truncate">{{ project.name }}</h3>
-                    <span class="text-[10px] font-mono text-gray-500 bg-slate-700/60 px-1.5 py-0.5 rounded flex-shrink-0">{{ project.key }}</span>
-                  </div>
-                  <p class="text-gray-500 text-xs mt-0.5 line-clamp-2">{{ project.description || 'No description' }}</p>
+                  <p class="text-xs text-white font-medium truncate group-hover:text-indigo-300 transition-colors">{{ project.name }}</p>
+                  <p class="text-[10px] text-gray-500 mt-0.5">{{ formatRelativeTime(project.updatedAt) }}</p>
                 </div>
-              </div>
-
-              <!-- Footer -->
-              <div class="flex items-center justify-between mt-4 pt-3 border-t border-slate-700/50">
-                <BaseBadge :color="project.status === 'active' ? 'emerald' : 'slate'">
-                  {{ project.status }}
-                </BaseBadge>
-                <div class="flex items-center gap-1.5">
-                  <span class="text-sm leading-none">{{ getPriorityIcon(project.priority) }}</span>
-                  <span :class="`text-xs font-medium capitalize ${getPriorityTextColor(project.priority)}`">{{ project.priority }}</span>
-                </div>
-              </div>
-            </NuxtLink>
-
-            <!-- Join button -->
-            <div v-if="memberStatusMap[project._id] && !memberStatusMap[project._id]!.isMember" class="mt-3 pt-3 border-t border-slate-700/40">
-              <button
-                @click.prevent.stop="handleJoinProject(project._id)"
-                :disabled="joiningProjectId === project._id"
-                class="w-full py-1.5 text-xs font-medium bg-indigo-600/15 border border-indigo-500/25 hover:bg-indigo-600/30 hover:border-indigo-500/40 disabled:opacity-50 text-indigo-400 rounded-lg transition-all"
-              >
-                {{ joiningProjectId === project._id ? 'Joining...' : '+ Join Project' }}
-              </button>
+              </NuxtLink>
             </div>
-          </BaseCard>
+          </div>
         </div>
-
-        <EmptyState
-          v-if="workplaceProjects.length === 0"
-          icon="📁"
-          title="No projects yet"
-          description="Create a project in this workplace to get started"
-        >
-          <template #action>
-            <BaseButton @click="showCreateProjectModal = true">Create Project</BaseButton>
-          </template>
-        </EmptyState>
       </div>
 
       <!-- Members Tab -->
-      <div v-if="activeTab === 'members'" class="space-y-4">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <BaseCard
-            v-for="member in workplaceMembers"
-            :key="member.userId"
-            class="hover:border-slate-600/70 hover:bg-slate-800/40 transition-all duration-200"
-          >
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white flex-shrink-0 shadow-md">
+      <div v-if="activeTab === 'members'">
+        <div v-if="workplaceMembers.length > 0" class="bg-slate-800/30 border border-slate-700/30 rounded-xl p-5">
+          <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Members ({{ workplaceMembers.length }})</h3>
+          <div class="flex flex-wrap gap-2.5">
+            <div
+              v-for="member in workplaceMembers"
+              :key="member.userId"
+              class="flex items-center gap-2.5 bg-slate-800/60 border border-slate-700/30 hover:border-slate-600/50 rounded-lg px-3 py-2 transition-colors"
+            >
+              <div class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs font-semibold text-white flex-shrink-0 shadow-sm">
                 {{ getMemberInitials(member.user?.name) }}
               </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-white font-medium truncate leading-snug">{{ member.user?.name || 'Unknown' }}</p>
-                <p class="text-gray-500 text-xs truncate mt-0.5">({{ member.user?.email || '—' }})</p>
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5">
+                  <p class="text-sm text-white font-medium truncate leading-snug">{{ member.user?.name || 'Unknown' }}</p>
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold capitalize flex-shrink-0" :class="getRoleBadgeClass(member.role)">
+                    {{ member.role }}
+                  </span>
+                </div>
+                <p v-if="member.user?.email" class="text-[10px] text-gray-500 truncate mt-0.5">{{ member.user.email }}</p>
               </div>
-              <div class="flex items-center gap-1.5 flex-shrink-0">
-                <BaseBadge :color="getRoleColor(member.role)">{{ member.role }}</BaseBadge>
-                <button
-                  v-if="member.role !== 'owner'"
-                  @click="handleRemoveMember(member.userId)"
-                  class="w-6 h-6 flex items-center justify-center rounded-md text-gray-600 hover:text-rose-400 hover:bg-rose-500/10 transition-all text-xs"
-                  title="Remove member"
-                >✕</button>
-              </div>
+              <button
+                v-if="member.role !== 'owner'"
+                @click="handleRemoveMember(member.userId)"
+                class="ml-1 w-5 h-5 flex items-center justify-center rounded-md text-gray-600 hover:text-rose-400 hover:bg-rose-500/10 transition-all flex-shrink-0"
+                title="Remove member"
+              >
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
-          </BaseCard>
+          </div>
         </div>
 
         <EmptyState
@@ -510,6 +581,7 @@
 
 <script setup lang="ts">
 import type { Project, ProjectPriority, WorkplacePlan } from '~/types'
+import { formatRelativeTime } from '~/utils/formatters'
 
 definePageMeta({
   middleware: 'auth'
@@ -548,9 +620,9 @@ const showAddMemberModal = ref(false)
 const showCreateProjectModal = ref(false)
 
 const tabs = [
-  { id: 'projects', label: 'Projects', icon: '📁' },
-  { id: 'members', label: 'Members', icon: '👥' },
-  { id: 'settings', label: 'Settings', icon: '⚙️' }
+  { id: 'projects', label: 'Projects' },
+  { id: 'members', label: 'Members' },
+  { id: 'settings', label: 'Settings' },
 ]
 
 const editForm = ref({
@@ -627,14 +699,20 @@ function onKeyInput(event: Event) {
   newProjectForm.value.key = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '')
 }
 
-const planColor = computed((): 'slate' | 'blue' | 'amber' => {
-  const colors: Record<string, 'slate' | 'blue' | 'amber'> = {
-    free: 'slate',
-    pro: 'blue',
-    enterprise: 'amber'
+const planBadgeClass = computed(() => {
+  const map: Record<string, string> = {
+    free: 'bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20',
+    pro: 'bg-indigo-500/10 text-indigo-400 ring-1 ring-indigo-500/20',
+    enterprise: 'bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/20',
   }
-  return colors[currentWorkplace.value?.plan || 'free'] || 'slate'
+  return map[currentWorkplace.value?.plan || 'free'] || 'bg-slate-600/30 text-gray-400'
 })
+
+const recentProjects = computed(() =>
+  [...workplaceProjects.value]
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    .slice(0, 6)
+)
 
 const availableUsers = computed(() => {
   const memberUserIds = workplaceMembers.value.map(m => m.userId)
@@ -747,6 +825,37 @@ async function handleRemoveMember(userId: string) {
   await removeMember(workplaceId, userId)
 }
 
+function getWorkplaceGradient(name: string): string {
+  const gradients = [
+    'from-violet-500 to-indigo-600',
+    'from-blue-500 to-cyan-600',
+    'from-emerald-500 to-teal-600',
+    'from-amber-500 to-orange-600',
+    'from-rose-500 to-pink-600',
+    'from-indigo-500 to-purple-600',
+  ]
+  const seed = (name.charCodeAt(0) || 0) + (name.charCodeAt(1) || 0)
+  return gradients[seed % gradients.length]!
+}
+
+function getWorkplaceInitials(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  if (parts.length >= 2) return `${parts[0]!.charAt(0)}${parts[1]!.charAt(0)}`.toUpperCase()
+  return name.slice(0, 2).toUpperCase()
+}
+
+function getRoleBadgeClass(role: string): string {
+  const map: Record<string, string> = {
+    owner: 'bg-violet-500/20 text-violet-400',
+    admin: 'bg-purple-500/20 text-purple-400',
+    manager: 'bg-indigo-500/20 text-indigo-400',
+    developer: 'bg-blue-500/20 text-blue-400',
+    viewer: 'bg-slate-600/40 text-gray-400',
+    member: 'bg-slate-600/40 text-gray-400',
+  }
+  return map[role] || 'bg-slate-600/40 text-gray-400'
+}
+
 function getProjectGradient(key: string): string {
   const gradients = [
     'from-violet-500 to-indigo-600',
@@ -759,9 +868,14 @@ function getProjectGradient(key: string): string {
   return gradients[(key.charCodeAt(0) || 0) % gradients.length]!
 }
 
-function getPriorityIcon(priority: string): string {
-  const icons: Record<string, string> = { low: '🟢', medium: '🔵', high: '🟠', critical: '🔴' }
-  return icons[priority] || '🔵'
+function getPriorityDotClass(priority: string): string {
+  const map: Record<string, string> = {
+    low: 'bg-emerald-400',
+    medium: 'bg-blue-400',
+    high: 'bg-amber-400',
+    critical: 'bg-rose-400',
+  }
+  return map[priority] || 'bg-gray-400'
 }
 
 function getPriorityTextColor(priority: string): string {
@@ -783,12 +897,4 @@ function getMemberInitials(name?: string): string {
   return parts[0]!.charAt(0).toUpperCase()
 }
 
-function getRoleColor(role: string): 'indigo' | 'emerald' | 'amber' {
-  const colors: Record<string, 'indigo' | 'emerald' | 'amber'> = {
-    owner: 'indigo',
-    admin: 'emerald',
-    member: 'amber'
-  }
-  return colors[role] || 'amber'
-}
 </script>
