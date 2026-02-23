@@ -610,6 +610,7 @@ const {
 const { projectsApi, membershipApi } = useApi()
 const { createProject } = useProjects()
 const { members: allUsers, loadMembers } = useTeam()
+const socket = useSocket()
 
 const workplaceProjects = ref<Project[]>([])
 const memberStatusMap = ref<Record<string, { isMember: boolean; role: string | null }>>({})
@@ -758,10 +759,21 @@ onMounted(async () => {
     editForm.value.name = currentWorkplace.value.name
     editForm.value.plan = currentWorkplace.value.plan
   }
+
+  // Setup real-time project updates for this workplace
+  socket.connect()
+  socket.joinRoom(`workplace:${workplaceId}`)
+  socket.on('project:created', onProjectCreated)
+  socket.on('project:updated', onProjectUpdated)
+  socket.on('project:deleted', onProjectDeleted)
 })
 
 onUnmounted(() => {
   showAddMemberDropdown.value = false
+  socket.leaveRoom(`workplace:${workplaceId}`)
+  socket.off('project:created', onProjectCreated)
+  socket.off('project:updated', onProjectUpdated)
+  socket.off('project:deleted', onProjectDeleted)
 })
 
 async function loadWorkplaceProjects() {
@@ -776,6 +788,28 @@ async function loadMemberStatuses() {
     )
   )
   memberStatusMap.value = Object.fromEntries(results.map(r => [r.id, r.status]))
+}
+
+function onProjectCreated(data: { project: Project }) {
+  const exists = workplaceProjects.value.find(p => p._id === data.project._id)
+  if (!exists) {
+    workplaceProjects.value.push(data.project)
+    membershipApi.getMyMembership(data.project._id).then(s => {
+      memberStatusMap.value = { ...memberStatusMap.value, [data.project._id]: s }
+    })
+  }
+}
+
+function onProjectUpdated(data: { project: Project }) {
+  const index = workplaceProjects.value.findIndex(p => p._id === data.project._id)
+  if (index !== -1) {
+    workplaceProjects.value[index] = { ...workplaceProjects.value[index], ...data.project }
+  }
+}
+
+function onProjectDeleted(data: { project: { _id: string } }) {
+  const index = workplaceProjects.value.findIndex(p => p._id === data.project._id)
+  if (index !== -1) workplaceProjects.value.splice(index, 1)
 }
 
 async function handleJoinProject(projectId: string) {
@@ -802,7 +836,9 @@ async function handleCreateProject() {
   if (newProjectForm.value.name && newProjectForm.value.key) {
     const created = await createProject(newProjectForm.value, workplaceId)
     if (created) {
-      workplaceProjects.value.push(created)
+      // Guard: socket event may have already added it
+      const exists = workplaceProjects.value.find(p => p._id === created._id)
+      if (!exists) workplaceProjects.value.push(created)
       const status = await membershipApi.getMyMembership(created._id)
       memberStatusMap.value = { ...memberStatusMap.value, [created._id]: status }
     }
