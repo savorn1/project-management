@@ -214,6 +214,14 @@ export interface FundPoolInput {
   isEnabled?: boolean
 }
 
+export interface FundPoolExecution {
+  _id: string
+  poolId: string
+  amountAdded: number
+  balanceAfter: number
+  executedAt: string
+}
+
 // Dashboard Stats
 export interface DashboardStats {
   totalProjects: number

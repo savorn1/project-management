@@ -2,6 +2,7 @@ import type {
   AppNotification,
   DashboardStats,
   FundPool,
+  FundPoolExecution,
   FundPoolInput,
   Label,
   Project,
@@ -634,6 +635,11 @@ export function useApi() {
         method: 'DELETE',
       })
       return response !== null
+    },
+
+    async getExecutions(id: string, limit = 10): Promise<FundPoolExecution[]> {
+      const response = await request<FundPoolExecution[]>(`/admin/fund-pools/${id}/executions?limit=${limit}`)
+      return response ?? []
     },
   }
 

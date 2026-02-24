@@ -6,12 +6,25 @@
         <h1 class="text-2xl font-bold text-white">Fund Pools</h1>
         <p class="text-gray-400 mt-1">Manage scheduled fund pools and their configurations</p>
       </div>
-      <BaseButton @click="toggleCreateForm">
-        <svg class="w-4 h-4 transition-transform duration-200" :class="showCreateForm ? 'rotate-45' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
-        {{ showCreateForm ? 'Cancel' : 'New Fund Pool' }}
-      </BaseButton>
+      <div class="flex items-center gap-3">
+        <!-- Executor status badge -->
+        <div
+          class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors duration-500"
+          :class="executorEnabled ? 'bg-emerald-500/15 text-emerald-400' : 'bg-slate-700/50 text-gray-500'"
+        >
+          <span
+            class="w-1.5 h-1.5 rounded-full"
+            :class="executorEnabled ? 'bg-emerald-400 animate-pulse' : 'bg-gray-600'"
+          ></span>
+          Executor {{ executorEnabled ? 'running' : 'stopped' }}
+        </div>
+        <BaseButton @click="toggleCreateForm">
+          <svg class="w-4 h-4 transition-transform duration-200" :class="showCreateForm ? 'rotate-45' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          {{ showCreateForm ? 'Cancel' : 'New Fund Pool' }}
+        </BaseButton>
+      </div>
     </div>
 
     <!-- Inline Create Form -->
@@ -199,6 +212,26 @@
           </div>
         </div>
 
+        <!-- Execution History -->
+        <div class="space-y-1.5">
+          <p class="text-gray-500 text-xs">Recent executions</p>
+          <template v-if="poolExecutions.get(pool._id)?.length">
+            <div
+              v-for="exec in poolExecutions.get(pool._id)"
+              :key="exec._id"
+              class="flex items-center justify-between text-xs py-0.5"
+            >
+              <span class="text-gray-600">{{ timeAgo(exec.executedAt) }}</span>
+              <div class="flex items-center gap-1.5">
+                <span class="text-emerald-400 font-medium">+{{ formatAmount(exec.amountAdded) }}</span>
+                <span class="text-gray-700">→</span>
+                <span class="text-gray-300">{{ formatAmount(exec.balanceAfter) }}</span>
+              </div>
+            </div>
+          </template>
+          <p v-else class="text-gray-600 text-xs italic">No executions yet</p>
+        </div>
+
         <!-- Actions -->
         <div class="flex items-center gap-2 pt-2 border-t border-slate-700/50">
           <button
@@ -312,7 +345,7 @@ import type { FundPool, FundPoolType } from '~/types'
 
 definePageMeta({ middleware: 'auth' })
 
-const { pools, total, isLoading, recentlyUpdated, loadPools, createPool, updatePool, togglePool, deletePool, recordExecution, setupRealtime, teardownRealtime } = useFundPools()
+const { pools, total, isLoading, poolExecutions, recentlyUpdated, executorEnabled, loadPools, createPool, updatePool, togglePool, deletePool, recordExecution, setupRealtime, teardownRealtime } = useFundPools()
 const toast = useToast()
 
 const showCreateForm = ref(false)
@@ -432,6 +465,16 @@ function formatInterval(minutes: number): string {
 function formatLastExecuted(date: string | null): string {
   if (!date) return 'Never'
   return new Date(date).toLocaleString()
+}
+
+function timeAgo(date: string): string {
+  const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
+  if (seconds < 60) return `${seconds}s ago`
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.floor(hours / 24)}d ago`
 }
 
 function typeIcon(type: FundPoolType): string {
