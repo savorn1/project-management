@@ -82,7 +82,7 @@ function priorityBarClass(priority: TaskPriority): string {
   return colors[priority]
 }
 
-function dueDateClass(dueDate?: string): string {
+function dueDateClass(dueDate?: string | null): string {
   if (!dueDate) return 'bg-slate-700/50 text-gray-400'
 
   const status = getDueDateStatus(dueDate)
@@ -95,7 +95,7 @@ function dueDateClass(dueDate?: string): string {
   return 'bg-blue-500/15 text-blue-400 border border-blue-500/25'
 }
 
-function formatRelativeDate(dueDate?: string): string {
+function formatRelativeDate(dueDate?: string | null): string {
   if (!dueDate) return ''
 
   const now = new Date()

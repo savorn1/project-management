@@ -100,8 +100,8 @@
             Step {{ i + 1 }}
           </button>
         </div>
-        <p v-if="config.failAtStep !== undefined" class="text-[10px] text-red-400 mt-1.5">
-          Step {{ config.failAtStep + 1 }} "{{ sagaSteps[config.failAtStep].name }}" will fail →
+        <p v-if="config.failAtStep !== undefined && config.failAtStep >= 0 && sagaSteps[config.failAtStep]" class="text-[10px] text-red-400 mt-1.5">
+          Step {{ config.failAtStep + 1 }} "{{ sagaSteps[config.failAtStep]?.name }}" will fail →
           Steps {{ config.failAtStep > 0 ? `1-${config.failAtStep}` : 'none' }} will be compensated
         </p>
       </div>

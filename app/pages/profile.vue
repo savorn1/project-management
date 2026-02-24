@@ -151,10 +151,10 @@ const displayPoints = ref(user.value?.points ?? 0)
 
 // Ranks definition
 const RANKS = [
-  { label: 'Bronze',   threshold: 0,   next: { label: 'Silver',   threshold: 50  }, color: 'bronze' },
-  { label: 'Silver',   threshold: 50,  next: { label: 'Gold',     threshold: 150 }, color: 'silver' },
-  { label: 'Gold',     threshold: 150, next: { label: 'Platinum', threshold: 300 }, color: 'gold'   },
-  { label: 'Platinum', threshold: 300, next: null,                                  color: 'platinum'},
+  { label: 'Bronze',   threshold: 0,   next: { label: 'Silver',   threshold: 50,  badge: 'bg-slate-400/15 text-slate-300'  }, color: 'bronze'   },
+  { label: 'Silver',   threshold: 50,  next: { label: 'Gold',     threshold: 150, badge: 'bg-yellow-500/15 text-yellow-300' }, color: 'silver'   },
+  { label: 'Gold',     threshold: 150, next: { label: 'Platinum', threshold: 300, badge: 'bg-cyan-400/15 text-cyan-300'     }, color: 'gold'     },
+  { label: 'Platinum', threshold: 300, next: null,                                                                             color: 'platinum' },
 ]
 
 const rank = computed(() => {
