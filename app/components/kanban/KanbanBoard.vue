@@ -13,7 +13,7 @@
       @drag-end="onDragEnd"
       @drag-over="onDragOver(column.id)"
       @drag-leave="onDragLeave(column.id)"
-      @drop="onDrop(column.id)"
+      @drop="(idx) => onDrop(column.id, idx)"
     />
   </div>
 </template>

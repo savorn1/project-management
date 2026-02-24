@@ -6,6 +6,7 @@ export interface User {
   isActive: boolean
   isEmailVerified: boolean
   lastLogin?: string
+  points?: number
 }
 
 export interface AuthTokens {

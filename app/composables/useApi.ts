@@ -122,6 +122,11 @@ export function useApi() {
       return response?.data || []
     },
 
+    async getCounts(projectId: string): Promise<{ total: number; byStatus: Record<string, number> }> {
+      const response = await request<{ success: boolean; data: { total: number; byStatus: Record<string, number> } }>(`/admin/tasks/project/${projectId}/counts`)
+      return response?.data ?? { total: 0, byStatus: {} }
+    },
+
     async getBySprint(sprintId: string): Promise<Task[]> {
       const response = await request<ListResponse<Task>>(`/admin/tasks/sprint/${sprintId}?limit=100`)
       return response?.data || []

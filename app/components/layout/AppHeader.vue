@@ -122,6 +122,7 @@
 <script setup lang="ts">
 const route = useRoute()
 const { user, fullName, userInitials, logout, initAuth } = useAuth()
+const router = useRouter()
 
 const showUserMenu = ref(false)
 const userMenuRef = ref<HTMLElement | null>(null)
@@ -141,12 +142,13 @@ const pageTitle = computed(() => {
   if (path === '/workplaces') return 'Workplaces'
   if (path.startsWith('/workplaces/')) return 'Workplace Details'
   if (path === '/dev-tools') return 'Developer Tools'
+  if (path === '/profile') return 'Your Profile'
   return 'TaskFlow'
 })
 
 const handleProfile = () => {
   showUserMenu.value = false
-  // Navigate to profile page when implemented
+  router.push('/profile')
 }
 
 const handleSettings = () => {

@@ -106,7 +106,7 @@ const emit = defineEmits<{
   (e: 'drag-end'): void
   (e: 'drag-over'): void
   (e: 'drag-leave'): void
-  (e: 'drop'): void
+  (e: 'drop', insertIndex: number): void
 }>()
 
 // Track nested dragenter/dragleave to avoid flickering when moving over children
@@ -132,8 +132,9 @@ function onColumnDragLeave() {
 
 function onColumnDrop() {
   dragEnterCount.value = 0
+  const idx = insertIndex.value
   insertIndex.value = -1
-  emit('drop')
+  emit('drop', idx)
 }
 
 // Reset when drop target changes externally

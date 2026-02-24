@@ -189,7 +189,11 @@ export function useTasks() {
   async function moveTask(taskId: string, newStatus: TaskStatus) {
     const task = tasks.value.find(t => t._id === taskId)
     if (task) {
-      await updateTask(taskId, { status: newStatus })
+      const updated = await tasksApi.updateStatus(taskId, newStatus)
+      if (updated) {
+        const index = tasks.value.findIndex(t => t._id === taskId)
+        if (index !== -1) tasks.value[index] = { ...tasks.value[index]!, ...updated }
+      }
     }
   }
 
@@ -197,7 +201,11 @@ export function useTasks() {
     const task = tasks.value.find(t => t._id === id)
     if (task) {
       const newStatus: TaskStatus = task.status === 'done' ? 'todo' : 'done'
-      await updateTask(id, { status: newStatus })
+      const updated = await tasksApi.updateStatus(id, newStatus)
+      if (updated) {
+        const index = tasks.value.findIndex(t => t._id === id)
+        if (index !== -1) tasks.value[index] = { ...tasks.value[index]!, ...updated }
+      }
     }
   }
 

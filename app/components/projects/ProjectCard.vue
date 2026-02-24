@@ -73,11 +73,17 @@ interface Props {
 const props = defineProps<Props>()
 const emit = defineEmits<{ 'request-join': [projectId: string] }>()
 
-const { getTasksByProject } = useTasks()
-const cardTasks = computed(() => getTasksByProject(props.project._id))
-const totalTasks = computed(() => cardTasks.value.length)
-const doneTasks = computed(() => cardTasks.value.filter(t => t.status === 'done').length)
+const { tasksApi } = useApi()
+
+const totalTasks = ref(0)
+const doneTasks = ref(0)
 const taskProgress = computed(() => totalTasks.value > 0 ? Math.round((doneTasks.value / totalTasks.value) * 100) : 0)
+
+onMounted(async () => {
+  const counts = await tasksApi.getCounts(props.project._id)
+  totalTasks.value = counts.total
+  doneTasks.value = counts.byStatus['done'] ?? 0
+})
 
 function getProjectGradient(key: string): string {
   const gradients = [
