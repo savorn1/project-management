@@ -42,6 +42,7 @@ const navItems = [
   { path: '/team', label: 'Team', icon: '👥' },
   { path: '/dev-tools', label: 'Dev Tools', icon: '🛠️' },
   { path: '/health', label: 'System Health', icon: '🩺' },
+  { path: '/fund-pools', label: 'Fund Pools', icon: '💰' },
   { path: '/feature-flags', label: 'Feature Flags', icon: '🏳️' },
   { path: '/uploads', label: 'File Uploads', icon: '📎' }
 ]

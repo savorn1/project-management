@@ -1,6 +1,8 @@
 import type {
   AppNotification,
   DashboardStats,
+  FundPool,
+  FundPoolInput,
   Label,
   Project,
   ProjectInput,
@@ -590,6 +592,51 @@ export function useApi() {
     },
   }
 
+  // Fund Pools API
+  const fundPoolsApi = {
+    async getAll(): Promise<{ data: FundPool[]; total: number }> {
+      const response = await request<{ data: FundPool[]; total: number }>('/admin/fund-pools?limit=100')
+      return response ?? { data: [], total: 0 }
+    },
+
+    async getById(id: string): Promise<FundPool | null> {
+      return await request<FundPool>(`/admin/fund-pools/${id}`)
+    },
+
+    async create(data: FundPoolInput): Promise<FundPool | null> {
+      return await request<FundPool>('/admin/fund-pools', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      })
+    },
+
+    async update(id: string, data: Partial<FundPoolInput>): Promise<FundPool | null> {
+      return await request<FundPool>(`/admin/fund-pools/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      })
+    },
+
+    async toggle(id: string): Promise<FundPool | null> {
+      return await request<FundPool>(`/admin/fund-pools/${id}/toggle`, {
+        method: 'PATCH',
+      })
+    },
+
+    async recordExecution(id: string): Promise<FundPool | null> {
+      return await request<FundPool>(`/admin/fund-pools/${id}/execute`, {
+        method: 'PATCH',
+      })
+    },
+
+    async delete(id: string): Promise<boolean> {
+      const response = await request(`/admin/fund-pools/${id}`, {
+        method: 'DELETE',
+      })
+      return response !== null
+    },
+  }
+
   // Health check
   async function checkHealth(): Promise<boolean> {
     const response = await request('/health')
@@ -612,6 +659,7 @@ export function useApi() {
     notificationsApi,
     membershipApi,
     projectMembersApi,
+    fundPoolsApi,
     checkHealth,
   }
 }

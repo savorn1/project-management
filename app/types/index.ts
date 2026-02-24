@@ -190,6 +190,30 @@ export interface TaskActivity {
   createdAt: string
 }
 
+// Fund Pool
+export type FundPoolType = 'savings' | 'emergency' | 'investment' | 'operational' | 'reserve' | 'general'
+
+export interface FundPool {
+  _id: string
+  type: FundPoolType
+  name: string
+  currentAmount: number
+  recurringAmount: number
+  intervalMinutes: number
+  isEnabled: boolean
+  lastExecutedAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface FundPoolInput {
+  type: FundPoolType
+  name: string
+  recurringAmount?: number
+  intervalMinutes: number
+  isEnabled?: boolean
+}
+
 // Dashboard Stats
 export interface DashboardStats {
   totalProjects: number
