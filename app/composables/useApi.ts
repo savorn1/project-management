@@ -1,10 +1,15 @@
 import type {
   AppNotification,
+  CreateOrderInput,
   DashboardStats,
   FundPool,
   FundPoolExecution,
   FundPoolInput,
   Label,
+  Order,
+  PaymentQrResult,
+  PaymentQrStatusResult,
+  SampleOrderResult,
   Project,
   ProjectInput,
   ProjectMember,
@@ -643,6 +648,65 @@ export function useApi() {
     },
   }
 
+  // Orders API
+  const ordersApi = {
+    async getAll(skip = 0, limit = 20): Promise<{ data: Order[]; total: number }> {
+      const response = await request<ListResponse<Order>>(`/client/orders?skip=${skip}&limit=${limit}`)
+      return { data: response?.data || [], total: response?.total || 0 }
+    },
+
+    async getById(id: string): Promise<Order | null> {
+      const response = await request<SingleResponse<Order>>(`/client/orders/${id}`)
+      return response?.data || null
+    },
+
+    async create(data: CreateOrderInput): Promise<Order | null> {
+      // currency is stored in metadata so the QR generator can read it back
+      const { currency, ...rest } = data
+      const response = await request<SingleResponse<Order>>('/client/orders', {
+        method: 'POST',
+        body: JSON.stringify({ ...rest, metadata: { currency } }),
+      })
+      return response?.data || null
+    },
+
+    async cancel(id: string): Promise<Order | null> {
+      const response = await request<SingleResponse<Order>>(`/client/orders/${id}/cancel`, { method: 'PUT' })
+      return response?.data || null
+    },
+  }
+
+  // Payments API
+  const paymentsApi = {
+    async createSampleOrder(): Promise<SampleOrderResult | null> {
+      const response = await request<SingleResponse<SampleOrderResult>>('/admin/payments/sample-order', {
+        method: 'POST',
+      })
+      return response?.data || null
+    },
+
+    async generateQr(orderId: string, currency = 'USD'): Promise<PaymentQrResult | null> {
+      const response = await request<SingleResponse<PaymentQrResult>>('/admin/payments/generate-qr', {
+        method: 'POST',
+        body: JSON.stringify({ orderId, currency }),
+      })
+      return response?.data || null
+    },
+
+    async getQrStatus(qrId: string): Promise<PaymentQrStatusResult | null> {
+      const response = await request<SingleResponse<PaymentQrStatusResult>>(`/admin/payments/qr/${qrId}/status`)
+      return response?.data || null
+    },
+
+    async verify(payload: { qrId: string; nonce: string; amount: number; signature: string }): Promise<{ success: boolean; orderId: string; paidAt: string } | null> {
+      const response = await request<SingleResponse<{ success: boolean; orderId: string; paidAt: string }>>('/admin/payments/verify', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      })
+      return response?.data || null
+    },
+  }
+
   // Health check
   async function checkHealth(): Promise<boolean> {
     const response = await request('/health')
@@ -666,6 +730,8 @@ export function useApi() {
     membershipApi,
     projectMembersApi,
     fundPoolsApi,
+    ordersApi,
+    paymentsApi,
     checkHealth,
   }
 }

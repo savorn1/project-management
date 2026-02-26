@@ -222,6 +222,87 @@ export interface FundPoolExecution {
   executedAt: string
 }
 
+// Orders
+export type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled'
+
+export interface OrderItem {
+  productId: string
+  name: string
+  quantity: number
+  price: number
+}
+
+export interface Order {
+  _id: string
+  clientId: string
+  vendorId: string
+  items: OrderItem[]
+  totalAmount: number
+  status: OrderStatus
+  shippingAddress?: string
+  paymentMethod?: string
+  notes?: string
+  metadata?: Record<string, unknown>
+  createdAt: string
+  updatedAt: string
+}
+
+export type SupportedCurrency = 'USD' | 'EUR' | 'GBP' | 'THB' | 'JPY'
+
+export interface CreateOrderItemInput {
+  productId: string
+  name: string        // description of the item
+  quantity: number
+  price: number       // unit price (amount)
+}
+
+export interface CreateOrderInput {
+  vendorId: string
+  items: CreateOrderItemInput[]
+  shippingAddress: string
+  paymentMethod: string
+  currency: SupportedCurrency
+  notes?: string
+}
+
+// Payment QR
+export type PaymentQrStatus = 'pending' | 'paid' | 'expired' | 'cancelled'
+
+export interface PaymentQrResult {
+  qrId: string
+  qrImage: string
+  expiresAt: string
+  amount: number
+}
+
+export interface PaymentQrStatusResult {
+  qrId: string
+  orderId: string
+  amount: number
+  currency: string
+  status: PaymentQrStatus
+  expiresAt: string
+  paidAt?: string
+}
+
+export interface PaymentConfirmedEvent {
+  orderId: string
+  qrId: string
+  amount: number
+  currency: string
+  paidAt: string
+  newStatus: string
+}
+
+export interface SampleOrderResult {
+  order: Order
+  qrId: string
+  qrImage: string
+  expiresAt: string
+  amount: number
+  currency: string
+}
+
 // Dashboard Stats
 export interface DashboardStats {
   totalProjects: number
