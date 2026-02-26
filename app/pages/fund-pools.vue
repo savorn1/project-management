@@ -345,7 +345,22 @@ import type { FundPool, FundPoolType } from '~/types'
 
 definePageMeta({ middleware: 'auth' })
 
-const { pools, total, isLoading, poolExecutions, recentlyUpdated, executorEnabled, loadPools, createPool, updatePool, togglePool, deletePool, recordExecution, setupRealtime, teardownRealtime } = useFundPools()
+const { 
+  pools, 
+  total, 
+  isLoading, 
+  poolExecutions, 
+  recentlyUpdated, 
+  executorEnabled, 
+  loadPools, 
+  createPool, 
+  updatePool, 
+  togglePool, 
+  deletePool, 
+  recordExecution, 
+  setupRealtime, 
+  teardownRealtime 
+} = useFundPools()
 const toast = useToast()
 
 const showCreateForm = ref(false)

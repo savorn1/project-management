@@ -43,6 +43,7 @@ const navItems = [
   { path: '/dev-tools', label: 'Dev Tools', icon: '🛠️' },
   { path: '/health', label: 'System Health', icon: '🩺' },
   { path: '/payments', label: 'Payments', icon: '💳' },
+  { path: '/qr-history', label: 'QR History', icon: '🔲' },
   { path: '/fund-pools', label: 'Fund Pools', icon: '💰' },
   { path: '/feature-flags', label: 'Feature Flags', icon: '🏳️' },
   { path: '/uploads', label: 'File Uploads', icon: '📎' }

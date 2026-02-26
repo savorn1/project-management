@@ -204,6 +204,8 @@ import type { CreateOrderInput } from '~/types'
 
 definePageMeta({ middleware: 'auth' })
 
+const route = useRoute()
+const router = useRouter()
 const { user } = useAuth()
 
 const {
@@ -283,9 +285,18 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-onMounted(() => {
-  loadOrders()
+onMounted(async () => {
   setupRealtime()
+  await loadOrders()
+
+  // ?regenerate=<orderId> — deep-link from QR History page
+  // Automatically generate a fresh QR for the specified order and open the modal
+  const regenerateId = route.query.regenerate as string | undefined
+  if (regenerateId) {
+    // Strip the param from the URL so a refresh doesn't re-trigger
+    await router.replace({ query: { ...route.query, regenerate: undefined } })
+    await openQr(regenerateId)
+  }
 })
 
 onUnmounted(() => {

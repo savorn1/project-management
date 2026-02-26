@@ -303,6 +303,32 @@ export interface SampleOrderResult {
   currency: string
 }
 
+export interface QrHistoryRecord {
+  qrId: string
+  orderId: string
+  amount: number
+  currency: string
+  status: PaymentQrStatus
+  expiresAt: string
+  paidAt: string | null
+  createdAt: string | null
+}
+
+/** Full QR detail returned by GET /admin/payments/qr/:qrId */
+export interface PaymentQrDetail {
+  qrId: string
+  orderId: string
+  amount: number
+  currency: string
+  status: PaymentQrStatus
+  expiresAt: string
+  paidAt: string | null
+  /** Base64 PNG data-URL. Only present when status=pending and QR is still in Redis. */
+  qrImage: string | null
+  /** Seconds remaining until expiry. 0 when expired/paid/cancelled. */
+  secondsLeft: number
+}
+
 // Dashboard Stats
 export interface DashboardStats {
   totalProjects: number

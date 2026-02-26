@@ -7,8 +7,10 @@ import type {
   FundPoolInput,
   Label,
   Order,
+  PaymentQrDetail,
   PaymentQrResult,
   PaymentQrStatusResult,
+  QrHistoryRecord,
   SampleOrderResult,
   Project,
   ProjectInput,
@@ -696,6 +698,35 @@ export function useApi() {
     async getQrStatus(qrId: string): Promise<PaymentQrStatusResult | null> {
       const response = await request<SingleResponse<PaymentQrStatusResult>>(`/admin/payments/qr/${qrId}/status`)
       return response?.data || null
+    },
+
+    async getQr(qrId: string): Promise<PaymentQrDetail | null> {
+      const response = await request<SingleResponse<PaymentQrDetail>>(`/admin/payments/qr/${qrId}`)
+      return response?.data || null
+    },
+
+    /** Returns the current active (PENDING) QR for an order by orderId, or null if none. */
+    async getOrderQr(orderId: string): Promise<PaymentQrDetail | null> {
+      const response = await request<SingleResponse<PaymentQrDetail | null>>(`/admin/payments/orders/${orderId}/qr`)
+      return response?.data || null
+    },
+
+    async getQrHistory(params: {
+      status?: string
+      orderId?: string
+      skip?: number
+      limit?: number
+    } = {}): Promise<{ data: QrHistoryRecord[]; total: number }> {
+      const qs = new URLSearchParams()
+      if (params.status)  qs.set('status',  params.status)
+      if (params.orderId) qs.set('orderId', params.orderId)
+      if (params.skip  != null) qs.set('skip',  String(params.skip))
+      if (params.limit != null) qs.set('limit', String(params.limit))
+      const query = qs.toString() ? `?${qs.toString()}` : ''
+      const response = await request<{ success: boolean; data: QrHistoryRecord[]; total: number }>(
+        `/admin/payments/qr-history${query}`,
+      )
+      return { data: response?.data ?? [], total: response?.total ?? 0 }
     },
 
     async verify(payload: { qrId: string; nonce: string; amount: number; signature: string }): Promise<{ success: boolean; orderId: string; paidAt: string } | null> {
