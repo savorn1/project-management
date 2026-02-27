@@ -730,9 +730,11 @@ export function useApi() {
     },
 
     async verify(payload: { qrId: string; nonce: string; amount: number; signature: string }): Promise<{ success: boolean; orderId: string; paidAt: string } | null> {
+      const gatewayKey = config.public.paymentGatewayKey as string
       const response = await request<SingleResponse<{ success: boolean; orderId: string; paidAt: string }>>('/admin/payments/verify', {
         method: 'POST',
         body: JSON.stringify(payload),
+        headers: { 'X-Gateway-Key': gatewayKey },
       })
       return response?.data || null
     },

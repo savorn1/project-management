@@ -33,10 +33,10 @@
           <span>{{ tab.icon }}</span>
           {{ tab.label }}
           <span
-            v-if="tabCounts[tab.value] != null"
+            v-if="tabCounts[tab.value ?? 'all'] != null"
             class="px-1.5 py-0.5 rounded-full text-[10px] font-semibold"
             :class="tab.countClass"
-          >{{ tabCounts[tab.value] }}</span>
+          >{{ tabCounts[tab.value ?? 'all'] }}</span>
         </span>
       </button>
     </div>
@@ -83,7 +83,7 @@
         <!-- Rows -->
         <div class="divide-y divide-slate-700/40">
           <div
-            v-for="rec in records"
+            v-for="rec in displayRecords"
             :key="rec.qrId"
             class="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-4 items-center px-4 py-3 hover:bg-slate-800/40 transition-colors"
           >
@@ -116,8 +116,8 @@
             <div class="text-right space-y-0.5">
               <p class="text-xs text-gray-400">{{ formatDate(rec.createdAt) }}</p>
               <!-- Relative duration line — updates every minute via `now` tick -->
-              <p class="text-[11px]" :class="durationClass(rec)">
-                {{ durationLabel(rec) }}
+              <p class="text-[11px]" :class="rec.durationClass">
+                {{ rec.durationLabel }}
               </p>
             </div>
 
@@ -194,7 +194,7 @@
 </template>
 
 <script setup lang="ts">
-import type { PaymentQrDetail, PaymentQrStatus, QrHistoryRecord } from '~/types'
+import type { PaymentQrDetail, QrHistoryRecord } from '~/types'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -284,42 +284,44 @@ function formatDate(iso: string | null | undefined): string {
   return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-/**
- * Returns a human-readable relative duration string for a record's time column.
- * Reacts to the `now` tick so values update without a page reload.
- */
-function durationLabel(rec: QrHistoryRecord): string {
-  // Reference `now.value` so Vue tracks the dependency and re-renders on each tick
-  const _ = now.value
-
-  if (rec.status === 'paid' && rec.paidAt) {
-    return `Paid ${timeAgo(rec.paidAt)}`
-  }
-  if (rec.status === 'expired') {
-    return `Expired ${timeAgo(rec.expiresAt)}`
-  }
+function labelFor(rec: QrHistoryRecord, t: number): string {
+  if (rec.status === 'paid' && rec.paidAt) return `Paid ${timeAgo(rec.paidAt, t)}`
+  if (rec.status === 'expired') return `Expired ${timeAgo(rec.expiresAt, t)}`
   if (rec.status === 'pending') {
-    const diffMs = new Date(rec.expiresAt).getTime() - now.value
+    const diffMs = new Date(rec.expiresAt).getTime() - t
     if (diffMs <= 0) return 'Expiring now…'
     return `Expires in ${formatDuration(diffMs)}`
   }
   return `Exp. ${formatDate(rec.expiresAt)}`
 }
 
-function durationClass(rec: QrHistoryRecord): string {
+function classFor(rec: QrHistoryRecord, t: number): string {
   if (rec.status === 'expired') return 'text-rose-400 font-medium'
   if (rec.status === 'paid')    return 'text-emerald-400'
   if (rec.status === 'pending') {
-    const diffMs = new Date(rec.expiresAt).getTime() - now.value
+    const diffMs = new Date(rec.expiresAt).getTime() - t
     return diffMs < 60_000 ? 'text-amber-400 font-medium' : 'text-gray-500'
   }
   return 'text-gray-600'
 }
 
+/**
+ * Computed view of records with pre-computed duration label + class.
+ * Re-evaluates every second when `now` ticks, guaranteeing reactivity.
+ */
+const displayRecords = computed(() => {
+  const t = now.value
+  return records.value.map(rec => ({
+    ...rec,
+    durationLabel: labelFor(rec, t),
+    durationClass: classFor(rec, t),
+  }))
+})
+
 /** "5 minutes ago", "2 hours ago", "3 days ago" */
-function timeAgo(iso: string | null | undefined): string {
+function timeAgo(iso: string | null | undefined, t = now.value): string {
   if (!iso) return ''
-  const diffMs  = now.value - new Date(iso).getTime()
+  const diffMs  = t - new Date(iso).getTime()
   const diffSec = Math.abs(Math.floor(diffMs / 1000))
 
   if (diffSec < 60)        return `${diffSec}s ago`
@@ -392,7 +394,7 @@ function handleQrPaid() {
 
 onMounted(() => {
   void load()
-  clockTimer = setInterval(() => { now.value = Date.now() }, 30_000)
+  clockTimer = setInterval(() => { now.value = Date.now() }, 1_000)
 })
 
 onUnmounted(() => {
