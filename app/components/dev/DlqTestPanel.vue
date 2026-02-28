@@ -187,7 +187,7 @@
           class="flex-1 p-3 bg-slate-900/50 rounded-lg border border-amber-500/10"
         >
           <div class="flex items-center justify-between mb-1">
-            <span class="text-[10px] font-bold text-amber-400">Retry {{ i + 1 }}</span>
+            <span class="text-[10px] font-bold text-amber-400">Retry {{ Number(i) + 1 }}</span>
             <span class="text-[10px] text-gray-500">{{ rq.ttlMs / 1000 }}s delay</span>
           </div>
           <p class="text-xl font-bold text-white">{{ rq.messages }}</p>
@@ -294,6 +294,19 @@
 <script setup lang="ts">
 const runtimeConfig = useRuntimeConfig()
 const toast = useToast()
+const { getAuthHeader } = useAuth()
+
+function authFetch(path: string, init: RequestInit = {}) {
+  const { headers: extra, ...rest } = init
+  return fetch(`${runtimeConfig.public.apiBase}${path}`, {
+    ...rest,
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeader(),
+      ...(extra as Record<string, string>),
+    },
+  })
+}
 
 const consuming = ref(false)
 const messages = ref<any[]>([])
@@ -382,7 +395,7 @@ function toggleExpand(id: string) {
 
 async function startConsumer() {
   try {
-    await fetch(`${runtimeConfig.public.apiBase}/rabbitmq/dlq/start`, {
+    await authFetch(`/rabbitmq/dlq/start`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(config.value),
@@ -397,7 +410,7 @@ async function startConsumer() {
 
 async function stopConsumer() {
   try {
-    await fetch(`${runtimeConfig.public.apiBase}/rabbitmq/dlq/stop`, { method: 'POST' })
+    await authFetch(`/rabbitmq/dlq/stop`, { method: 'POST' })
     consuming.value = false
     toast.success('Consumer stopped')
     stopPolling()
@@ -408,7 +421,7 @@ async function stopConsumer() {
 
 async function sendOne() {
   try {
-    const res = await fetch(`${runtimeConfig.public.apiBase}/rabbitmq/dlq/send`, {
+    const res = await authFetch(`/rabbitmq/dlq/send`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -427,7 +440,7 @@ async function sendOne() {
 
 async function sendBatch(count: number) {
   try {
-    const res = await fetch(`${runtimeConfig.public.apiBase}/rabbitmq/dlq/send-batch`, {
+    const res = await authFetch(`/rabbitmq/dlq/send-batch`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ count, payload: { action: 'process_order' } }),
@@ -440,7 +453,7 @@ async function sendBatch(count: number) {
 
 async function retryOne(id: string) {
   try {
-    await fetch(`${runtimeConfig.public.apiBase}/rabbitmq/dlq/retry/${id}`, { method: 'POST' })
+    await authFetch(`/rabbitmq/dlq/retry/${id}`, { method: 'POST' })
     toast.success(`Retrying ${id}`)
   } catch {
     toast.error('Failed to retry')
@@ -449,7 +462,7 @@ async function retryOne(id: string) {
 
 async function retryAllDead() {
   try {
-    const res = await fetch(`${runtimeConfig.public.apiBase}/rabbitmq/dlq/retry-all`, { method: 'POST' })
+    const res = await authFetch(`/rabbitmq/dlq/retry-all`, { method: 'POST' })
     const data = await res.json()
     toast.success(`Retrying ${data.retriedCount} messages`)
   } catch {
@@ -459,14 +472,14 @@ async function retryAllDead() {
 
 async function discardOne(id: string) {
   try {
-    await fetch(`${runtimeConfig.public.apiBase}/rabbitmq/dlq/discard/${id}`, { method: 'POST' })
+    await authFetch(`/rabbitmq/dlq/discard/${id}`, { method: 'POST' })
     await fetchMessages()
   } catch {}
 }
 
 async function discardAllDead() {
   try {
-    await fetch(`${runtimeConfig.public.apiBase}/rabbitmq/dlq/discard-all`, { method: 'POST' })
+    await authFetch(`/rabbitmq/dlq/discard-all`, { method: 'POST' })
     await fetchMessages()
     toast.success('Dead messages discarded')
   } catch {}
@@ -474,7 +487,7 @@ async function discardAllDead() {
 
 async function fetchMessages() {
   try {
-    const res = await fetch(`${runtimeConfig.public.apiBase}/rabbitmq/dlq/messages`)
+    const res = await authFetch(`/rabbitmq/dlq/messages`)
     if (res.ok) {
       const data = await res.json()
       messages.value = data.messages
@@ -485,7 +498,7 @@ async function fetchMessages() {
 
 async function fetchStats() {
   try {
-    const res = await fetch(`${runtimeConfig.public.apiBase}/rabbitmq/dlq/stats`)
+    const res = await authFetch(`/rabbitmq/dlq/stats`)
     if (res.ok) {
       stats.value = await res.json()
     }
@@ -494,7 +507,7 @@ async function fetchStats() {
 
 async function clearAll() {
   try {
-    await fetch(`${runtimeConfig.public.apiBase}/rabbitmq/dlq/clear`, { method: 'POST' })
+    await authFetch(`/rabbitmq/dlq/clear`, { method: 'POST' })
     messages.value = []
     stats.value = { ...stats.value, processed: 0, failed: 0, retried: 0, deadLettered: 0 }
   } catch {}
