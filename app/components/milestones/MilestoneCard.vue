@@ -85,12 +85,14 @@ const isOverdue = computed(() =>
   props.milestone.status !== 'completed' && new Date(props.milestone.dueDate) < new Date()
 )
 
-const statusLabel: Record<string, string> = {
+const STATUS_LABELS: Record<string, string> = {
   pending:     'Pending',
   in_progress: 'In Progress',
   completed:   'Completed',
   overdue:     'Overdue',
 }
+
+const statusLabel = computed(() => STATUS_LABELS[props.milestone.status] ?? props.milestone.status)
 
 const statusClass = computed(() => {
   const map: Record<string, string> = {
