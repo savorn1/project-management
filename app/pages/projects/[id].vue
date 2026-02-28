@@ -204,6 +204,54 @@
       </div>
     </div>
 
+    <!-- Milestones (members only) -->
+    <div v-if="memberStatus.isMember" class="bg-slate-800/30 border border-slate-700/30 rounded-xl p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          Milestones
+          <span v-if="milestones.length" class="ml-1.5 px-1.5 py-0.5 bg-slate-700/60 rounded text-slate-400 text-[10px] font-medium">{{ milestones.length }}</span>
+        </h3>
+        <button
+          @click="openMilestoneForm()"
+          class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 hover:border-indigo-500/40 rounded-lg transition-colors"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+          </svg>
+          Add Milestone
+        </button>
+      </div>
+
+      <!-- Empty state -->
+      <div v-if="!milestones.length" class="flex flex-col items-center justify-center py-8 text-center">
+        <div class="w-10 h-10 rounded-xl bg-slate-700/30 flex items-center justify-center mb-2">
+          <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+          </svg>
+        </div>
+        <p class="text-xs text-gray-600">No milestones yet</p>
+      </div>
+
+      <!-- Milestone grid -->
+      <div v-else class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <MilestoneCard
+          v-for="m in milestones"
+          :key="m._id"
+          :milestone="m"
+          @edit="openMilestoneForm(m)"
+          @delete="deleteMilestone"
+        />
+      </div>
+    </div>
+
+    <!-- Milestone Form Modal -->
+    <MilestoneFormModal
+      v-model="showMilestoneModal"
+      :project-id="projectId"
+      :milestone="editingMilestone"
+      @saved="onMilestoneSaved"
+    />
+
     <!-- Kanban Board (members only) -->
     <KanbanBoard v-if="memberStatus.isMember" :project-id="projectId" @add-task="handleAddTask" @select-task="openPreview" />
 
@@ -761,7 +809,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Task, TaskStatus, TaskPriority, ProjectMember } from '~/types'
+import type { Task, TaskStatus, TaskPriority, ProjectMember, Milestone } from '~/types'
 import { formatDate } from '~/utils/formatters'
 
 definePageMeta({
@@ -775,7 +823,7 @@ const { createTask, updateTask, deleteTask, getTasksByProject, loadTasksByProjec
 const { getProjectById, loadProjects, projects } = useProjects()
 const { members, loadMembers, getMemberById } = useTeam()
 const { subscribe, unsubscribe, isConnected } = useTaskRealtime(projectId)
-const { membershipApi, projectsApi, projectMembersApi } = useApi()
+const { membershipApi, projectsApi, projectMembersApi, milestonesApi } = useApi()
 
 onMounted(async () => {
   if (projects.value.length === 0) await loadProjects()
@@ -789,7 +837,7 @@ onMounted(async () => {
   isPageLoading.value = false
   if (memberStatus.value.isMember) {
     if (members.value.length === 0) await loadMembers()
-    await Promise.all([loadTasksByProject(projectId), loadProjectMembers()])
+    await Promise.all([loadTasksByProject(projectId), loadProjectMembers(), loadMilestones()])
     subscribe()
   }
   document.addEventListener('click', handleClickOutside)
@@ -817,6 +865,31 @@ const showSettings = ref(false)
 // Project members
 const projectMembers = ref<ProjectMember[]>([])
 const memberPage = ref(1)
+
+// Milestones
+const milestones = ref<Milestone[]>([])
+const showMilestoneModal = ref(false)
+const editingMilestone = ref<Milestone | null>(null)
+
+async function loadMilestones() {
+  milestones.value = await milestonesApi.getByProject(projectId)
+}
+
+function openMilestoneForm(m?: Milestone) {
+  editingMilestone.value = m ?? null
+  showMilestoneModal.value = true
+}
+
+function onMilestoneSaved(saved: Milestone) {
+  const idx = milestones.value.findIndex(m => m._id === saved._id)
+  if (idx !== -1) milestones.value[idx] = saved
+  else milestones.value.push(saved)
+}
+
+async function deleteMilestone(id: string) {
+  await milestonesApi.delete(id)
+  milestones.value = milestones.value.filter(m => m._id !== id)
+}
 const MEMBERS_PER_PAGE = 10
 
 const memberTotalPages = computed(() => Math.ceil(projectMembers.value.length / MEMBERS_PER_PAGE))

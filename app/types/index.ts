@@ -67,6 +67,22 @@ export interface KanbanColumn {
   color: string
 }
 
+// Milestone
+export type MilestoneStatus = 'pending' | 'in_progress' | 'completed' | 'overdue'
+
+export interface Milestone {
+  _id: string
+  name: string
+  description?: string
+  projectId: string
+  status: MilestoneStatus
+  dueDate: string
+  completedAt?: string
+  progress: number
+  createdAt: string
+  updatedAt: string
+}
+
 // Project Status and Priority
 export type ProjectStatus = 'active' | 'archived'
 export type ProjectPriority = 'low' | 'medium' | 'high' | 'critical'

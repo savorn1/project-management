@@ -23,7 +23,8 @@ import type {
   Workplace,
   WorkplaceInput,
   WorkplaceMemberWithUser,
-  WorkplaceMember as WpMember
+  WorkplaceMember as WpMember,
+  Milestone
 } from '~/types'
 
 interface ListResponse<T> {
@@ -740,6 +741,47 @@ export function useApi() {
     },
   }
 
+  const milestonesApi = {
+    async getByProject(projectId: string): Promise<Milestone[]> {
+      const response = await request<ListResponse<Milestone>>(`/admin/milestones/project/${projectId}?limit=100`)
+      return response?.data || []
+    },
+
+    async getUpcoming(projectId: string): Promise<Milestone[]> {
+      const response = await request<ListResponse<Milestone>>(`/admin/milestones/project/${projectId}/upcoming?limit=20`)
+      return response?.data || []
+    },
+
+    async create(data: { name: string; description?: string; projectId: string; dueDate: string; status?: string }): Promise<Milestone | null> {
+      const response = await request<SingleResponse<Milestone>>('/admin/milestones', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      })
+      return response?.data || null
+    },
+
+    async update(id: string, data: Partial<{ name: string; description: string; dueDate: string; status: string; progress: number }>): Promise<Milestone | null> {
+      const response = await request<SingleResponse<Milestone>>(`/admin/milestones/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      })
+      return response?.data || null
+    },
+
+    async updateProgress(id: string, progress: number): Promise<Milestone | null> {
+      const response = await request<SingleResponse<Milestone>>(`/admin/milestones/${id}/progress`, {
+        method: 'PATCH',
+        body: JSON.stringify({ progress }),
+      })
+      return response?.data || null
+    },
+
+    async delete(id: string): Promise<boolean> {
+      const response = await request<DeleteResponse>(`/admin/milestones/${id}`, { method: 'DELETE' })
+      return response?.success || false
+    },
+  }
+
   // Health check
   async function checkHealth(): Promise<boolean> {
     const response = await request('/health')
@@ -765,6 +807,7 @@ export function useApi() {
     fundPoolsApi,
     ordersApi,
     paymentsApi,
+    milestonesApi,
     checkHealth,
   }
 }
