@@ -365,6 +365,7 @@ export interface Conversation {
   avatar?: string
   createdBy?: string
   admins: string[]
+  blockedMembers: string[]
   lastMessage?: LastMessageSnapshot
   createdAt: string
   updatedAt: string
@@ -382,7 +383,7 @@ export interface ChatMessage {
   type: MessageType
   content: string
   replyTo?: string
-  readBy: MessageReadReceipt[]
+  readBy: ReadonlyArray<MessageReadReceipt>
   isDeleted: boolean
   deletedAt?: string
   createdAt: string

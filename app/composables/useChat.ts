@@ -182,6 +182,58 @@ export function useChat() {
     return conv._id
   }
 
+  // ── Member management ─────────────────────────────────────────────────────
+
+  async function leaveGroup(conversationId: string): Promise<boolean> {
+    const updated = await chatApi.leaveGroup(conversationId)
+    if (updated !== null) {
+      conversations.value = conversations.value.filter((c) => c._id !== conversationId)
+      if (activeConversationId.value === conversationId) {
+        activeConversationId.value = null
+        messages.value = []
+      }
+      return true
+    }
+    return false
+  }
+
+  async function removeMember(conversationId: string, userId: string): Promise<boolean> {
+    const updated = await chatApi.removeMember(conversationId, userId)
+    if (updated) {
+      conversations.value = conversations.value.map((c) =>
+        c._id === conversationId ? { ...c, participants: updated.participants } : c,
+      ) as Conversation[]
+      return true
+    }
+    return false
+  }
+
+  async function blockMember(conversationId: string, userId: string): Promise<boolean> {
+    const updated = await chatApi.blockMember(conversationId, userId)
+    if (updated) {
+      conversations.value = conversations.value.map((c) =>
+        c._id === conversationId
+          ? { ...c, blockedMembers: updated.blockedMembers }
+          : c,
+      ) as Conversation[]
+      return true
+    }
+    return false
+  }
+
+  async function unblockMember(conversationId: string, userId: string): Promise<boolean> {
+    const updated = await chatApi.unblockMember(conversationId, userId)
+    if (updated) {
+      conversations.value = conversations.value.map((c) =>
+        c._id === conversationId
+          ? { ...c, blockedMembers: updated.blockedMembers }
+          : c,
+      ) as Conversation[]
+      return true
+    }
+    return false
+  }
+
   // ── Delete message ────────────────────────────────────────────────────────
 
   async function deleteMessage(messageId: string) {
@@ -249,6 +301,52 @@ export function useChat() {
         conversations.value = [conv, ...conversations.value]
         toast.info(`💬 You've been added to a new conversation`)
       }
+    })
+
+    // ── Member left ────────────────────────────────────────────────────────
+    on<{ conversationId: string; userId: string }>('chat:member:left', ({ conversationId, userId }) => {
+      conversations.value = conversations.value.map((c) =>
+        c._id === conversationId
+          ? { ...c, participants: c.participants.filter((p) => p !== userId) }
+          : c,
+      ) as Conversation[]
+    })
+
+    // ── Member removed ─────────────────────────────────────────────────────
+    on<{ conversationId: string; userId: string }>('chat:member:removed', ({ conversationId, userId }) => {
+      const isMe = userId === user.value?.id
+      if (isMe) {
+        // I was removed — drop conversation
+        conversations.value = conversations.value.filter((c) => c._id !== conversationId)
+        if (activeConversationId.value === conversationId) {
+          activeConversationId.value = null
+          messages.value = []
+        }
+        toast.info('You were removed from the group.')
+      } else {
+        conversations.value = conversations.value.map((c) =>
+          c._id === conversationId
+            ? { ...c, participants: c.participants.filter((p) => p !== userId) }
+            : c,
+        ) as Conversation[]
+      }
+    })
+
+    // ── Member blocked / unblocked ─────────────────────────────────────────
+    on<{ conversationId: string; userId: string }>('chat:member:blocked', ({ conversationId, userId }) => {
+      conversations.value = conversations.value.map((c) =>
+        c._id === conversationId
+          ? { ...c, blockedMembers: [...(c.blockedMembers ?? []), userId] }
+          : c,
+      ) as Conversation[]
+    })
+
+    on<{ conversationId: string; userId: string }>('chat:member:unblocked', ({ conversationId, userId }) => {
+      conversations.value = conversations.value.map((c) =>
+        c._id === conversationId
+          ? { ...c, blockedMembers: (c.blockedMembers ?? []).filter((b) => b !== userId) }
+          : c,
+      ) as Conversation[]
     })
 
     // ── Typing indicator ───────────────────────────────────────────────────
@@ -339,6 +437,10 @@ export function useChat() {
     deleteMessage,
     createPrivateConversation,
     createGroupConversation,
+    leaveGroup,
+    removeMember,
+    blockMember,
+    unblockMember,
     startListening,
 
     // Helpers

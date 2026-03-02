@@ -103,7 +103,15 @@ export function useApi() {
         return null
       }
 
-      return await response.json()
+      // 204 No Content or empty body — return null instead of crashing
+      if (response.status === 204) return null
+      const text = await response.text()
+      if (!text || !text.trim()) return null
+      try {
+        return JSON.parse(text) as T
+      } catch {
+        return null
+      }
     } catch (err) {
       let message = 'An error occurred'
       if (err instanceof Error) {
@@ -856,6 +864,33 @@ export function useApi() {
         method: 'PATCH',
         body: JSON.stringify(data),
       })
+    },
+
+    async removeMember(conversationId: string, userId: string): Promise<Conversation | null> {
+      return await request<Conversation>(
+        `/chat/conversations/${conversationId}/participants/${userId}`,
+        { method: 'DELETE' },
+      )
+    },
+
+    async leaveGroup(conversationId: string): Promise<Conversation | null> {
+      return await request<Conversation>(`/chat/conversations/${conversationId}/leave`, {
+        method: 'DELETE',
+      })
+    },
+
+    async blockMember(conversationId: string, userId: string): Promise<Conversation | null> {
+      return await request<Conversation>(
+        `/chat/conversations/${conversationId}/members/${userId}/block`,
+        { method: 'POST' },
+      )
+    },
+
+    async unblockMember(conversationId: string, userId: string): Promise<Conversation | null> {
+      return await request<Conversation>(
+        `/chat/conversations/${conversationId}/members/${userId}/unblock`,
+        { method: 'POST' },
+      )
     },
   }
 
