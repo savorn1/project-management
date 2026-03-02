@@ -23,7 +23,15 @@
           >
             <span class="text-xl">{{ item.icon }}</span>
             <span class="font-medium">{{ item.label }}</span>
-            <span v-if="isActive(item.path)" class="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+
+            <!-- Unread badge for Chat -->
+            <span
+              v-if="item.path === '/chat' && totalUnread > 0"
+              class="ml-auto min-w-[18px] h-[18px] px-1 bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full text-[10px] text-white font-bold flex items-center justify-center shadow-lg shadow-indigo-500/30"
+            >
+              {{ totalUnread > 99 ? '99+' : totalUnread }}
+            </span>
+            <span v-else-if="isActive(item.path)" class="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-400" />
           </NuxtLink>
         </li>
       </ul>
@@ -33,6 +41,7 @@
 
 <script setup lang="ts">
 const route = useRoute()
+const { totalUnread } = useChat()
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: '📊' },
@@ -40,13 +49,14 @@ const navItems = [
   { path: '/projects', label: 'Projects', icon: '📁' },
   { path: '/tasks', label: 'Tasks', icon: '✅' },
   { path: '/team', label: 'Team', icon: '👥' },
+  { path: '/chat', label: 'Chat', icon: '💬' },
   { path: '/dev-tools', label: 'Dev Tools', icon: '🛠️' },
   { path: '/health', label: 'System Health', icon: '🩺' },
   { path: '/payments', label: 'Payments', icon: '💳' },
   { path: '/qr-history', label: 'QR History', icon: '🔲' },
   { path: '/fund-pools', label: 'Fund Pools', icon: '💰' },
   { path: '/feature-flags', label: 'Feature Flags', icon: '🏳️' },
-  { path: '/uploads', label: 'File Uploads', icon: '📎' }
+  { path: '/uploads', label: 'File Uploads', icon: '📎' },
 ]
 
 function isActive(path: string): boolean {

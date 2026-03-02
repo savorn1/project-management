@@ -345,6 +345,50 @@ export interface PaymentQrDetail {
   secondsLeft: number
 }
 
+// ─── Chat ─────────────────────────────────────────────────────────────────────
+
+export type ConversationType = 'private' | 'group'
+export type MessageType = 'text' | 'image' | 'file' | 'system'
+
+export interface LastMessageSnapshot {
+  messageId: string
+  senderId: string
+  content: string
+  createdAt: string
+}
+
+export interface Conversation {
+  _id: string
+  type: ConversationType
+  participants: string[]
+  name?: string
+  avatar?: string
+  createdBy?: string
+  admins: string[]
+  lastMessage?: LastMessageSnapshot
+  createdAt: string
+  updatedAt: string
+}
+
+export interface MessageReadReceipt {
+  userId: string
+  readAt: string
+}
+
+export interface ChatMessage {
+  _id: string
+  conversationId: string
+  senderId: string
+  type: MessageType
+  content: string
+  replyTo?: string
+  readBy: MessageReadReceipt[]
+  isDeleted: boolean
+  deletedAt?: string
+  createdAt: string
+  updatedAt: string
+}
+
 // Dashboard Stats
 export interface DashboardStats {
   totalProjects: number

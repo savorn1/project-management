@@ -1,5 +1,7 @@
 import type {
   AppNotification,
+  ChatMessage,
+  Conversation,
   CreateOrderInput,
   DashboardStats,
   FundPool,
@@ -782,6 +784,81 @@ export function useApi() {
     },
   }
 
+  // Chat API
+  const chatApi = {
+    async getConversations(): Promise<Conversation[]> {
+      const response = await request<Conversation[]>('/chat/conversations')
+      return response ?? []
+    },
+
+    async createConversation(data: {
+      type: 'private' | 'group'
+      participants: string[]
+      name?: string
+      avatar?: string
+    }): Promise<Conversation | null> {
+      return await request<Conversation>('/chat/conversations', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      })
+    },
+
+    async getMessages(
+      conversationId: string,
+      page = 1,
+      limit = 50,
+    ): Promise<{ data: ChatMessage[]; total: number }> {
+      const response = await request<{ data: ChatMessage[]; total: number }>(
+        `/chat/conversations/${conversationId}/messages?page=${page}&limit=${limit}`,
+      )
+      return response ?? { data: [], total: 0 }
+    },
+
+    async sendMessage(
+      conversationId: string,
+      content: string,
+      replyTo?: string,
+    ): Promise<ChatMessage | null> {
+      return await request<ChatMessage>(
+        `/chat/conversations/${conversationId}/messages`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ content, replyTo }),
+        },
+      )
+    },
+
+    async markAsRead(conversationId: string, messageId: string): Promise<void> {
+      await request(`/chat/conversations/${conversationId}/messages/${messageId}/read`, {
+        method: 'POST',
+      })
+    },
+
+    async deleteMessage(messageId: string): Promise<boolean> {
+      const response = await request(`/chat/messages/${messageId}`, {
+        method: 'DELETE',
+      })
+      return response !== null
+    },
+
+    async addParticipants(conversationId: string, userIds: string[]): Promise<Conversation | null> {
+      return await request<Conversation>(`/chat/conversations/${conversationId}/participants`, {
+        method: 'POST',
+        body: JSON.stringify({ userIds }),
+      })
+    },
+
+    async updateGroup(
+      conversationId: string,
+      data: { name?: string; avatar?: string; admins?: string[] },
+    ): Promise<Conversation | null> {
+      return await request<Conversation>(`/chat/conversations/${conversationId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      })
+    },
+  }
+
   // Health check
   async function checkHealth(): Promise<boolean> {
     const response = await request('/health')
@@ -808,6 +885,7 @@ export function useApi() {
     ordersApi,
     paymentsApi,
     milestonesApi,
+    chatApi,
     checkHealth,
   }
 }

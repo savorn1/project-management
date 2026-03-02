@@ -27,6 +27,7 @@ export function useSocket() {
       auth: {
         token: tokens.value?.accessToken,
         username: user.value?.name || 'Anonymous',
+        userId: user.value?.id ?? '',
       },
       reconnection: true,
       reconnectionAttempts: 10,
@@ -86,6 +87,10 @@ export function useSocket() {
     }
   }
 
+  function emit(event: string, data?: unknown) {
+    socket?.emit(event, data)
+  }
+
   return {
     clientId,
     isConnected: readonly(isConnected),
@@ -95,5 +100,6 @@ export function useSocket() {
     leaveRoom,
     on,
     off,
+    emit,
   }
 }
