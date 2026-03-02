@@ -1,384 +1,80 @@
 import type { ChatMessage, Conversation, TeamMember } from '~/types'
 
-// ── Shared singleton state ────────────────────────────────────────────────────
+// ── Singleton state ────────────────────────────────────────────────────────────
 const conversations = ref<Conversation[]>([])
 const activeConversationId = ref<string | null>(null)
 const messages = ref<ChatMessage[]>([])
 const totalUnread = ref(0)
-
-// typing: conversationId → { userId, userName, timer }
 const typingMap = ref<Map<string, { userId: string; userName: string; timer: ReturnType<typeof setTimeout> }>>(new Map())
 
 let socketListenersRegistered = false
 
 export function useChat() {
-  const { chatApi, teamApi } = useApi()
+  const { chatApi } = useApi()
   const { user } = useAuth()
   const { on, emit: socketEmit, joinRoom } = useSocket()
   const toast = useToast()
 
-  // ── Derived ────────────────────────────────────────────────────────────────
+  // ── Computed ──────────────────────────────────────────────────────────────
 
   const activeConversation = computed(() =>
     conversations.value.find((c) => c._id === activeConversationId.value) ?? null,
   )
 
-  /** Users currently typing in the active conversation (excluding self) */
+  /** Names of users currently typing in the active conversation (excluding self) */
   const typingUsers = computed<string[]>(() => {
     if (!activeConversationId.value) return []
     const entry = typingMap.value.get(activeConversationId.value)
-    if (!entry) return []
-    if (entry.userId === user.value?.id) return []
+    if (!entry || entry.userId === user.value?.id) return []
     return [entry.userName]
   })
 
-  function conversationName(conv: Conversation): string {
-    return conv.name ?? 'Chat'
+  // ── Internal helpers ──────────────────────────────────────────────────────
+
+  /** Merge a partial patch into a single conversation by id */
+  function patchConversation(id: string, patch: Partial<Conversation>) {
+    conversations.value = conversations.value.map((c) =>
+      c._id === id ? { ...c, ...patch } : c,
+    ) as Conversation[]
   }
 
-  function conversationInitials(conv: Conversation): string {
-    const name = conversationName(conv)
-    const parts = name.trim().split(/\s+/)
-    if (parts.length >= 2) return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase()
-    return name.charAt(0).toUpperCase()
-  }
-
-  // ── Load conversations ─────────────────────────────────────────────────────
-
-  async function loadConversations(teamMembers?: TeamMember[]) {
-    const data = await chatApi.getConversations()
-
-    if (teamMembers && user.value) {
-      const memberMap = new Map(teamMembers.map((m) => [m._id, m]))
-      conversations.value = data.map((conv) => {
-        if (conv.type === 'private') {
-          const otherId = conv.participants.find((p) => p !== user.value!.id)
-          const other = otherId ? memberMap.get(otherId) : undefined
-          return { ...conv, name: other?.name ?? 'Unknown User' }
-        }
-        return conv
-      })
-    } else {
-      conversations.value = data
+  /** Remove a conversation from the list and clear active state if needed */
+  function dropConversation(id: string) {
+    conversations.value = conversations.value.filter((c) => c._id !== id)
+    if (activeConversationId.value === id) {
+      activeConversationId.value = null
+      messages.value = []
     }
+  }
 
-    recalcUnread()
+  /** Build a lastMessage snapshot object from a message */
+  function toLastMessageSnapshot(msg: ChatMessage) {
+    return {
+      messageId: msg._id,
+      senderId: msg.senderId,
+      content: msg.content,
+      createdAt: msg.createdAt,
+    }
   }
 
   function recalcUnread() {
-    // Sum unread from conversations where lastMessage sender is not me
     totalUnread.value = conversations.value.filter(
       (c) => c.lastMessage && c.lastMessage.senderId !== user.value?.id,
     ).length
   }
 
-  // ── Select conversation ────────────────────────────────────────────────────
+  // ── Public helpers ────────────────────────────────────────────────────────
 
-  async function selectConversation(id: string) {
-    // Leave previous conversation room
-    if (activeConversationId.value && activeConversationId.value !== id) {
-      socketEmit('leaveConversationRoom', { conversationId: activeConversationId.value })
-    }
-
-    activeConversationId.value = id
-    messages.value = []
-    await loadMessages(id)
-
-    // Join conversation room for typing indicators
-    socketEmit('joinConversationRoom', { conversationId: id })
-
-    // Mark last message as read
-    const conv = conversations.value.find((c) => c._id === id)
-    if (conv?.lastMessage) {
-      chatApi.markAsRead(id, conv.lastMessage.messageId).catch(() => {})
-      // Reset unread state for this conversation locally
-      conversations.value = conversations.value.map((c) =>
-        c._id === id ? { ...c, _unread: 0 } : c,
-      ) as Conversation[]
-      recalcUnread()
-    }
+  function conversationName(conversation: Conversation): string {
+    return conversation.name ?? 'Chat'
   }
 
-  // ── Load messages ─────────────────────────────────────────────────────────
-
-  async function loadMessages(conversationId: string, page = 1) {
-    const { data } = await chatApi.getMessages(conversationId, page)
-    messages.value = [...data].reverse()
+  function conversationInitials(conversation: Conversation): string {
+    const name = conversationName(conversation)
+    const parts = name.trim().split(/\s+/)
+    if (parts.length >= 2) return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase()
+    return name.charAt(0).toUpperCase()
   }
-
-  // ── Send message ──────────────────────────────────────────────────────────
-
-  async function sendMessage(content: string, replyTo?: string): Promise<boolean> {
-    if (!activeConversationId.value || !content.trim()) return false
-
-    // Stop typing indicator immediately
-    sendTyping(false)
-
-    const msg = await chatApi.sendMessage(activeConversationId.value, content.trim(), replyTo)
-    if (msg) {
-      messages.value = [...messages.value, msg]
-      conversations.value = conversations.value.map((c) =>
-        c._id === activeConversationId.value
-          ? {
-              ...c,
-              lastMessage: {
-                messageId: msg._id,
-                senderId: msg.senderId,
-                content: msg.content,
-                createdAt: msg.createdAt,
-              },
-            }
-          : c,
-      )
-      return true
-    }
-    return false
-  }
-
-  // ── Typing indicator ──────────────────────────────────────────────────────
-
-  let typingTimeout: ReturnType<typeof setTimeout> | null = null
-  let isCurrentlyTyping = false
-
-  function sendTyping(isTyping: boolean) {
-    if (!activeConversationId.value) return
-
-    if (isTyping) {
-      if (!isCurrentlyTyping) {
-        isCurrentlyTyping = true
-        socketEmit('chat:typing', { conversationId: activeConversationId.value, isTyping: true })
-      }
-      // Auto stop after 3s of no keystrokes
-      if (typingTimeout) clearTimeout(typingTimeout)
-      typingTimeout = setTimeout(() => {
-        isCurrentlyTyping = false
-        socketEmit('chat:typing', { conversationId: activeConversationId.value, isTyping: false })
-      }, 3000)
-    } else {
-      if (typingTimeout) { clearTimeout(typingTimeout); typingTimeout = null }
-      if (isCurrentlyTyping) {
-        isCurrentlyTyping = false
-        socketEmit('chat:typing', { conversationId: activeConversationId.value, isTyping: false })
-      }
-    }
-  }
-
-  // ── Create conversation ────────────────────────────────────────────────────
-
-  async function createPrivateConversation(participantId: string, participantName: string): Promise<string | null> {
-    const conv = await chatApi.createConversation({ type: 'private', participants: [participantId] })
-    if (!conv) return null
-    const annotated = { ...conv, name: participantName }
-    const exists = conversations.value.find((c) => c._id === conv._id)
-    if (!exists) conversations.value = [annotated, ...conversations.value]
-    return conv._id
-  }
-
-  async function createGroupConversation(name: string, participantIds: string[]): Promise<string | null> {
-    const conv = await chatApi.createConversation({ type: 'group', participants: participantIds, name })
-    if (!conv) return null
-    const exists = conversations.value.find((c) => c._id === conv._id)
-    if (!exists) conversations.value = [conv, ...conversations.value]
-    return conv._id
-  }
-
-  // ── Member management ─────────────────────────────────────────────────────
-
-  async function leaveGroup(conversationId: string): Promise<boolean> {
-    const updated = await chatApi.leaveGroup(conversationId)
-    if (updated !== null) {
-      conversations.value = conversations.value.filter((c) => c._id !== conversationId)
-      if (activeConversationId.value === conversationId) {
-        activeConversationId.value = null
-        messages.value = []
-      }
-      return true
-    }
-    return false
-  }
-
-  async function removeMember(conversationId: string, userId: string): Promise<boolean> {
-    const updated = await chatApi.removeMember(conversationId, userId)
-    if (updated) {
-      conversations.value = conversations.value.map((c) =>
-        c._id === conversationId ? { ...c, participants: updated.participants } : c,
-      ) as Conversation[]
-      return true
-    }
-    return false
-  }
-
-  async function blockMember(conversationId: string, userId: string): Promise<boolean> {
-    const updated = await chatApi.blockMember(conversationId, userId)
-    if (updated) {
-      conversations.value = conversations.value.map((c) =>
-        c._id === conversationId
-          ? { ...c, blockedMembers: updated.blockedMembers }
-          : c,
-      ) as Conversation[]
-      return true
-    }
-    return false
-  }
-
-  async function unblockMember(conversationId: string, userId: string): Promise<boolean> {
-    const updated = await chatApi.unblockMember(conversationId, userId)
-    if (updated) {
-      conversations.value = conversations.value.map((c) =>
-        c._id === conversationId
-          ? { ...c, blockedMembers: updated.blockedMembers }
-          : c,
-      ) as Conversation[]
-      return true
-    }
-    return false
-  }
-
-  // ── Delete message ────────────────────────────────────────────────────────
-
-  async function deleteMessage(messageId: string) {
-    const ok = await chatApi.deleteMessage(messageId)
-    if (ok) {
-      messages.value = messages.value.map((m) =>
-        m._id === messageId ? { ...m, isDeleted: true, content: '' } : m,
-      )
-    }
-  }
-
-  // ── Real-time socket listeners ─────────────────────────────────────────────
-
-  function startListening() {
-    if (socketListenersRegistered || !user.value?.id) return
-    socketListenersRegistered = true
-
-    joinRoom(`user:${user.value.id}`)
-
-    // ── New message from another participant ───────────────────────────────
-    on<ChatMessage>('chat:message:new', (msg) => {
-      const isActiveConv = msg.conversationId === activeConversationId.value
-
-      if (isActiveConv) {
-        // Append to open conversation and mark as read
-        messages.value = [...messages.value, msg]
-        chatApi.markAsRead(msg.conversationId, msg._id).catch(() => {})
-      } else {
-        // Toast notification for inactive conversations
-        const conv = conversations.value.find((c) => c._id === msg.conversationId)
-        const convName = conv ? conversationName(conv) : 'Chat'
-        toast.info(`💬 ${convName}: ${msg.content.slice(0, 60)}${msg.content.length > 60 ? '…' : ''}`)
-        totalUnread.value++
-      }
-
-      // Update lastMessage snapshot on conversation list
-      conversations.value = conversations.value.map((c) =>
-        c._id === msg.conversationId
-          ? {
-              ...c,
-              lastMessage: {
-                messageId: msg._id,
-                senderId: msg.senderId,
-                content: msg.content,
-                createdAt: msg.createdAt,
-              },
-            }
-          : c,
-      )
-    })
-
-    // ── Message deleted ────────────────────────────────────────────────────
-    on<{ messageId: string; conversationId: string }>('chat:message:deleted', ({ messageId, conversationId }) => {
-      if (conversationId === activeConversationId.value) {
-        messages.value = messages.value.map((m) =>
-          m._id === messageId ? { ...m, isDeleted: true, content: '' } : m,
-        )
-      }
-    })
-
-    // ── New conversation created by another user ───────────────────────────
-    on<Conversation>('chat:conversation:new', (conv) => {
-      const exists = conversations.value.find((c) => c._id === conv._id)
-      if (!exists) {
-        conversations.value = [conv, ...conversations.value]
-        toast.info(`💬 You've been added to a new conversation`)
-      }
-    })
-
-    // ── Member left ────────────────────────────────────────────────────────
-    on<{ conversationId: string; userId: string }>('chat:member:left', ({ conversationId, userId }) => {
-      conversations.value = conversations.value.map((c) =>
-        c._id === conversationId
-          ? { ...c, participants: c.participants.filter((p) => p !== userId) }
-          : c,
-      ) as Conversation[]
-    })
-
-    // ── Member removed ─────────────────────────────────────────────────────
-    on<{ conversationId: string; userId: string }>('chat:member:removed', ({ conversationId, userId }) => {
-      const isMe = userId === user.value?.id
-      if (isMe) {
-        // I was removed — drop conversation
-        conversations.value = conversations.value.filter((c) => c._id !== conversationId)
-        if (activeConversationId.value === conversationId) {
-          activeConversationId.value = null
-          messages.value = []
-        }
-        toast.info('You were removed from the group.')
-      } else {
-        conversations.value = conversations.value.map((c) =>
-          c._id === conversationId
-            ? { ...c, participants: c.participants.filter((p) => p !== userId) }
-            : c,
-        ) as Conversation[]
-      }
-    })
-
-    // ── Member blocked / unblocked ─────────────────────────────────────────
-    on<{ conversationId: string; userId: string }>('chat:member:blocked', ({ conversationId, userId }) => {
-      conversations.value = conversations.value.map((c) =>
-        c._id === conversationId
-          ? { ...c, blockedMembers: [...(c.blockedMembers ?? []), userId] }
-          : c,
-      ) as Conversation[]
-    })
-
-    on<{ conversationId: string; userId: string }>('chat:member:unblocked', ({ conversationId, userId }) => {
-      conversations.value = conversations.value.map((c) =>
-        c._id === conversationId
-          ? { ...c, blockedMembers: (c.blockedMembers ?? []).filter((b) => b !== userId) }
-          : c,
-      ) as Conversation[]
-    })
-
-    // ── Typing indicator ───────────────────────────────────────────────────
-    on<{ userId: string; userName: string; isTyping: boolean; conversationId: string }>(
-      'chat:typing',
-      ({ userId, userName, isTyping, conversationId }) => {
-        if (userId === user.value?.id) return // ignore self
-
-        const current = new Map(typingMap.value)
-        if (isTyping) {
-          // Clear previous timer for this user in this conv
-          const existing = current.get(conversationId)
-          if (existing) clearTimeout(existing.timer)
-
-          const timer = setTimeout(() => {
-            const m = new Map(typingMap.value)
-            m.delete(conversationId)
-            typingMap.value = m
-          }, 4000)
-
-          current.set(conversationId, { userId, userName, timer })
-        } else {
-          const existing = current.get(conversationId)
-          if (existing) clearTimeout(existing.timer)
-          current.delete(conversationId)
-        }
-        typingMap.value = current
-      },
-    )
-  }
-
-  // ── Helpers ───────────────────────────────────────────────────────────────
 
   function isMyMessage(msg: ChatMessage): boolean {
     return msg.senderId === user.value?.id
@@ -390,35 +86,271 @@ export function useChat() {
 
   function formatDate(dateStr: string): string {
     const d = new Date(dateStr)
-    const now = new Date()
-    const diff = now.getTime() - d.getTime()
-    const days = Math.floor(diff / 86400000)
+    const diff = Date.now() - d.getTime()
+    const days = Math.floor(diff / 86_400_000)
     if (days === 0) return 'Today'
     if (days === 1) return 'Yesterday'
     if (days < 7) return d.toLocaleDateString([], { weekday: 'long' })
     return d.toLocaleDateString()
   }
 
-  function lastMessagePreview(conv: Conversation): string {
-    if (!conv.lastMessage) return 'No messages yet'
-    if (conv.lastMessage.content === '') return 'Message deleted'
-    return conv.lastMessage.content.length > 40
-      ? conv.lastMessage.content.slice(0, 40) + '…'
-      : conv.lastMessage.content
+  function lastMessagePreview(conversation: Conversation): string {
+    if (!conversation.lastMessage) return 'No messages yet'
+    if (!conversation.lastMessage.content) return 'Message deleted'
+    const { content } = conversation.lastMessage
+    return content.length > 40 ? content.slice(0, 40) + '…' : content
   }
 
-  function lastMessageTime(conv: Conversation): string {
-    if (!conv.lastMessage) return ''
-    const diff = Date.now() - new Date(conv.lastMessage.createdAt).getTime()
-    const min = Math.floor(diff / 60000)
-    const hr = Math.floor(diff / 3600000)
-    const day = Math.floor(diff / 86400000)
+  function lastMessageTime(conversation: Conversation): string {
+    if (!conversation.lastMessage) return ''
+    const diff = Date.now() - new Date(conversation.lastMessage.createdAt).getTime()
+    const min = Math.floor(diff / 60_000)
+    const hr = Math.floor(diff / 3_600_000)
+    const day = Math.floor(diff / 86_400_000)
     if (min < 1) return 'now'
     if (min < 60) return `${min}m`
     if (hr < 24) return `${hr}h`
     if (day < 7) return `${day}d`
-    return new Date(conv.lastMessage.createdAt).toLocaleDateString()
+    return new Date(conversation.lastMessage.createdAt).toLocaleDateString()
   }
+
+  // ── Conversations ─────────────────────────────────────────────────────────
+
+  async function loadConversations(teamMembers?: TeamMember[]) {
+    const data = await chatApi.getConversations()
+
+    if (teamMembers && user.value) {
+      const memberMap = new Map(teamMembers.map((m) => [m._id, m]))
+      conversations.value = data.map((item) => {
+        if (item.type !== 'private') return item
+        const otherId = item.participants.find((p) => p !== user.value!.id)
+        const other = otherId ? memberMap.get(otherId) : undefined
+        return { ...item, name: other?.name ?? 'Unknown User' }
+      })
+    } else {
+      conversations.value = data
+    }
+
+    recalcUnread()
+  }
+
+  async function selectConversation(id: string) {
+    if (activeConversationId.value && activeConversationId.value !== id) {
+      socketEmit('leaveConversationRoom', { conversationId: activeConversationId.value })
+    }
+
+    activeConversationId.value = id
+    messages.value = []
+    await loadMessages(id)
+
+    socketEmit('joinConversationRoom', { conversationId: id })
+
+    const selected = conversations.value.find((c) => c._id === id)
+    if (selected?.lastMessage) {
+      chatApi.markAsRead(id, selected.lastMessage.messageId).catch(() => { })
+      patchConversation(id, { _unread: 0 } as Partial<Conversation>)
+      recalcUnread()
+    }
+  }
+
+  async function loadMessages(conversationId: string, page = 1) {
+    const { data } = await chatApi.getMessages(conversationId, page)
+    messages.value = [...data].reverse()
+  }
+
+  async function createPrivateConversation(participantId: string, participantName: string): Promise<string | null> {
+    const created = await chatApi.createConversation({ type: 'private', participants: [participantId] })
+    if (!created) return null
+    if (!conversations.value.find((c) => c._id === created._id))
+      conversations.value = [{ ...created, name: participantName }, ...conversations.value]
+    return created._id
+  }
+
+  async function createGroupConversation(name: string, participantIds: string[]): Promise<string | null> {
+    const created = await chatApi.createConversation({ type: 'group', participants: participantIds, name })
+    if (!created) return null
+    if (!conversations.value.find((c) => c._id === created._id))
+      conversations.value = [created, ...conversations.value]
+    return created._id
+  }
+
+  // ── Messages ──────────────────────────────────────────────────────────────
+
+  async function sendMessage(content: string, replyTo?: string): Promise<boolean> {
+    if (!activeConversationId.value || !content.trim()) return false
+    sendTyping(false)
+
+    const msg = await chatApi.sendMessage(activeConversationId.value, content.trim(), replyTo)
+    if (!msg) return false
+
+    messages.value = [...messages.value, msg]
+    patchConversation(activeConversationId.value, { lastMessage: toLastMessageSnapshot(msg) })
+    return true
+  }
+
+  async function deleteMessage(messageId: string) {
+    const ok = await chatApi.deleteMessage(messageId)
+    if (ok) {
+      messages.value = messages.value.map((m) =>
+        m._id === messageId ? { ...m, isDeleted: true, content: '' } : m,
+      )
+    }
+  }
+
+  // ── Typing indicator ──────────────────────────────────────────────────────
+
+  let typingTimeout: ReturnType<typeof setTimeout> | null = null
+  let isCurrentlyTyping = false
+
+  function sendTyping(isTyping: boolean) {
+    const conversationId = activeConversationId.value
+    if (!conversationId) return
+
+    if (isTyping) {
+      if (!isCurrentlyTyping) {
+        isCurrentlyTyping = true
+        socketEmit('chat:typing', { conversationId, isTyping: true })
+      }
+      if (typingTimeout) clearTimeout(typingTimeout)
+      typingTimeout = setTimeout(() => {
+        isCurrentlyTyping = false
+        socketEmit('chat:typing', { conversationId, isTyping: false })
+      }, 3000)
+    } else {
+      if (typingTimeout) { clearTimeout(typingTimeout); typingTimeout = null }
+      if (isCurrentlyTyping) {
+        isCurrentlyTyping = false
+        socketEmit('chat:typing', { conversationId, isTyping: false })
+      }
+    }
+  }
+
+  // ── Member management ─────────────────────────────────────────────────────
+
+  async function leaveGroup(conversationId: string): Promise<boolean> {
+    const ok = await chatApi.leaveGroup(conversationId)
+    if (ok !== null) dropConversation(conversationId)
+    return ok !== null
+  }
+
+  async function removeMember(conversationId: string, userId: string): Promise<boolean> {
+    const updated = await chatApi.removeMember(conversationId, userId)
+    if (updated) patchConversation(conversationId, { participants: updated.participants })
+    return !!updated
+  }
+
+  async function blockMember(conversationId: string, userId: string): Promise<boolean> {
+    const updated = await chatApi.blockMember(conversationId, userId)
+    if (updated) patchConversation(conversationId, { blockedMembers: updated.blockedMembers })
+    return !!updated
+  }
+
+  async function unblockMember(conversationId: string, userId: string): Promise<boolean> {
+    const updated = await chatApi.unblockMember(conversationId, userId)
+    if (updated) patchConversation(conversationId, { blockedMembers: updated.blockedMembers })
+    return !!updated
+  }
+
+  // ── Socket event handlers ─────────────────────────────────────────────────
+
+  function onNewMessage(msg: ChatMessage) {
+    if (msg.conversationId === activeConversationId.value) {
+      messages.value = [...messages.value, msg]
+      chatApi.markAsRead(msg.conversationId, msg._id).catch(() => { })
+    } else {
+      const found = conversations.value.find((c) => c._id === msg.conversationId)
+      const name = found ? conversationName(found) : 'Chat'
+      const preview = msg.content.length > 60 ? msg.content.slice(0, 60) + '…' : msg.content
+      toast.info(`💬 ${name}: ${preview}`)
+      totalUnread.value++
+    }
+    patchConversation(msg.conversationId, { lastMessage: toLastMessageSnapshot(msg) })
+  }
+
+  function onMessageDeleted({ messageId, conversationId }: { messageId: string; conversationId: string }) {
+    if (conversationId !== activeConversationId.value) return
+    messages.value = messages.value.map((m) =>
+      m._id === messageId ? { ...m, isDeleted: true, content: '' } : m,
+    )
+  }
+
+  function onConversationNew(incoming: Conversation) {
+    if (conversations.value.find((c) => c._id === incoming._id)) return
+    conversations.value = [incoming, ...conversations.value]
+    toast.info(`💬 You've been added to a new conversation`)
+  }
+
+  function onMemberAdded({ conversationId, userIds }: { conversationId: string; userIds: string[] }) {
+    const target = conversations.value.find((c) => c._id === conversationId)
+    if (!target) return
+    const merged = [...new Set([...target.participants, ...userIds])]
+    patchConversation(conversationId, { participants: merged })
+  }
+
+  function onMemberLeft({ conversationId, userId }: { conversationId: string; userId: string }) {
+    const target = conversations.value.find((c) => c._id === conversationId)
+    if (!target) return
+    patchConversation(conversationId, { participants: target.participants.filter((p) => p !== userId) })
+  }
+
+  function onMemberRemoved({ conversationId, userId }: { conversationId: string; userId: string }) {
+    if (userId === user.value?.id) {
+      dropConversation(conversationId)
+      toast.info('You were removed from the group.')
+    } else {
+      onMemberLeft({ conversationId, userId })
+    }
+  }
+
+  function onMemberBlocked({ conversationId, userId }: { conversationId: string; userId: string }) {
+    const target = conversations.value.find((c) => c._id === conversationId)
+    if (!target) return
+    patchConversation(conversationId, { blockedMembers: [...(target.blockedMembers ?? []), userId] })
+  }
+
+  function onMemberUnblocked({ conversationId, userId }: { conversationId: string; userId: string }) {
+    const target = conversations.value.find((c) => c._id === conversationId)
+    if (!target) return
+    patchConversation(conversationId, { blockedMembers: target.blockedMembers.filter((b) => b !== userId) })
+  }
+
+  function onTyping({ userId, userName, isTyping, conversationId }: {
+    userId: string; userName: string; isTyping: boolean; conversationId: string
+  }) {
+    if (userId === user.value?.id) return
+    const current = new Map(typingMap.value)
+    const existing = current.get(conversationId)
+    if (existing) clearTimeout(existing.timer)
+    if (isTyping) {
+      const timer = setTimeout(() => {
+        const m = new Map(typingMap.value)
+        m.delete(conversationId)
+        typingMap.value = m
+      }, 4000)
+      current.set(conversationId, { userId, userName, timer })
+    } else {
+      current.delete(conversationId)
+    }
+    typingMap.value = current
+  }
+
+  function startListening() {
+    if (socketListenersRegistered || !user.value?.id) return
+    socketListenersRegistered = true
+    joinRoom(`user:${user.value.id}`)
+
+    on('chat:message:new', onNewMessage)
+    on('chat:message:deleted', onMessageDeleted)
+    on('chat:conversation:new', onConversationNew)
+    on('chat:member:added', onMemberAdded)
+    on('chat:member:left', onMemberLeft)
+    on('chat:member:removed', onMemberRemoved)
+    on('chat:member:blocked', onMemberBlocked)
+    on('chat:member:unblocked', onMemberUnblocked)
+    on('chat:typing', onTyping)
+  }
+
+  // ── Public API ────────────────────────────────────────────────────────────
 
   return {
     // State
@@ -429,18 +361,24 @@ export function useChat() {
     totalUnread: readonly(totalUnread),
     typingUsers,
 
-    // Actions
+    // Conversation actions
     loadConversations,
     selectConversation,
+    createPrivateConversation,
+    createGroupConversation,
+
+    // Message actions
     sendMessage,
     sendTyping,
     deleteMessage,
-    createPrivateConversation,
-    createGroupConversation,
+
+    // Member actions
     leaveGroup,
     removeMember,
     blockMember,
     unblockMember,
+
+    // Real-time
     startListening,
 
     // Helpers

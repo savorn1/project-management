@@ -25,9 +25,8 @@
         :class="mine
           ? 'bg-gradient-to-br from-indigo-600 to-violet-600 text-white rounded-tr-sm'
           : 'bg-slate-800/80 text-gray-200 rounded-tl-sm border border-slate-700/40'"
-      >
-        {{ message.content }}
-      </div>
+        v-html="renderedContent"
+      />
 
       <!-- Time + actions -->
       <div class="flex items-center gap-2 mt-1 px-1" :class="mine ? 'flex-row-reverse' : 'flex-row'">
@@ -66,5 +65,25 @@ const senderInitials = computed(() => {
   const parts = name.trim().split(/\s+/)
   if (parts.length >= 2) return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase()
   return name.charAt(0).toUpperCase()
+})
+
+function mentionChip(name: string, isEveryone: boolean): string {
+  const cls = isEveryone
+    ? 'background:rgba(245,158,11,0.15);color:rgb(252,211,77);border:1px solid rgba(245,158,11,0.25);'
+    : 'background:rgba(99,102,241,0.15);color:rgb(165,180,252);border:1px solid rgba(99,102,241,0.25);'
+  return `<span style="${cls}padding:0 4px;border-radius:4px;font-weight:600;font-size:11px;white-space:nowrap;">@${name}</span>`
+}
+
+const renderedContent = computed(() => {
+  // Escape HTML first to prevent XSS
+  const escaped = props.message.content
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+
+  return escaped
+    .replace(/@\[everyone\]/g, () => mentionChip('everyone', true))
+    .replace(/@\[([^\]]+)\]\([^)]+\)/g, (_, name: string) => mentionChip(name, false))
+    .replace(/\n/g, '<br>')
 })
 </script>

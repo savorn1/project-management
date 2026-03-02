@@ -1,12 +1,50 @@
 <template>
-  <div class="flex items-end gap-2 p-4 border-t border-slate-800/60">
+  <div class="relative flex items-end gap-2 p-4 border-t border-slate-800/60">
+
+    <!-- Mention dropdown -->
+    <Transition
+      enter-active-class="transition ease-out duration-100"
+      enter-from-class="opacity-0 translate-y-1"
+      enter-to-class="opacity-100 translate-y-0"
+      leave-active-class="transition ease-in duration-75"
+      leave-from-class="opacity-100 translate-y-0"
+      leave-to-class="opacity-0 translate-y-1"
+    >
+      <div
+        v-if="showDropdown && filteredOptions.length > 0"
+        class="absolute bottom-full left-4 right-16 mb-1 bg-slate-800 border border-slate-700/60 rounded-xl shadow-xl overflow-hidden z-10"
+      >
+        <div
+          v-for="(option, i) in filteredOptions"
+          :key="option.id"
+          @mousedown.prevent="selectOption(option)"
+          class="flex items-center gap-2.5 px-3 py-2 cursor-pointer transition-colors"
+          :class="i === selectedIndex ? 'bg-indigo-500/20' : 'hover:bg-slate-700/40'"
+        >
+          <div
+            class="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0"
+            :class="option.type === 'everyone'
+              ? 'bg-gradient-to-br from-amber-500 to-orange-600'
+              : 'bg-gradient-to-br from-slate-600 to-slate-700'"
+          >
+            {{ option.type === 'everyone' ? '✦' : option.name.charAt(0).toUpperCase() }}
+          </div>
+          <div>
+            <p class="text-xs font-medium" :class="i === selectedIndex ? 'text-indigo-200' : 'text-gray-300'">
+              {{ option.name }}
+            </p>
+            <p v-if="option.type === 'everyone'" class="text-[10px] text-gray-500">Notify all members</p>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
     <div class="flex-1 relative">
       <textarea
         ref="textareaRef"
         v-model="text"
-        @keydown.enter.exact.prevent="submit"
-        @keydown.enter.shift.exact="newline"
         @keydown="onKeydown"
+        @input="onInput"
         @blur="onBlur"
         rows="1"
         placeholder="Type a message… (Enter to send, Shift+Enter for new line)"
@@ -31,6 +69,12 @@
 </template>
 
 <script setup lang="ts">
+import type { TeamMember } from '~/types'
+
+const props = defineProps<{
+  members: TeamMember[]
+}>()
+
 const emit = defineEmits<{
   send: [content: string]
   typing: [isTyping: boolean]
@@ -40,6 +84,9 @@ const text = ref('')
 const loading = ref(false)
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 
+const { showDropdown, filteredOptions, selectedIndex, handleInput, handleKeydown: mentionKeydown, selectOption } =
+  useMentionInput(textareaRef, toRef(props, 'members'), text)
+
 function autoResize() {
   const el = textareaRef.value
   if (!el) return
@@ -47,8 +94,28 @@ function autoResize() {
   el.style.height = Math.min(el.scrollHeight, 128) + 'px'
 }
 
+function onInput() {
+  handleInput()
+  autoResize()
+}
+
 function onKeydown(e: KeyboardEvent) {
-  // Don't count Enter/Shift/Ctrl/etc as typing
+  // Snapshot before mention handler may close the dropdown
+  const dropdownWasOpen = showDropdown.value
+  mentionKeydown(e)
+
+  // Mention dropdown handled this key — don't do anything else
+  if (dropdownWasOpen && ['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(e.key)) {
+    e.preventDefault()
+    return
+  }
+
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault()
+    submit()
+    return
+  }
+
   if (['Enter', 'Escape', 'Tab'].includes(e.key)) return
   autoResize()
   emit('typing', true)
@@ -69,11 +136,6 @@ async function submit() {
   })
   emit('send', content)
   loading.value = false
-}
-
-function newline() {
-  text.value += '\n'
-  nextTick(autoResize)
 }
 
 defineExpose({ focus: () => textareaRef.value?.focus() })

@@ -1,6 +1,7 @@
 import { io, type Socket } from 'socket.io-client'
+import type { ClientToServerEvents, ServerToClientEvents } from '~/types/socketEvents'
 
-let socket: Socket | null = null
+let socket: Socket<ServerToClientEvents, ClientToServerEvents> | null = null
 const isConnected = ref(false)
 const pendingRooms = new Set<string>()
 
@@ -75,20 +76,29 @@ export function useSocket() {
     }
   }
 
-  function on<T = unknown>(event: string, callback: (data: T) => void) {
-    socket?.on(event, callback as any)
+  function on<K extends keyof ServerToClientEvents>(
+    event: K,
+    callback: (data: Parameters<ServerToClientEvents[K]>[0]) => void,
+  ) {
+    socket?.on(event, callback as never)
   }
 
-  function off(event: string, callback?: (...args: any[]) => void) {
+  function off<K extends keyof ServerToClientEvents>(
+    event: K,
+    callback?: (data: Parameters<ServerToClientEvents[K]>[0]) => void,
+  ) {
     if (callback) {
-      socket?.off(event, callback)
+      socket?.off(event, callback as never)
     } else {
       socket?.off(event)
     }
   }
 
-  function emit(event: string, data?: unknown) {
-    socket?.emit(event, data)
+  function emit<K extends keyof ClientToServerEvents>(
+    event: K,
+    ...args: Parameters<ClientToServerEvents[K]>
+  ) {
+    socket?.emit(event, ...args)
   }
 
   return {

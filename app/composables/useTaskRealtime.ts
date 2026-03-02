@@ -1,14 +1,5 @@
 import type { Task, TaskStatus } from '~/types'
-
-interface TaskEventPayload {
-  type: string
-  projectId: string
-  taskId: string
-  data: Record<string, any>
-  userId: string
-  clientId?: string
-  timestamp: string
-}
+import type { TaskEventPayload } from '~/types/socketEvents'
 
 export function useTaskRealtime(projectId: string) {
   const { tasks } = useTasks()

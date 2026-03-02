@@ -154,6 +154,7 @@
         <MessageInput
           v-else
           ref="inputRef"
+          :members="conversationMembers"
           @send="onSend"
           @typing="onTyping"
         />
@@ -355,7 +356,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ChatMessage, Conversation } from '~/types'
+import type { ChatMessage, Conversation, TeamMember } from '~/types'
 
 definePageMeta({ layout: 'default' })
 
@@ -397,8 +398,16 @@ const isBlockedInConversation = computed(() =>
   !!activeConversation.value?.blockedMembers?.includes(currentUserId.value),
 )
 
-// Team member name lookup
+// Team member data
+const teamMembers = ref<TeamMember[]>([])
 const memberMap = ref<Map<string, string>>(new Map())
+
+/** Participants of the active conversation excluding self — used for @mention */
+const conversationMembers = computed<TeamMember[]>(() => {
+  if (!activeConversation.value) return []
+  const participantIds = new Set(activeConversation.value.participants)
+  return teamMembers.value.filter((m) => participantIds.has(m._id) && m._id !== currentUserId.value)
+})
 
 // Add-members state
 const showAddMembers = ref(false)
@@ -535,6 +544,7 @@ watch(typingUsers, (users) => { if (users.length > 0) scrollToBottom() })
 
 onMounted(async () => {
   const team = await teamApi.getAll()
+  teamMembers.value = team
   memberMap.value = new Map(team.map((m) => [m._id, m.name]))
   await loadConversations(team)
   startListening()

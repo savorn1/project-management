@@ -150,7 +150,7 @@ export function usePayments() {
     qrStatus.value = 'paid'
 
     const idx = orders.value.findIndex(o => o._id === data.orderId)
-    if (idx !== -1) orders.value[idx].status = 'confirmed'
+    if (idx !== -1 && orders.value[idx]) orders.value[idx].status = 'confirmed'
 
     toast.success(`Payment confirmed — ${data.amount} ${data.currency}`)
   }
@@ -169,8 +169,8 @@ export function usePayments() {
   function setupRealtime() {
     if (!user.value?.id) return
     joinRoom(`user:${user.value.id}`)
-    on<PaymentConfirmedEvent>('payment:confirmed', handlePaymentConfirmed)
-    on<{ qrId: string; orderId: string }>('payment:expired', handlePaymentExpired)
+    on('payment:confirmed', handlePaymentConfirmed)
+    on('payment:expired', handlePaymentExpired)
   }
 
   function teardownRealtime() {
