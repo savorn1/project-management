@@ -826,13 +826,38 @@ export function useApi() {
       conversationId: string,
       content: string,
       replyTo?: string,
+      files?: File[],
     ): Promise<ChatMessage | null> {
+      if (files && files.length > 0) {
+        // Must use fetch directly — request() always injects Content-Type: application/json
+        // which breaks multipart/form-data (browser needs to set boundary itself)
+        const form = new FormData()
+        if (content) form.append('content', content)
+        if (replyTo) form.append('replyTo', replyTo)
+        files.forEach((file) => form.append('files', file))
+        try {
+          const res = await fetch(
+            `${apiBase}/chat/conversations/${conversationId}/messages`,
+            {
+              method: 'POST',
+              headers: { 'x-client-id': clientId, ...getAuthHeader() },
+              body: form,
+            },
+          )
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}))
+            toast.error(err.message || 'Failed to send message')
+            return null
+          }
+          return await res.json() as ChatMessage
+        } catch {
+          toast.error('Failed to send message')
+          return null
+        }
+      }
       return await request<ChatMessage>(
         `/chat/conversations/${conversationId}/messages`,
-        {
-          method: 'POST',
-          body: JSON.stringify({ content, replyTo }),
-        },
+        { method: 'POST', body: JSON.stringify({ content, replyTo }) },
       )
     },
 

@@ -371,6 +371,13 @@ export interface Conversation {
   updatedAt: string
 }
 
+export interface MessageAttachment {
+  url: string
+  originalName: string
+  mimeType: string
+  size?: number
+}
+
 export interface MessageReadReceipt {
   userId: string
   readAt: string
@@ -383,6 +390,7 @@ export interface ChatMessage {
   type: MessageType
   content: string
   replyTo?: string
+  attachments: MessageAttachment[]
   readBy: ReadonlyArray<MessageReadReceipt>
   isDeleted: boolean
   deletedAt?: string

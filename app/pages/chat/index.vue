@@ -482,8 +482,8 @@ async function handleSelect(id: string) {
   nextTick(() => inputRef.value?.focus())
 }
 
-async function onSend(content: string) {
-  await chatSend(content)
+async function onSend(content: string, files: File[] = []) {
+  await chatSend(content, files)
   scrollToBottom()
 }
 

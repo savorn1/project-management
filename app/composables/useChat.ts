@@ -176,11 +176,12 @@ export function useChat() {
 
   // ── Messages ──────────────────────────────────────────────────────────────
 
-  async function sendMessage(content: string, replyTo?: string): Promise<boolean> {
-    if (!activeConversationId.value || !content.trim()) return false
+  async function sendMessage(content: string, files: File[] = [], replyTo?: string): Promise<boolean> {
+    if (!activeConversationId.value) return false
+    if (!content.trim() && files.length === 0) return false
     sendTyping(false)
 
-    const msg = await chatApi.sendMessage(activeConversationId.value, content.trim(), replyTo)
+    const msg = await chatApi.sendMessage(activeConversationId.value, content.trim(), replyTo, files)
     if (!msg) return false
 
     messages.value = [...messages.value, msg]
