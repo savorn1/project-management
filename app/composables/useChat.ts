@@ -7,6 +7,12 @@ const messages = ref<ChatMessage[]>([])
 const totalUnread = ref(0)
 const typingMap = ref<Map<string, { userId: string; userName: string; timer: ReturnType<typeof setTimeout> }>>(new Map())
 
+// Pagination state
+const messagePage = ref(1)
+const messageTotal = ref(0)
+const messageHasMore = ref(false)
+const messageLoadingMore = ref(false)
+
 let socketListenersRegistered = false
 
 export function useChat() {
@@ -160,6 +166,10 @@ export function useChat() {
 
     activeConversationId.value = id
     messages.value = []
+    messagePage.value = 1
+    messageTotal.value = 0
+    messageHasMore.value = false
+    messageLoadingMore.value = false
     await loadMessages(id)
 
     socketEmit('joinConversationRoom', { conversationId: id })
@@ -173,8 +183,29 @@ export function useChat() {
   }
 
   async function loadMessages(conversationId: string, page = 1) {
-    const { data } = await chatApi.getMessages(conversationId, page)
+    const { data, total } = await chatApi.getMessages(conversationId, page)
     messages.value = [...data].reverse()
+    messagePage.value = 1
+    messageTotal.value = total
+    messageHasMore.value = messages.value.length < total
+  }
+
+  async function loadMoreMessages(): Promise<void> {
+    if (!activeConversationId.value || !messageHasMore.value || messageLoadingMore.value) return
+    messageLoadingMore.value = true
+    try {
+      const nextPage = messagePage.value + 1
+      const { data } = await chatApi.getMessages(activeConversationId.value, nextPage)
+      if (data.length > 0) {
+        messages.value = [...[...data].reverse(), ...messages.value]
+        messagePage.value = nextPage
+        messageHasMore.value = messages.value.length < messageTotal.value
+      } else {
+        messageHasMore.value = false
+      }
+    } finally {
+      messageLoadingMore.value = false
+    }
   }
 
   async function createPrivateConversation(participantId: string, participantName: string): Promise<string | null> {
@@ -380,6 +411,8 @@ export function useChat() {
     messages: readonly(messages),
     totalUnread: readonly(totalUnread),
     typingUsers,
+    messageHasMore: readonly(messageHasMore),
+    messageLoadingMore: readonly(messageLoadingMore),
 
     // Conversation actions
     loadConversations,
@@ -391,6 +424,7 @@ export function useChat() {
     sendMessage,
     sendTyping,
     deleteMessage,
+    loadMoreMessages,
 
     // Member actions
     leaveGroup,

@@ -92,6 +92,26 @@
 
           <!-- Messages grouped by date -->
           <template v-else>
+            <!-- Load-more indicator (top of list) -->
+            <div class="flex justify-center py-2">
+              <Transition
+                enter-active-class="transition ease-out duration-150"
+                enter-from-class="opacity-0 scale-90"
+                enter-to-class="opacity-100 scale-100"
+                leave-active-class="transition ease-in duration-100"
+                leave-from-class="opacity-100 scale-100"
+                leave-to-class="opacity-0 scale-90"
+              >
+                <div v-if="messageLoadingMore" class="flex items-center gap-2 px-3 py-1.5 bg-slate-800/60 border border-slate-700/40 rounded-full text-xs text-gray-500">
+                  <div class="w-3 h-3 border border-slate-600 border-t-indigo-400 rounded-full animate-spin flex-shrink-0" />
+                  Loading older messages…
+                </div>
+                <div v-else-if="!messageHasMore && messages.length > 0" class="text-[10px] text-gray-700 select-none px-3 py-1">
+                  Beginning of conversation
+                </div>
+              </Transition>
+            </div>
+
             <template v-for="(group, date) in groupedMessages" :key="date">
               <!-- Date separator -->
               <div class="flex items-center gap-3 py-1">
@@ -366,11 +386,14 @@ const {
   activeConversation,
   messages,
   typingUsers,
+  messageHasMore,
+  messageLoadingMore,
   loadConversations,
   selectConversation,
   sendMessage: chatSend,
   sendTyping,
   deleteMessage: chatDelete,
+  loadMoreMessages,
   leaveGroup: chatLeave,
   removeMember: chatRemove,
   blockMember: chatBlock,
@@ -389,6 +412,7 @@ const { user } = useAuth()
 const showModal = ref(false)
 const showMembers = ref(true)
 const loadingMessages = ref(false)
+const scrollRef = ref<HTMLElement | null>(null)
 const bottomRef = ref<HTMLElement | null>(null)
 const inputRef = ref<{ focus: () => void } | null>(null)
 
@@ -538,9 +562,42 @@ function scrollToBottom() {
   nextTick(() => bottomRef.value?.scrollIntoView({ behavior: 'smooth' }))
 }
 
-// Auto-scroll on new messages or typing
-watch(() => messages.value.length, scrollToBottom)
+// Only scroll to bottom when the last message changes (new message arrived),
+// not when old messages are prepended at the top.
+watch(
+  () => messages.value[messages.value.length - 1]?._id,
+  (newId, oldId) => {
+    if (newId && newId !== oldId && !messageLoadingMore.value) scrollToBottom()
+  },
+)
 watch(typingUsers, (users) => { if (users.length > 0) scrollToBottom() })
+
+// ── Infinite scroll (load older messages on scroll-to-top) ────────────────
+
+async function handleLoadMore() {
+  if (!messageHasMore.value || messageLoadingMore.value) return
+  const el = scrollRef.value
+  if (!el) return
+  const prevScrollHeight = el.scrollHeight
+  await loadMoreMessages()
+  await nextTick()
+  // Restore position so the view doesn't jump
+  el.scrollTop = el.scrollHeight - prevScrollHeight
+}
+
+function onScroll() {
+  const el = scrollRef.value
+  if (!el || el.scrollTop > 80) return
+  handleLoadMore()
+}
+
+// Attach/detach the scroll listener whenever the container mounts/unmounts
+watch(scrollRef, (el, prev) => {
+  prev?.removeEventListener('scroll', onScroll)
+  el?.addEventListener('scroll', onScroll, { passive: true })
+})
+
+onUnmounted(() => scrollRef.value?.removeEventListener('scroll', onScroll))
 
 onMounted(async () => {
   const team = await teamApi.getAll()
