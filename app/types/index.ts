@@ -355,6 +355,8 @@ export interface LastMessageSnapshot {
   senderId: string
   content: string
   createdAt: string
+  type?: MessageType
+  attachmentsCount?: number
 }
 
 export interface Conversation {

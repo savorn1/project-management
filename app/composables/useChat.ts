@@ -54,7 +54,27 @@ export function useChat() {
       senderId: msg.senderId,
       content: msg.content,
       createdAt: msg.createdAt,
+      type: msg.type,
+      attachmentsCount: msg.attachments?.length ?? 0,
     }
+  }
+
+  /** Build a human-readable preview string from message fields */
+  function buildPreview(
+    type: string | undefined,
+    content: string,
+    attachmentsCount = 0,
+  ): string {
+    if (type === 'image') {
+      if (attachmentsCount > 1) return `📷 ${attachmentsCount} Photos`
+      return '📷 Photo'
+    }
+    if (type === 'file') {
+      if (attachmentsCount > 1) return `📎 ${attachmentsCount} files already sent`
+      return '📎 File already sent'
+    }
+    if (!content) return 'Message deleted'
+    return content.length > 40 ? content.slice(0, 40) + '…' : content
   }
 
   function recalcUnread() {
@@ -96,9 +116,8 @@ export function useChat() {
 
   function lastMessagePreview(conversation: Conversation): string {
     if (!conversation.lastMessage) return 'No messages yet'
-    if (!conversation.lastMessage.content) return 'Message deleted'
-    const { content } = conversation.lastMessage
-    return content.length > 40 ? content.slice(0, 40) + '…' : content
+    const { type, content, attachmentsCount } = conversation.lastMessage
+    return buildPreview(type, content, attachmentsCount)
   }
 
   function lastMessageTime(conversation: Conversation): string {
@@ -261,7 +280,7 @@ export function useChat() {
     } else {
       const found = conversations.value.find((c) => c._id === msg.conversationId)
       const name = found ? conversationName(found) : 'Chat'
-      const preview = msg.content.length > 60 ? msg.content.slice(0, 60) + '…' : msg.content
+      const preview = buildPreview(msg.type, msg.content, msg.attachments?.length)
       toast.info(`💬 ${name}: ${preview}`)
       totalUnread.value++
     }
