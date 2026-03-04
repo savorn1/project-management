@@ -34,6 +34,13 @@
         NATS Testing
       </button>
       <button
+        @click="activeTab = 'nats-monitor'"
+        class="flex-1 text-sm font-medium py-2.5 px-4 rounded-md transition-all duration-200"
+        :class="activeTab === 'nats-monitor' ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/20' : 'text-gray-400 hover:text-white'"
+      >
+        NATS Monitor
+      </button>
+      <button
         @click="activeTab = 'loadtest'"
         class="flex-1 text-sm font-medium py-2.5 px-4 rounded-md transition-all duration-200"
         :class="activeTab === 'loadtest' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-gray-400 hover:text-white'"
@@ -101,6 +108,7 @@
     <!-- Tab Content -->
     <DevToolsForm v-if="activeTab === 'testing'" />
     <NatsTestPanel v-else-if="activeTab === 'nats'" />
+    <NatsMonitorPanel v-else-if="activeTab === 'nats-monitor'" />
     <LoadTestPanel v-else-if="activeTab === 'loadtest'" />
     <SpikeTestPanel v-else-if="activeTab === 'spike'" />
     <RabbitmqTestPanel v-else-if="activeTab === 'rabbitmq'" />
@@ -126,5 +134,5 @@ useSeoMeta({
 const socket = useSocket()
 const isConnected = computed(() => socket.isConnected.value)
 
-const activeTab = ref<'testing' | 'nats' | 'loadtest' | 'spike' | 'rabbitmq' | 'saga' | 'dlq' | 'outbox' | 'cb' | 'bp' | 'cache'>('testing')
+const activeTab = ref<'testing' | 'nats' | 'nats-monitor' | 'loadtest' | 'spike' | 'rabbitmq' | 'saga' | 'dlq' | 'outbox' | 'cb' | 'bp' | 'cache'>('testing')
 </script>
