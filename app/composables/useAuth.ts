@@ -1,3 +1,12 @@
+export interface UserUiSettings {
+  theme?: string
+  density?: string
+  radius?: string
+  cardStyle?: string
+  reduceMotion?: boolean
+  sidebarCollapsed?: boolean
+}
+
 export interface User {
   id: string
   email: string
@@ -7,6 +16,9 @@ export interface User {
   isEmailVerified: boolean
   lastLogin?: string
   points?: number
+  avatar?: string
+  coverImage?: string
+  uiSettings?: UserUiSettings
 }
 
 export interface AuthTokens {
@@ -169,6 +181,8 @@ export function useAuth() {
 
   // Logout
   const logout = async (): Promise<void> => {
+    const { invalidatePrefix } = useCache()
+    invalidatePrefix('profile:')
     try {
       if (tokens.value?.accessToken) {
         await fetch(`${apiBase}/admin/auth/logout`, {
@@ -189,36 +203,112 @@ export function useAuth() {
     }
   }
 
-  // Get profile
+  // Get profile — cached for 5 minutes
   const getProfile = async (): Promise<User | null> => {
     if (!tokens.value?.accessToken) return null
+    const { cachedFetch, invalidate } = useCache()
+    const cacheKey = `profile:${tokens.value.accessToken.slice(-8)}`
+
+    return cachedFetch(cacheKey, async () => {
+      try {
+        const response = await fetch(`${apiBase}/admin/auth/profile`, {
+          headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+        })
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            invalidate(cacheKey)
+            clearAuthState()
+          }
+          return null
+        }
+
+        const data: ProfileResponse = await response.json()
+        if (data.success) {
+          user.value = data.data
+          saveAuthState()
+          return data.data
+        }
+        return null
+      } catch {
+        return null
+      }
+    }, 5 * 60 * 1000)
+  }
+
+  // Update profile (name / email)
+  const updateProfile = async (data: { name?: string; email?: string; avatar?: string; coverImage?: string }): Promise<User | null> => {
+    if (!tokens.value?.accessToken) return null
+    const { invalidatePrefix } = useCache()
+    invalidatePrefix('profile:')
 
     try {
-      const response = await fetch(`${apiBase}/admin/auth/profile`, {
+      const response = await fetch(`${apiBase}/admin/auth/me`, {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           ...getAuthHeader(),
         },
+        body: JSON.stringify(data),
       })
 
+      const result = await response.json()
+
       if (!response.ok) {
-        if (response.status === 401) {
-          clearAuthState()
-        }
-        return null
+        throw new Error(result.message || 'Update failed')
       }
 
-      const data: ProfileResponse = await response.json()
-
-      if (data.success) {
-        user.value = data.data
+      if (result.success) {
+        user.value = result.data
         saveAuthState()
-        return data.data
+        return result.data
       }
 
-      return null
+      throw new Error(result.message || 'Update failed')
+    } catch (err) {
+      authError.value = err instanceof Error ? err.message : 'Update failed'
+      throw err
+    }
+  }
+
+  // Update UI settings
+  const updateUiSettings = async (settings: UserUiSettings): Promise<void> => {
+    if (!tokens.value?.accessToken) return
+    try {
+      await fetch(`${apiBase}/admin/auth/me/ui-settings`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+        body: JSON.stringify(settings),
+      })
     } catch {
-      return null
+      // silently ignore - localStorage still has the settings
+    }
+  }
+
+  // Change password
+  const changePassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
+    if (!tokens.value?.accessToken) return false
+
+    try {
+      const response = await fetch(`${apiBase}/admin/auth/me/password`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeader(),
+        },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Password change failed')
+      }
+
+      return result.success === true
+    } catch (err) {
+      authError.value = err instanceof Error ? err.message : 'Password change failed'
+      throw err
     }
   }
 
@@ -293,6 +383,9 @@ export function useAuth() {
     register,
     logout,
     getProfile,
+    updateProfile,
+    updateUiSettings,
+    changePassword,
     refreshAccessToken,
     isTokenExpired,
     getAuthHeader,

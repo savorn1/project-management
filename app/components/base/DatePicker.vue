@@ -285,7 +285,7 @@ function getCellClass(cell: CalendarCell): string {
 function selectDate(cell: CalendarCell) {
   if (!cell.day) return
   const date = new Date(cell.year, cell.month, cell.day, 12)
-  const iso = date.toISOString().split('T')[0]
+  const iso = date.toISOString().split('T')[0] ?? null
   emit('update:modelValue', iso)
   isOpen.value = false
 }
@@ -294,7 +294,7 @@ function selectToday() {
   const now = new Date()
   viewMonth.value = now.getMonth()
   viewYear.value = now.getFullYear()
-  const iso = now.toISOString().split('T')[0]
+  const iso = now.toISOString().split('T')[0] ?? null
   emit('update:modelValue', iso)
   isOpen.value = false
 }

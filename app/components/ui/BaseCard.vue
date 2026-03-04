@@ -1,7 +1,12 @@
 <template>
   <div
-    class="bg-gradient-to-br from-slate-800/80 to-slate-800/40 rounded-2xl border border-slate-700/50 shadow-xl shadow-black/10 backdrop-blur-sm hover:border-slate-600/50 transition-all duration-300"
-    :class="padding"
+    class="shadow-xl shadow-black/10 transition-all duration-300 hover:brightness-105"
+    :class="[padding, radius]"
+    :style="{
+      background:     'linear-gradient(to bottom right, var(--card-from), var(--card-to))',
+      border:         '1px solid var(--card-border)',
+      backdropFilter: 'blur(var(--card-blur))',
+    }"
   >
     <slot />
   </div>
@@ -13,8 +18,9 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  noPadding: false
+  noPadding: false,
 })
 
-const padding = computed(() => props.noPadding ? '' : 'p-6')
+const padding = computed(() => props.noPadding ? '' : 'p-[var(--card-p)]')
+const radius  = computed(() => 'rounded-[var(--r-card)]')
 </script>

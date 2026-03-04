@@ -6,6 +6,7 @@ export default defineNuxtConfig({
   devServer: {
     port: Number(process.env.NUXT_PORT) || 3002,
   },
+  css: ['~/assets/css/themes.css'],
   modules: ['@nuxtjs/tailwindcss'],
   components: {
     dirs: [
