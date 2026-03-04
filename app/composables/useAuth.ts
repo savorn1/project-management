@@ -312,6 +312,24 @@ export function useAuth() {
     }
   }
 
+  // Deactivate account
+  const deactivateAccount = async (): Promise<boolean> => {
+    if (!tokens.value?.accessToken) return false
+    try {
+      const response = await fetch(`${apiBase}/admin/auth/me/deactivate`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.message || 'Deactivation failed')
+      clearAuthState()
+      return true
+    } catch (err) {
+      authError.value = err instanceof Error ? err.message : 'Deactivation failed'
+      throw err
+    }
+  }
+
   // Refresh token
   const refreshAccessToken = async (): Promise<boolean> => {
     if (!tokens.value?.refreshToken) return false
@@ -386,6 +404,7 @@ export function useAuth() {
     updateProfile,
     updateUiSettings,
     changePassword,
+    deactivateAccount,
     refreshAccessToken,
     isTokenExpired,
     getAuthHeader,

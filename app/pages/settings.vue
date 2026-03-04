@@ -54,6 +54,18 @@
             <button
               v-if="coverPreview"
               type="button"
+              @click="previewImage = coverPreview"
+              class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-700/60 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-600/50 transition-all flex items-center gap-1.5"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+              Preview
+            </button>
+            <button
+              v-if="coverPreview"
+              type="button"
               :disabled="uploadingCover"
               @click="removeCover"
               class="px-3 py-1.5 text-xs font-medium rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 transition-all disabled:opacity-50"
@@ -119,6 +131,18 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
               Upload photo
+            </button>
+            <button
+              v-if="avatarPreview"
+              type="button"
+              @click="previewImage = avatarPreview"
+              class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-700/60 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-600/50 transition-all flex items-center gap-1.5"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+              Preview
             </button>
             <button
               v-if="avatarPreview"
@@ -208,6 +232,25 @@
             <p v-if="profileError" class="text-sm text-red-400">{{ profileError }}</p>
           </div>
         </form>
+      </BaseCard>
+
+      <!-- Danger Zone -->
+      <BaseCard class="border border-rose-500/20">
+        <div class="flex items-start justify-between">
+          <div>
+            <h3 class="text-base font-semibold text-rose-400">Danger Zone</h3>
+            <p class="text-xs text-slate-400 mt-1">
+              Deactivating your account will immediately sign you out. You won't be able to log in until an administrator reactivates your account.
+            </p>
+          </div>
+          <button
+            type="button"
+            @click="showDeactivateModal = true"
+            class="ml-6 flex-shrink-0 px-4 py-2 text-sm font-medium rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 hover:border-rose-500/50 transition-all"
+          >
+            Deactivate account
+          </button>
+        </div>
       </BaseCard>
 
     </template>
@@ -624,10 +667,92 @@
     </BaseCard>
 
   </div>
+
+  <!-- Image lightbox -->
+  <Teleport to="body">
+    <div v-if="previewImage" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click="previewImage = null">
+      <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+      <div class="relative max-w-4xl w-full" @click.stop>
+        <button
+          type="button"
+          @click="previewImage = null"
+          class="absolute -top-10 right-0 text-slate-400 hover:text-white transition-colors flex items-center gap-1.5 text-sm"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+          Close
+        </button>
+        <img :src="previewImage" alt="Preview" class="w-full max-h-[80vh] object-contain rounded-xl shadow-2xl" />
+      </div>
+    </div>
+  </Teleport>
+
+  <!-- Deactivate confirmation modal -->
+  <Teleport to="body">
+    <div v-if="showDeactivateModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <!-- Backdrop -->
+      <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showDeactivateModal = false" />
+      <!-- Dialog -->
+      <div class="relative w-full max-w-md bg-slate-900 border border-slate-700/60 rounded-2xl shadow-2xl p-6 space-y-4">
+        <!-- Icon -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-rose-500/15 flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-base font-semibold text-white">Deactivate account?</h3>
+            <p class="text-xs text-slate-400 mt-0.5">This action cannot be undone by yourself</p>
+          </div>
+        </div>
+        <p class="text-sm text-slate-300">
+          You will be immediately signed out. To regain access, contact an administrator to reactivate your account.
+        </p>
+        <!-- Confirm input -->
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1.5">
+            Type <span class="text-rose-400 font-mono">deactivate</span> to confirm
+          </label>
+          <input
+            v-model="deactivateConfirmText"
+            type="text"
+            placeholder="deactivate"
+            class="w-full px-4 py-2.5 bg-slate-800/60 border border-slate-700/50 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:border-rose-500/60 focus:ring-2 focus:ring-rose-500/20 transition-all text-sm"
+          />
+        </div>
+        <div v-if="deactivateError" class="text-sm text-rose-400">{{ deactivateError }}</div>
+        <!-- Actions -->
+        <div class="flex gap-3 pt-1">
+          <button
+            type="button"
+            @click="showDeactivateModal = false; deactivateConfirmText = ''; deactivateError = null"
+            class="flex-1 px-4 py-2.5 text-sm font-medium rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/50 transition-all"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            :disabled="deactivateConfirmText !== 'deactivate' || deactivatingAccount"
+            @click="handleDeactivate"
+            class="flex-1 px-4 py-2.5 text-sm font-medium rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/30 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <svg v-if="deactivatingAccount" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+            </svg>
+            Deactivate
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
-const { user, userInitials, updateProfile, changePassword, getAuthHeader } = useAuth()
+const { user, userInitials, updateProfile, changePassword, deactivateAccount, getAuthHeader } = useAuth()
+const router = useRouter()
 const config = useRuntimeConfig()
 const apiBase = config.public.apiBase
 
@@ -828,6 +953,30 @@ async function saveProfile() {
     profileError.value = err instanceof Error ? err.message : 'Failed to save'
   } finally {
     savingProfile.value = false
+  }
+}
+
+// ─── Image lightbox ────────────────────────────────────────────────────────
+
+const previewImage = ref<string | null>(null)
+
+// ─── Deactivate account ────────────────────────────────────────────────────
+
+const showDeactivateModal = ref(false)
+const deactivateConfirmText = ref('')
+const deactivatingAccount = ref(false)
+const deactivateError = ref<string | null>(null)
+
+async function handleDeactivate() {
+  deactivateError.value = null
+  deactivatingAccount.value = true
+  try {
+    await deactivateAccount()
+    await router.push('/login')
+  } catch (err) {
+    deactivateError.value = err instanceof Error ? err.message : 'Failed to deactivate account'
+  } finally {
+    deactivatingAccount.value = false
   }
 }
 
