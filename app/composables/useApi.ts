@@ -143,6 +143,21 @@ export function useApi() {
       return response?.data || []
     },
 
+    async getByProjectPaginated(
+      projectId: string,
+      opts: { skip?: number; limit?: number; status?: string } = {}
+    ): Promise<{ data: Task[]; total: number }> {
+      const params = new URLSearchParams()
+      if (opts.skip !== undefined) params.set('skip', String(opts.skip))
+      if (opts.limit !== undefined) params.set('limit', String(opts.limit))
+      if (opts.status) params.set('status', opts.status)
+      const qs = params.toString()
+      const response = await request<ListResponse<Task>>(
+        `/admin/tasks/project/${projectId}${qs ? '?' + qs : ''}`
+      )
+      return { data: response?.data || [], total: response?.total || 0 }
+    },
+
     async getCounts(projectId: string): Promise<{ total: number; byStatus: Record<string, number> }> {
       const response = await request<{ success: boolean; data: { total: number; byStatus: Record<string, number> } }>(`/admin/tasks/project/${projectId}/counts`)
       return response?.data ?? { total: 0, byStatus: {} }

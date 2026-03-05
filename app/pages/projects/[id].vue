@@ -113,14 +113,14 @@
 
     <!-- Project Stats (members only) -->
     <div v-if="memberStatus.isMember" class="grid grid-cols-4 gap-4">
-      <StatCard label="Total Tasks" :value="projectTasks.length" icon="📋" color="blue" />
+      <StatCard label="Total Tasks" :value="taskCounts.total" icon="📋" color="blue" />
       <StatCard label="Completed" :value="completedTasks" icon="✅" color="emerald" />
       <StatCard label="In Progress" :value="inProgressTasks" icon="⚡" color="amber" />
       <StatCard label="Progress" :value="`${progress}%`" icon="📊" color="indigo" />
     </div>
 
     <!-- Progress Bar (members only, when there are tasks) -->
-    <div v-if="memberStatus.isMember && projectTasks.length > 0" class="bg-slate-800/30 border border-slate-700/30 rounded-xl px-5 py-4">
+    <div v-if="memberStatus.isMember && taskCounts.total > 0" class="bg-slate-800/30 border border-slate-700/30 rounded-xl px-5 py-4">
       <div class="flex items-center justify-between mb-2.5">
         <div class="flex items-center gap-4">
           <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Completion</span>
@@ -135,7 +135,7 @@
             </span>
             <span class="flex items-center gap-1.5">
               <span class="w-1.5 h-1.5 rounded-full bg-slate-600 flex-shrink-0"></span>
-              {{ projectTasks.length - completedTasks - inProgressTasks }} todo
+              {{ taskCounts.total - completedTasks - inProgressTasks }} todo
             </span>
           </div>
         </div>
@@ -574,7 +574,6 @@
                 <div>
                   <SubtaskList
                     :task-id="selectedTask._id"
-                    :tasks="projectTasks"
                     @select="openPreview"
                     @add="openCreateSubtask(selectedTask)"
                   />
@@ -819,11 +818,11 @@ definePageMeta({
 const route = useRoute()
 const projectId = route.params.id as string
 
-const { createTask, updateTask, deleteTask, getTasksByProject, loadTasksByProject } = useTasks()
+const { createTask, updateTask, deleteTask } = useTasks()
 const { getProjectById, loadProjects, projects } = useProjects()
 const { members, loadMembers, getMemberById } = useTeam()
 const { subscribe, unsubscribe, isConnected } = useTaskRealtime(projectId)
-const { membershipApi, projectsApi, projectMembersApi, milestonesApi } = useApi()
+const { membershipApi, projectsApi, projectMembersApi, milestonesApi, tasksApi } = useApi()
 
 onMounted(async () => {
   if (projects.value.length === 0) await loadProjects()
@@ -837,7 +836,7 @@ onMounted(async () => {
   isPageLoading.value = false
   if (memberStatus.value.isMember) {
     if (members.value.length === 0) await loadMembers()
-    await Promise.all([loadTasksByProject(projectId), loadProjectMembers(), loadMilestones()])
+    await Promise.all([loadTaskCounts(), loadProjectMembers(), loadMilestones()])
     subscribe()
   }
   document.addEventListener('click', handleClickOutside)
@@ -849,15 +848,18 @@ onUnmounted(() => {
 })
 
 const project = computed(() => getProjectById(projectId))
-const projectTasks = computed(() => getTasksByProject(projectId))
-const progress = computed(() => {
-  if (projectTasks.value.length === 0) return 0
-  const completed = projectTasks.value.filter(t => t.status === 'done').length
-  return Math.round((completed / projectTasks.value.length) * 100)
-})
 
-const completedTasks = computed(() => projectTasks.value.filter(t => t.status === 'done').length)
-const inProgressTasks = computed(() => projectTasks.value.filter(t => t.status === 'in_progress').length)
+const taskCounts = ref({ total: 0, byStatus: {} as Record<string, number> })
+async function loadTaskCounts() {
+  taskCounts.value = await tasksApi.getCounts(projectId)
+}
+
+const completedTasks = computed(() => taskCounts.value.byStatus['done'] ?? 0)
+const inProgressTasks = computed(() => taskCounts.value.byStatus['in_progress'] ?? 0)
+const progress = computed(() => {
+  if (!taskCounts.value.total) return 0
+  return Math.round((completedTasks.value / taskCounts.value.total) * 100)
+})
 
 const isPageLoading = ref(true)
 const showSettings = ref(false)

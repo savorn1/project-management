@@ -46,6 +46,11 @@
       </div>
     </div>
 
+    <!-- Loading -->
+    <div v-else-if="isLoading" class="flex justify-center py-3">
+      <div class="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+
     <!-- Empty state -->
     <div v-else class="text-xs text-gray-600 text-center py-2">
       No sub-tasks yet
@@ -58,7 +63,6 @@ import type { Task, TaskStatus } from '~/types'
 
 interface Props {
   taskId: string
-  tasks: Task[]
 }
 
 const props = defineProps<Props>()
@@ -68,9 +72,18 @@ defineEmits<{
   (e: 'add'): void
 }>()
 
-const subtasks = computed(() =>
-  props.tasks.filter(t => t.parentId === props.taskId)
-)
+const { tasksApi } = useApi()
+const subtasks = ref<Task[]>([])
+const isLoading = ref(false)
+
+async function fetchSubtasks() {
+  if (!props.taskId) return
+  isLoading.value = true
+  subtasks.value = await tasksApi.getSubtasks(props.taskId)
+  isLoading.value = false
+}
+
+watch(() => props.taskId, fetchSubtasks, { immediate: true })
 
 function statusDotClass(status: TaskStatus): string {
   const map: Record<TaskStatus, string> = {

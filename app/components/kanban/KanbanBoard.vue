@@ -6,6 +6,9 @@
       :column="column"
       :tasks="getColumnTasks(column.id)"
       :is-drop-target="dropTargetColumn === column.id"
+      :total="getColumnTotal(column.id)"
+      :is-loading="isColumnLoading(column.id)"
+      :has-more="hasMoreInColumn(column.id)"
       @add-task="handleAddTask(column.id)"
       @toggle-task="toggleTaskComplete"
       @select-task="(task: Task) => emit('select-task', task)"
@@ -14,12 +17,13 @@
       @drag-over="onDragOver(column.id)"
       @drag-leave="onDragLeave(column.id)"
       @drop="(idx) => onDrop(column.id, idx)"
+      @load-more="loadMoreColumnTasks(column.id)"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import type { Task, TaskStatus } from '~/types'
+import type { Task, TaskStatus } from '~/types';
 
 interface Props {
   projectId: string
@@ -36,14 +40,26 @@ const {
   columns,
   dropTargetColumn,
   getColumnTasks,
+  getColumnTotal,
+  isColumnLoading,
+  hasMoreInColumn,
+  loadColumnTasks,
+  loadMoreColumnTasks,
   onDragStart,
   onDragEnd,
   onDragOver,
   onDragLeave,
-  onDrop
+  onDrop,
 } = useKanban(props.projectId)
 
 const { toggleTaskComplete } = useTasks()
+
+// Load each column on mount
+onMounted(() => {
+  for (const col of columns.value) {
+    loadColumnTasks(col.id)
+  }
+})
 
 function handleAddTask(status: TaskStatus) {
   emit('add-task', status)
