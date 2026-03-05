@@ -181,7 +181,7 @@ export interface TaskComment {
 }
 
 // Notification
-export type NotificationType = 'mentioned' | 'assigned'
+export type NotificationType = 'mentioned' | 'assigned' | 'task_completed' | 'chat_group_created' | 'chat_member_added'
 
 export interface AppNotification {
   _id: string
@@ -189,6 +189,8 @@ export interface AppNotification {
   actorId?: string
   taskId?: string
   taskTitle?: string
+  conversationId?: string
+  conversationName?: string
   type: NotificationType
   message: string
   isRead: boolean
