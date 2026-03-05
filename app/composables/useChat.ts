@@ -44,6 +44,24 @@ export function useChat() {
     ) as Conversation[]
   }
 
+  /** Sort conversations by most recent lastMessage, falling back to updatedAt */
+  function sortConversations() {
+    conversations.value = [...conversations.value].sort((a, b) => {
+      const ta = a.lastMessage?.createdAt ?? a.updatedAt
+      const tb = b.lastMessage?.createdAt ?? b.updatedAt
+      return new Date(tb).getTime() - new Date(ta).getTime()
+    })
+  }
+
+  /** Move a conversation to the top of the list (after new message) */
+  function bumpConversation(id: string) {
+    const idx = conversations.value.findIndex((c) => c._id === id)
+    if (idx > 0) {
+      const conv = conversations.value[idx]!
+      conversations.value = [conv, ...conversations.value.filter((_, i) => i !== idx)]
+    }
+  }
+
   /** Remove a conversation from the list and clear active state if needed */
   function dropConversation(id: string) {
     conversations.value = conversations.value.filter((c) => c._id !== id)
@@ -84,9 +102,7 @@ export function useChat() {
   }
 
   function recalcUnread() {
-    totalUnread.value = conversations.value.filter(
-      (c) => c.lastMessage && c.lastMessage.senderId !== user.value?.id,
-    ).length
+    totalUnread.value = conversations.value.reduce((sum, c) => sum + (c._unread ?? 0), 0)
   }
 
   // ── Public helpers ────────────────────────────────────────────────────────
@@ -126,6 +142,10 @@ export function useChat() {
     return buildPreview(type, content, attachmentsCount)
   }
 
+  function isUnread(conversation: Conversation): boolean {
+    return (conversation._unread ?? 0) > 0
+  }
+
   function lastMessageTime(conversation: Conversation): string {
     if (!conversation.lastMessage) return ''
     const diff = Date.now() - new Date(conversation.lastMessage.createdAt).getTime()
@@ -144,18 +164,22 @@ export function useChat() {
   async function loadConversations(teamMembers?: TeamMember[]) {
     const data = await chatApi.getConversations()
 
+    // Seed _unread from the API-persisted unreadCount
+    const seeded = data.map((item) => ({ ...item, _unread: item.unreadCount ?? 0 }))
+
     if (teamMembers && user.value) {
       const memberMap = new Map(teamMembers.map((m) => [m._id, m]))
-      conversations.value = data.map((item) => {
+      conversations.value = seeded.map((item) => {
         if (item.type !== 'private') return item
         const otherId = item.participants.find((p) => p !== user.value!.id)
         const other = otherId ? memberMap.get(otherId) : undefined
         return { ...item, name: other?.name ?? 'Unknown User' }
       })
     } else {
-      conversations.value = data
+      conversations.value = seeded
     }
 
+    sortConversations()
     recalcUnread()
   }
 
@@ -177,7 +201,7 @@ export function useChat() {
     const selected = conversations.value.find((c) => c._id === id)
     if (selected?.lastMessage) {
       chatApi.markAsRead(id, selected.lastMessage.messageId).catch(() => { })
-      patchConversation(id, { _unread: 0 } as Partial<Conversation>)
+      patchConversation(id, { _unread: 0 })
       recalcUnread()
     }
   }
@@ -314,8 +338,10 @@ export function useChat() {
       const preview = buildPreview(msg.type, msg.content, msg.attachments?.length)
       toast.info(`💬 ${name}: ${preview}`)
       totalUnread.value++
+      patchConversation(msg.conversationId, { _unread: (found?._unread ?? 0) + 1 })
     }
     patchConversation(msg.conversationId, { lastMessage: toLastMessageSnapshot(msg) })
+    bumpConversation(msg.conversationId)
   }
 
   function onMessageDeleted({ messageId, conversationId }: { messageId: string; conversationId: string }) {
@@ -439,6 +465,7 @@ export function useChat() {
     conversationName,
     conversationInitials,
     isMyMessage,
+    isUnread,
     formatTime,
     formatDate,
     lastMessagePreview,

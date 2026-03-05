@@ -58,6 +58,43 @@
       </div>
     </Transition>
 
+    <!-- Emoji picker -->
+    <Transition
+      enter-active-class="transition ease-out duration-100"
+      enter-from-class="opacity-0 translate-y-1"
+      enter-to-class="opacity-100 translate-y-0"
+      leave-active-class="transition ease-in duration-75"
+      leave-from-class="opacity-100 translate-y-0"
+      leave-to-class="opacity-0 translate-y-1"
+    >
+      <div
+        v-if="showEmojiPicker"
+        ref="emojiPickerRef"
+        class="absolute bottom-full left-4 mb-2 bg-slate-800 border border-slate-700/60 rounded-2xl shadow-2xl shadow-black/40 z-20 w-72"
+        @click.stop
+      >
+        <!-- Category tabs -->
+        <div class="flex gap-1 p-2 border-b border-slate-700/40">
+          <button
+            v-for="cat in emojiCategories"
+            :key="cat.name"
+            @mousedown.prevent="activeCategory = cat.name"
+            class="flex-1 py-1 rounded-lg text-base transition-colors"
+            :class="activeCategory === cat.name ? 'bg-indigo-500/20 text-indigo-300' : 'text-gray-500 hover:text-gray-300'"
+          >{{ cat.icon }}</button>
+        </div>
+        <!-- Emoji grid -->
+        <div class="grid grid-cols-8 gap-0.5 p-2 max-h-40 overflow-y-auto">
+          <button
+            v-for="emoji in currentEmojis"
+            :key="emoji"
+            @mousedown.prevent="insertEmoji(emoji)"
+            class="w-8 h-8 flex items-center justify-center text-[18px] rounded-lg hover:bg-slate-700/50 transition-colors"
+          >{{ emoji }}</button>
+        </div>
+      </div>
+    </Transition>
+
     <!-- Main input container -->
     <div
       class="relative bg-slate-800/50 border rounded-2xl transition-all duration-200"
@@ -126,6 +163,18 @@
 
       <!-- Bottom toolbar -->
       <div class="flex items-center gap-1 px-2 pb-2">
+
+        <!-- Emoji button -->
+        <button
+          @click.stop="toggleEmojiPicker"
+          class="w-8 h-8 rounded-xl flex items-center justify-center transition-colors flex-shrink-0"
+          :class="showEmojiPicker ? 'text-indigo-400 bg-indigo-500/10' : 'text-gray-500 hover:text-indigo-400 hover:bg-indigo-500/10'"
+          title="Emoji"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
 
         <!-- Attach file button -->
         <button
@@ -310,6 +359,58 @@ async function submit() {
   emit('send', content, files)
   loading.value = false
 }
+
+// ── Emoji picker ────────────────────────────────────────────────────────────
+const showEmojiPicker = ref(false)
+const activeCategory = ref('smileys')
+const emojiPickerRef = ref<HTMLElement | null>(null)
+
+const emojiCategories = [
+  { name: 'smileys', icon: '😀', emojis: ['😀','😂','😍','😎','😭','😊','😉','🥰','😅','🤣','😆','😋','🤩','😏','😒','😢','😤','😡','🥺','🤔','😴','🥳','😇','🫡','🤗','😬','🙄','😳','🤯','🥸'] },
+  { name: 'hands',   icon: '👋', emojis: ['👋','👍','👎','✌️','🤞','🙌','👏','🤝','🙏','💪','🫶','☝️','👌','🤌','🤏','🫰','🖖','🤙','💅','🫵','👈','👉','👆','👇','✋','🤚','🖐️','🖕'] },
+  { name: 'hearts',  icon: '❤️', emojis: ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','💕','💯','💞','💓','💗','💖','💘','💝','🩷','🩵','🩶','❣️','💔','❤️‍🔥','❤️‍🩹','🫀'] },
+  { name: 'nature',  icon: '🌸', emojis: ['🌸','🌺','🌻','🌹','🍀','🌈','⭐','🌙','☀️','🌊','🔥','❄️','🌿','🍃','🌾','🦋','🐶','🐱','🐸','🦊','🐼','🐨','🦁','🐯','🦄','🌍','🌴','🍄'] },
+  { name: 'food',    icon: '🍕', emojis: ['🍕','🍔','🍟','🌮','🍣','🍜','🍩','🍪','🎂','🍺','☕','🧋','🍓','🍇','🍎','🥑','🍿','🧇','🥗','🫕','🍱','🥐','🧆','🌯','🥤','🧃','🍦','🍰'] },
+  { name: 'objects', icon: '🎉', emojis: ['🎉','🎊','🎁','🏆','🎯','💡','💎','💰','📱','💻','⚡','🚀','✨','🌟','💫','🎶','🎵','📸','🔑','🎮','⚽','🏀','🎸','🎨','📚','🔮','🛸','💣'] },
+]
+
+const currentEmojis = computed(() =>
+  emojiCategories.find((c) => c.name === activeCategory.value)?.emojis ?? []
+)
+
+function toggleEmojiPicker() {
+  showEmojiPicker.value = !showEmojiPicker.value
+}
+
+function insertEmoji(emoji: string) {
+  const el = textareaRef.value
+  if (!el) {
+    text.value += emoji
+    return
+  }
+  const start = el.selectionStart ?? text.value.length
+  const end = el.selectionEnd ?? text.value.length
+  text.value = text.value.slice(0, start) + emoji + text.value.slice(end)
+  nextTick(() => {
+    el.focus()
+    el.setSelectionRange(start + emoji.length, start + emoji.length)
+    autoResize()
+  })
+}
+
+function onDocMouseDown(e: MouseEvent) {
+  if (emojiPickerRef.value && !emojiPickerRef.value.contains(e.target as Node)) {
+    showEmojiPicker.value = false
+  }
+}
+
+watch(showEmojiPicker, (val) => {
+  if (val) nextTick(() => document.addEventListener('mousedown', onDocMouseDown))
+  else document.removeEventListener('mousedown', onDocMouseDown)
+})
+
+onUnmounted(() => document.removeEventListener('mousedown', onDocMouseDown))
+// ────────────────────────────────────────────────────────────────────────────
 
 defineExpose({ focus: () => textareaRef.value?.focus() })
 </script>

@@ -66,10 +66,22 @@
         <!-- Text -->
         <div class="flex-1 min-w-0">
           <div class="flex items-center justify-between gap-1">
-            <span class="text-xs font-semibold text-white truncate">{{ conversationName(conv) }}</span>
-            <span class="text-[10px] text-gray-600 flex-shrink-0">{{ lastMessageTime(conv) }}</span>
+            <span
+              class="text-[14px] truncate"
+              :class="isUnread(conv) ? 'font-bold text-white' : 'font-semibold text-gray-300'"
+            >{{ conversationName(conv) }}</span>
+            <span class="text-[12px] font-bold flex-shrink-0" :class="isUnread(conv) ? 'text-indigo-400' : 'text-indigo-400/50'">{{ lastMessageTime(conv) }}</span>
           </div>
-          <p class="text-[11px] text-gray-500 truncate mt-0.5">{{ lastMessagePreview(conv) }}</p>
+          <div class="flex items-center justify-between gap-1 mt-0.5">
+            <p
+              class="text-[12px] truncate"
+              :class="isUnread(conv) ? 'font-bold text-slate-300' : 'font-medium text-slate-500'"
+            >{{ lastMessagePreview(conv) }}</p>
+            <span
+              v-if="isUnread(conv)"
+              class="flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-indigo-500 text-white text-[10px] font-bold flex items-center justify-center"
+            >{{ conv._unread }}</span>
+          </div>
         </div>
       </button>
     </div>
@@ -89,7 +101,7 @@ defineEmits<{
   new: []
 }>()
 
-const { conversationName, conversationInitials, lastMessagePreview, lastMessageTime } = useChat()
+const { conversationName, conversationInitials, lastMessagePreview, lastMessageTime, isUnread } = useChat()
 
 const search = ref('')
 

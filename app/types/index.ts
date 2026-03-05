@@ -371,6 +371,10 @@ export interface Conversation {
   lastMessage?: LastMessageSnapshot
   createdAt: string
   updatedAt: string
+  /** Returned by API: persisted unread count from UserConversation */
+  unreadCount?: number
+  /** Frontend-only: live unread count (initialized from unreadCount, updated via socket) */
+  _unread?: number
 }
 
 export interface MessageAttachment {
