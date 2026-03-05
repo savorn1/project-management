@@ -214,25 +214,29 @@
   --card-blur:   0px;
 }
 
-/* ─── Kanban column scrollbar ───────────────────────────────────────────── */
+/* ─── Global scrollbar ───────────────────────────────────────────────────── */
 
-.kanban-scroll {
+* {
   scrollbar-width: thin;
   scrollbar-color: rgba(71, 85, 105, 0.35) transparent;
 }
-.kanban-scroll::-webkit-scrollbar {
+::-webkit-scrollbar {
   width: 4px;
+  height: 4px;
 }
-.kanban-scroll::-webkit-scrollbar-track {
+::-webkit-scrollbar-track {
   background: transparent;
 }
-.kanban-scroll::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb {
   background: rgba(71, 85, 105, 0.35);
   border-radius: 9999px;
   transition: background 0.2s;
 }
-.kanban-scroll::-webkit-scrollbar-thumb:hover {
+::-webkit-scrollbar-thumb:hover {
   background: rgba(100, 116, 139, 0.6);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 /* ─── Global focus override ──────────────────────────────────────────────── */

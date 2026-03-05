@@ -35,7 +35,7 @@
     </div>
 
     <!-- Tasks Container -->
-    <div ref="scrollContainer" class="flex-1 p-2.5 overflow-y-auto kanban-scroll" @scroll.passive="onScroll">
+    <div ref="scrollContainer" class="flex-1 p-2.5 overflow-y-auto" @scroll.passive="onScroll">
 
       <!-- Empty column drop zone -->
       <div
