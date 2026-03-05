@@ -14,6 +14,25 @@
       </button>
     </div>
 
+    <!-- Tabs -->
+    <div class="flex gap-1 px-3 pt-2 pb-1 flex-shrink-0">
+      <button
+        v-for="tab in tabs"
+        :key="tab.key"
+        @click="activeTab = tab.key"
+        class="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-semibold transition-colors relative"
+        :class="activeTab === tab.key
+          ? 'bg-indigo-500/20 text-indigo-300'
+          : 'text-gray-500 hover:text-gray-300 hover:bg-slate-800/40'"
+      >
+        {{ tab.label }}
+        <span
+          v-if="tab.unread > 0"
+          class="min-w-[16px] h-4 px-1 rounded-full bg-indigo-500 text-white text-[9px] font-bold flex items-center justify-center"
+        >{{ tab.unread }}</span>
+      </button>
+    </div>
+
     <!-- Search -->
     <div class="px-3 py-2 flex-shrink-0">
       <div class="relative">
@@ -32,7 +51,7 @@
     <!-- List -->
     <div class="flex-1 overflow-y-auto">
       <div v-if="filtered.length === 0" class="flex flex-col items-center justify-center h-32 text-center px-4">
-        <p class="text-xs text-gray-600">{{ search ? 'No results' : 'No conversations yet' }}</p>
+        <p class="text-xs text-gray-600">{{ search ? 'No results' : activeTab === 'group' ? 'No group chats' : activeTab === 'private' ? 'No private chats' : 'No conversations yet' }}</p>
         <button v-if="!search" @click="$emit('new')" class="mt-2 text-xs text-indigo-400 hover:text-indigo-300">
           Start chatting →
         </button>
@@ -53,6 +72,7 @@
           >
             {{ conversationInitials(conv) }}
           </div>
+          <!-- Group icon badge -->
           <div
             v-if="conv.type === 'group'"
             class="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-violet-500 rounded-full flex items-center justify-center"
@@ -61,6 +81,11 @@
               <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
           </div>
+          <!-- Online dot for private conversations -->
+          <div
+            v-else-if="otherParticipantId(conv) && isOnline(otherParticipantId(conv)!)"
+            class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-2 border-slate-900"
+          />
         </div>
 
         <!-- Text -->
@@ -101,14 +126,37 @@ defineEmits<{
   new: []
 }>()
 
-const { conversationName, conversationInitials, lastMessagePreview, lastMessageTime, isUnread } = useChat()
+const { conversationName, conversationInitials, lastMessagePreview, lastMessageTime, isUnread, isOnline } = useChat()
+
+const { user } = useAuth()
+
+function otherParticipantId(conv: Conversation): string | null {
+  if (conv.type !== 'private') return null
+  return conv.participants.find((p) => p !== user.value?.id) ?? null
+}
 
 const search = ref('')
+const activeTab = ref<'all' | 'group' | 'private'>('all')
+
+const tabs = computed(() => {
+  const unreadFor = (type?: 'group' | 'private') =>
+    props.conversations
+      .filter((c) => (type ? c.type === type : true) && isUnread(c))
+      .reduce((sum, c) => sum + (c._unread ?? 0), 0)
+
+  return [
+    { key: 'all' as const,     label: 'All',     unread: unreadFor() },
+    { key: 'group' as const,   label: 'Groups',  unread: unreadFor('group') },
+    { key: 'private' as const, label: 'Private', unread: unreadFor('private') },
+  ]
+})
 
 const filtered = computed(() => {
-  if (!search.value.trim()) return props.conversations
+  let list = props.conversations
+  if (activeTab.value !== 'all') list = list.filter((c) => c.type === activeTab.value)
+  if (!search.value.trim()) return list
   const q = search.value.toLowerCase()
-  return props.conversations.filter((c) =>
+  return list.filter((c) =>
     conversationName(c).toLowerCase().includes(q) ||
     (c.lastMessage?.content ?? '').toLowerCase().includes(q),
   )

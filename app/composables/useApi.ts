@@ -809,6 +809,11 @@ export function useApi() {
 
   // Chat API
   const chatApi = {
+    async getPresence(): Promise<string[]> {
+      const response = await request<string[]>('/chat/presence')
+      return response ?? []
+    },
+
     async getConversations(): Promise<Conversation[]> {
       const response = await request<Conversation[]>('/chat/conversations')
       return response ?? []

@@ -5,6 +5,7 @@ const conversations = ref<Conversation[]>([])
 const activeConversationId = ref<string | null>(null)
 const messages = ref<ChatMessage[]>([])
 const totalUnread = ref(0)
+const onlineUsers = ref<Set<string>>(new Set())
 const typingMap = ref<Map<string, { userId: string; userName: string; timer: ReturnType<typeof setTimeout> }>>(new Map())
 
 // Pagination state
@@ -181,6 +182,10 @@ export function useChat() {
 
     sortConversations()
     recalcUnread()
+
+    // Seed online users from presence endpoint
+    const onlineIds = await chatApi.getPresence()
+    onlineUsers.value = new Set(onlineIds)
   }
 
   async function selectConversation(id: string) {
@@ -411,6 +416,10 @@ export function useChat() {
     typingMap.value = current
   }
 
+  function isOnline(userId: string): boolean {
+    return onlineUsers.value.has(userId)
+  }
+
   function startListening() {
     if (socketListenersRegistered || !user.value?.id) return
     socketListenersRegistered = true
@@ -425,6 +434,12 @@ export function useChat() {
     on('chat:member:blocked', onMemberBlocked)
     on('chat:member:unblocked', onMemberUnblocked)
     on('chat:typing', onTyping)
+    on('user:status', ({ userId, online }: { userId: string; online: boolean }) => {
+      const next = new Set(onlineUsers.value)
+      if (online) next.add(userId)
+      else next.delete(userId)
+      onlineUsers.value = next
+    })
   }
 
   // ── Public API ────────────────────────────────────────────────────────────
@@ -436,6 +451,7 @@ export function useChat() {
     activeConversation,
     messages: readonly(messages),
     totalUnread: readonly(totalUnread),
+    onlineUsers: readonly(onlineUsers),
     typingUsers,
     messageHasMore: readonly(messageHasMore),
     messageLoadingMore: readonly(messageLoadingMore),
@@ -466,6 +482,7 @@ export function useChat() {
     conversationInitials,
     isMyMessage,
     isUnread,
+    isOnline,
     formatTime,
     formatDate,
     lastMessagePreview,

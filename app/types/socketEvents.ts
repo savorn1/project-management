@@ -37,6 +37,9 @@ export interface ServerToClientEvents {
     conversationId: string
   }) => void
 
+  // Presence
+  'user:status': (data: { userId: string; online: boolean }) => void
+
   // Tasks
   'task:moved':     (data: TaskEventPayload) => void
   'task:updated':   (data: TaskEventPayload) => void
