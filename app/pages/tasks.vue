@@ -13,6 +13,7 @@
     </div>
 
     <!-- Filters -->
+    <div class="relative z-10">
     <BaseCard>
       <div class="flex flex-wrap items-center gap-2">
         <!-- Search -->
@@ -229,6 +230,7 @@
         </button>
       </div>
     </BaseCard>
+    </div>
 
     <!-- Task List -->
     <TaskList :tasks="filteredTasks" @toggle="toggleTaskComplete" @select="openPreview" @reorder="reorderTasks" />
@@ -469,8 +471,8 @@
                     <span class="text-xs text-gray-500 w-20 flex-shrink-0">Due Date</span>
                     <DatePicker
                       class="flex-1"
-                      :model-value="selectedTask.dueDate ? selectedTask.dueDate.split('T')[0] : null"
-                      @update:model-value="handleFieldUpdate('dueDate', $event)"
+                      :model-value="selectedTask?.dueDate?.split('T')[0] ?? null"
+                      @update:model-value="handleFieldUpdate('dueDate', $event ?? null)"
                       placeholder="Set due date"
                       trigger-class="cursor-pointer hover:text-white"
                     />

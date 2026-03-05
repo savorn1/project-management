@@ -21,7 +21,7 @@
       >
         <!-- Drop zone indicator above (subtle for all, prominent for target) -->
         <div
-          v-if="isDragging && index !== draggedIndex && index !== draggedIndex + 1"
+          v-if="isDragging && draggedIndex !== null && index !== draggedIndex && index !== draggedIndex + 1"
           class="absolute -top-1 left-8 right-8 flex items-center z-10 pointer-events-none transition-all duration-200"
           :class="dropTargetIndex === index ? 'opacity-100 -top-4 left-0 right-0' : 'opacity-30'"
           aria-hidden="true"
@@ -146,7 +146,7 @@
 
         <!-- Drop zone indicator below (subtle for all, prominent for target) -->
         <div
-          v-if="isDragging && index + 1 !== draggedIndex && index !== draggedIndex"
+          v-if="isDragging && draggedIndex !== null && index + 1 !== draggedIndex && index !== draggedIndex"
           class="absolute -bottom-1 left-8 right-8 flex items-center z-10 pointer-events-none transition-all duration-200"
           :class="dropTargetIndex === index + 1 ? 'opacity-100 -bottom-4 left-0 right-0' : 'opacity-30'"
           aria-hidden="true"

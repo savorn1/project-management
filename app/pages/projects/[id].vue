@@ -252,8 +252,39 @@
       @saved="onMilestoneSaved"
     />
 
-    <!-- Kanban Board (members only) -->
-    <KanbanBoard v-if="memberStatus.isMember" :project-id="projectId" @add-task="handleAddTask" @select-task="openPreview" />
+    <!-- View switcher + layouts (members only) -->
+    <div v-if="memberStatus.isMember" class="space-y-4">
+      <!-- Layout tabs -->
+      <div class="flex items-center gap-1 p-1 bg-slate-800/60 rounded-xl border border-slate-700/30 w-fit">
+        <button
+          v-for="opt in layoutOptions"
+          :key="opt.value"
+          type="button"
+          @click="layoutView = opt.value"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200"
+          :class="layoutView === opt.value
+            ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25'
+            : 'text-gray-400 hover:text-gray-200 hover:bg-slate-700/50'"
+        >
+          <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="opt.icon" />
+          </svg>
+          {{ opt.label }}
+        </button>
+      </div>
+
+      <!-- Board view -->
+      <KanbanBoard v-if="layoutView === 'board'" :project-id="projectId" @add-task="handleAddTask" @select-task="openPreview" />
+
+      <!-- List view -->
+      <ProjectListView v-else-if="layoutView === 'list'" :project-id="projectId" @add-task="handleAddTask" @select-task="openPreview" />
+
+      <!-- Calendar view -->
+      <ProjectCalendarView v-else-if="layoutView === 'calendar'" :project-id="projectId" @select-task="openPreview" />
+
+      <!-- Timeline view -->
+      <ProjectTimelineView v-else-if="layoutView === 'timeline'" :project-id="projectId" @select-task="openPreview" />
+    </div>
 
     <!-- Task Preview Slide-over -->
     <Teleport to="body">
@@ -863,6 +894,16 @@ const progress = computed(() => {
 
 const isPageLoading = ref(true)
 const showSettings = ref(false)
+
+// Layout view
+type LayoutView = 'board' | 'list' | 'calendar' | 'timeline'
+const layoutView = ref<LayoutView>('board')
+const layoutOptions: { value: LayoutView; label: string; icon: string }[] = [
+  { value: 'board', label: 'Board', icon: 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2' },
+  { value: 'list', label: 'List', icon: 'M4 6h16M4 10h16M4 14h16M4 18h16' },
+  { value: 'calendar', label: 'Calendar', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
+  { value: 'timeline', label: 'Timeline', icon: 'M13 17h8m0 0V9m0 8l-8-8-4 4-6-6' },
+]
 
 // Project members
 const projectMembers = ref<ProjectMember[]>([])
