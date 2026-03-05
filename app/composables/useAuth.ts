@@ -10,6 +10,8 @@ export interface UserUiSettings {
 export interface User {
   id: string
   email: string
+  firstName?: string
+  lastName?: string
   name: string
   role: string
   isActive: boolean
@@ -33,9 +35,11 @@ export interface LoginCredentials {
 }
 
 export interface RegisterData {
+  firstName: string
+  lastName: string
+  name: string
   email: string
   password: string
-  name: string
 }
 
 interface AuthResponse {
