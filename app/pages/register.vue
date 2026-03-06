@@ -15,7 +15,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
         </div>
-        <span class="text-white font-bold text-xl tracking-tight">HTP</span>
+        <span class="text-white font-bold text-xl tracking-tight">PMS</span>
       </div>
 
       <!-- Center content -->
@@ -26,7 +26,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
             </svg>
           </div>
-          <h2 class="text-white text-2xl font-bold leading-tight mb-3">Join HTP Today</h2>
+          <h2 class="text-white text-2xl font-bold leading-tight mb-3">Join PMS Today</h2>
           <p class="text-indigo-200/80 text-sm leading-relaxed">Create your account and start collaborating with your team in minutes.</p>
         </div>
 

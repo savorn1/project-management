@@ -15,7 +15,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
         </div>
-        <span class="text-white font-bold text-xl tracking-tight">HTP</span>
+        <span class="text-white font-bold text-xl tracking-tight">PMS</span>
       </div>
 
       <!-- Center illustration -->
@@ -90,13 +90,13 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
         </div>
-        <span class="text-white font-bold text-lg">HTP</span>
+        <span class="text-white font-bold text-lg">PMS</span>
       </div>
 
       <!-- Heading -->
       <div class="mb-8">
         <h1 class="text-2xl font-bold text-white mb-1">Welcome back</h1>
-        <p class="text-slate-400 text-sm">Sign in to your HTP account</p>
+        <p class="text-slate-400 text-sm">Sign in to your PMS account</p>
       </div>
 
       <!-- Form -->
