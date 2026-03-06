@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-2xl mx-auto space-y-6">
+  <div class="max-w-4xl mx-auto space-y-6">
 
     <!-- Page header -->
     <div>
@@ -77,7 +77,7 @@
 
         <!-- Cover preview -->
         <div
-          class="relative w-full h-40 rounded-xl overflow-hidden cursor-pointer border-2 border-dashed transition-colors"
+          class="relative w-full h-52 rounded-xl overflow-hidden cursor-pointer border-2 border-dashed transition-colors"
           :class="coverPreview ? 'border-transparent' : 'border-slate-700 hover:border-slate-500'"
           @click="coverInput?.click()"
         >
@@ -159,7 +159,7 @@
         <div class="flex items-center gap-6">
           <!-- Avatar preview -->
           <div
-            class="relative w-24 h-24 rounded-2xl overflow-hidden flex-shrink-0 cursor-pointer border-2 border-dashed transition-colors"
+            class="relative w-28 h-28 rounded-2xl overflow-hidden flex-shrink-0 cursor-pointer border-2 border-dashed transition-colors"
             :class="avatarPreview ? 'border-transparent' : 'border-slate-700 hover:border-slate-500'"
             @click="avatarInput?.click()"
           >
@@ -617,54 +617,224 @@
     </template>
 
     <!-- Security Tab -->
-    <BaseCard v-if="activeTab === 'security'">
-      <h3 class="text-base font-semibold text-white mb-5">Change Password</h3>
-      <form @submit.prevent="savePassword" class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-slate-300 mb-1.5">Current password</label>
-          <input
-            v-model="passwordForm.current"
-            type="password"
-            placeholder="••••••••"
-            autocomplete="current-password"
-            class="w-full px-4 py-2.5 bg-slate-800/60 border border-slate-700/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/60 focus:ring-2 focus:ring-indigo-500/20 transition-all"
-          />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-300 mb-1.5">New password</label>
-          <input
-            v-model="passwordForm.newPwd"
-            type="password"
-            placeholder="••••••••"
-            autocomplete="new-password"
-            class="w-full px-4 py-2.5 bg-slate-800/60 border border-slate-700/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/60 focus:ring-2 focus:ring-indigo-500/20 transition-all"
-          />
-          <p class="text-xs text-slate-500 mt-1">Minimum 6 characters</p>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-300 mb-1.5">Confirm new password</label>
-          <input
-            v-model="passwordForm.confirm"
-            type="password"
-            placeholder="••••••••"
-            autocomplete="new-password"
-            class="w-full px-4 py-2.5 bg-slate-800/60 border border-slate-700/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/60 focus:ring-2 focus:ring-indigo-500/20 transition-all"
-          />
-        </div>
-        <div class="flex items-center gap-3 pt-2">
-          <BaseButton type="submit" :loading="savingPassword" variant="primary">
-            Update password
-          </BaseButton>
-          <p v-if="passwordSuccess" class="text-sm text-emerald-400 flex items-center gap-1.5">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+    <template v-if="activeTab === 'security'">
+
+      <!-- Security Overview -->
+      <BaseCard>
+        <div class="flex items-center gap-3 mb-5">
+          <div class="w-9 h-9 rounded-xl bg-slate-700/60 flex items-center justify-center flex-shrink-0">
+            <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
-            Password updated
-          </p>
-          <p v-if="passwordError" class="text-sm text-red-400">{{ passwordError }}</p>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold text-white">Security Overview</h3>
+            <p class="text-[11px] text-slate-400">Your account's current security status</p>
+          </div>
         </div>
-      </form>
-    </BaseCard>
+        <div class="divide-y divide-slate-700/30">
+          <!-- Email -->
+          <div class="flex items-center justify-between py-3.5">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-slate-800/80 flex items-center justify-center flex-shrink-0">
+                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm text-slate-200">Email address</p>
+                <p class="text-xs text-slate-500">{{ user?.email }}</p>
+              </div>
+            </div>
+            <span class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ring-1"
+              :class="user?.isEmailVerified
+                ? 'bg-emerald-500/10 text-emerald-400 ring-emerald-500/20'
+                : 'bg-amber-500/10 text-amber-400 ring-amber-500/20'">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path v-if="user?.isEmailVerified" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {{ user?.isEmailVerified ? 'Verified' : 'Not verified' }}
+            </span>
+          </div>
+          <!-- Account status -->
+          <div class="flex items-center justify-between py-3.5">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-slate-800/80 flex items-center justify-center flex-shrink-0">
+                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm text-slate-200">Account status</p>
+                <p class="text-xs text-slate-500">Current account state</p>
+              </div>
+            </div>
+            <span class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ring-1"
+              :class="user?.isActive
+                ? 'bg-emerald-500/10 text-emerald-400 ring-emerald-500/20'
+                : 'bg-slate-700/50 text-slate-400 ring-slate-600/30'">
+              <span class="w-1.5 h-1.5 rounded-full" :class="user?.isActive ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'"></span>
+              {{ user?.isActive ? 'Active' : 'Inactive' }}
+            </span>
+          </div>
+          <!-- Last login -->
+          <div v-if="user?.lastLogin" class="flex items-center justify-between py-3.5">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-slate-800/80 flex items-center justify-center flex-shrink-0">
+                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm text-slate-200">Last sign in</p>
+                <p class="text-xs text-slate-500">{{ formatRelativeTime(user.lastLogin) }}</p>
+              </div>
+            </div>
+            <span class="text-xs text-slate-500 font-mono">{{ new Date(user.lastLogin).toLocaleDateString() }}</span>
+          </div>
+        </div>
+      </BaseCard>
+
+      <!-- Change Password -->
+      <BaseCard>
+        <div class="flex items-center gap-3 mb-5">
+          <div class="w-9 h-9 rounded-xl accent-btn flex items-center justify-center flex-shrink-0">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold text-white">Change Password</h3>
+            <p class="text-[11px] text-slate-400">Update your password regularly to keep your account secure</p>
+          </div>
+        </div>
+
+        <form @submit.prevent="savePassword" class="space-y-4">
+
+          <!-- Current password -->
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-1.5">Current password</label>
+            <div class="relative">
+              <input
+                v-model="passwordForm.current"
+                :type="showCurrent ? 'text' : 'password'"
+                placeholder="••••••••"
+                autocomplete="current-password"
+                class="w-full px-4 py-2.5 pr-10 bg-slate-800/60 border border-slate-700/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/60 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+              />
+              <button type="button" @click="showCurrent = !showCurrent"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <template v-if="showCurrent">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                  </template>
+                  <template v-else>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </template>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- New password -->
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-1.5">New password</label>
+            <div class="relative">
+              <input
+                v-model="passwordForm.newPwd"
+                :type="showNew ? 'text' : 'password'"
+                placeholder="••••••••"
+                autocomplete="new-password"
+                class="w-full px-4 py-2.5 pr-10 bg-slate-800/60 border border-slate-700/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/60 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+              />
+              <button type="button" @click="showNew = !showNew"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <template v-if="showNew">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                  </template>
+                  <template v-else>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </template>
+                </svg>
+              </button>
+            </div>
+            <!-- Strength meter -->
+            <div v-if="passwordForm.newPwd" class="mt-2.5 space-y-1.5">
+              <div class="flex gap-1.5">
+                <div v-for="i in 4" :key="i"
+                  class="h-1 flex-1 rounded-full transition-all duration-300"
+                  :class="i <= pwStrength.score ? pwStrength.color : 'bg-slate-700/60'"></div>
+              </div>
+              <p class="text-[11px] font-medium" :class="pwStrength.textColor">{{ pwStrength.label }}</p>
+            </div>
+            <p v-else class="text-xs text-slate-500 mt-1">Minimum 6 characters</p>
+          </div>
+
+          <!-- Confirm password -->
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-1.5">Confirm new password</label>
+            <div class="relative">
+              <input
+                v-model="passwordForm.confirm"
+                :type="showConfirm ? 'text' : 'password'"
+                placeholder="••••••••"
+                autocomplete="new-password"
+                class="w-full px-4 py-2.5 pr-10 bg-slate-800/60 border rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 transition-all"
+                :class="passwordForm.confirm
+                  ? passwordForm.newPwd === passwordForm.confirm
+                    ? 'border-emerald-500/40 focus:border-emerald-500/60 focus:ring-emerald-500/20'
+                    : 'border-rose-500/50 focus:border-rose-500/60 focus:ring-rose-500/20'
+                  : 'border-slate-700/50 focus:border-indigo-500/60 focus:ring-indigo-500/20'"
+              />
+              <button type="button" @click="showConfirm = !showConfirm"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <template v-if="showConfirm">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                  </template>
+                  <template v-else>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </template>
+                </svg>
+              </button>
+            </div>
+            <p v-if="passwordForm.confirm && passwordForm.newPwd !== passwordForm.confirm"
+              class="text-xs text-rose-400 mt-1 flex items-center gap-1">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Passwords do not match
+            </p>
+            <p v-else-if="passwordForm.confirm && passwordForm.newPwd === passwordForm.confirm"
+              class="text-xs text-emerald-400 mt-1 flex items-center gap-1">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+              </svg>
+              Passwords match
+            </p>
+          </div>
+
+          <div class="flex items-center gap-3 pt-1">
+            <BaseButton type="submit" :loading="savingPassword" variant="primary">
+              Update password
+            </BaseButton>
+            <p v-if="passwordSuccess" class="text-sm text-emerald-400 flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+              </svg>
+              Password updated
+            </p>
+            <p v-if="passwordError" class="text-sm text-red-400">{{ passwordError }}</p>
+          </div>
+        </form>
+      </BaseCard>
+
+    </template>
 
   </div>
 
@@ -751,6 +921,8 @@
 </template>
 
 <script setup lang="ts">
+import { formatRelativeTime } from '~/utils/formatters'
+
 const { user, userInitials, updateProfile, changePassword, deactivateAccount, getAuthHeader } = useAuth()
 const router = useRouter()
 const config = useRuntimeConfig()
@@ -868,6 +1040,28 @@ const passwordForm = reactive({ current: '', newPwd: '', confirm: '' })
 const savingPassword = ref(false)
 const passwordSuccess = ref(false)
 const passwordError = ref<string | null>(null)
+
+// Password visibility toggles
+const showCurrent = ref(false)
+const showNew = ref(false)
+const showConfirm = ref(false)
+
+// Password strength
+const pwStrength = computed(() => {
+  const pwd = passwordForm.newPwd
+  if (!pwd) return { score: 0, label: '', color: '', textColor: '' }
+  let score = 1
+  if (pwd.length >= 6) score = 2
+  if (pwd.length >= 8 && (/[A-Z]/.test(pwd) || /[0-9]/.test(pwd))) score = 3
+  if (pwd.length >= 10 && /[A-Z]/.test(pwd) && /[0-9]/.test(pwd) && /[^A-Za-z0-9]/.test(pwd)) score = 4
+  const map: Record<number, { label: string; color: string; textColor: string }> = {
+    1: { label: 'Too short', color: 'bg-rose-500',    textColor: 'text-rose-400'    },
+    2: { label: 'Weak',      color: 'bg-amber-500',   textColor: 'text-amber-400'   },
+    3: { label: 'Medium',    color: 'bg-yellow-400',  textColor: 'text-yellow-400'  },
+    4: { label: 'Strong',    color: 'bg-emerald-500', textColor: 'text-emerald-400' },
+  }
+  return { score, ...map[score]! }
+})
 
 // Sync form when user data loads
 watch(user, (u) => {
@@ -1002,6 +1196,9 @@ async function savePassword() {
     passwordForm.current = ''
     passwordForm.newPwd = ''
     passwordForm.confirm = ''
+    showCurrent.value = false
+    showNew.value = false
+    showConfirm.value = false
     setTimeout(() => { passwordSuccess.value = false }, 3000)
   } catch (err) {
     passwordError.value = err instanceof Error ? err.message : 'Failed to update password'

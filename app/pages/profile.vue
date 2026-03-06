@@ -297,6 +297,10 @@ function rankBarForColor(color: string) {
   }
 }
 
+function onPointsEarned(data: { points: number; totalPoints: number }) {
+  displayPoints.value = data.totalPoints
+}
+
 onMounted(async () => {
   const fresh = await getProfile()
   if (fresh) {
@@ -308,12 +312,10 @@ onMounted(async () => {
   totalTasks.value = tasks.length
   doneTasks.value = tasks.filter(t => t.status === 'done').length
 
-  socket.on('points:earned', (data: { points: number; totalPoints: number }) => {
-    displayPoints.value = data.totalPoints
-  })
+  socket.on('points:earned', onPointsEarned)
 })
 
 onUnmounted(() => {
-  socket.off('points:earned')
+  socket.off('points:earned', onPointsEarned)
 })
 </script>

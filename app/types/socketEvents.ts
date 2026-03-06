@@ -47,6 +47,9 @@ export interface ServerToClientEvents {
   'task:deleted':   (data: TaskEventPayload) => void
   'task:reordered': (data: TaskEventPayload) => void
 
+  // Points / gamification
+  'points:earned': (data: { points: number; totalPoints: number }) => void
+
   // Payments
   'payment:confirmed': (data: PaymentConfirmedEvent) => void
   'payment:expired':   (data: { qrId: string; orderId: string }) => void

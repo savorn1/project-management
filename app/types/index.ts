@@ -94,6 +94,7 @@ export interface Project {
   name: string
   key: string
   description?: string
+  coverImage?: string
   ownerId: string
   status: ProjectStatus
   priority: ProjectPriority
@@ -108,6 +109,7 @@ export interface ProjectInput {
   name: string
   key: string
   description?: string
+  coverImage?: string
   status?: ProjectStatus
   priority?: ProjectPriority
   startDate?: string
