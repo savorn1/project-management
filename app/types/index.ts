@@ -404,6 +404,7 @@ export interface ChatMessage {
   readBy: ReadonlyArray<MessageReadReceipt>
   isDeleted: boolean
   deletedAt?: string
+  editedAt?: string
   createdAt: string
   updatedAt: string
 }

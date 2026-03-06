@@ -17,6 +17,7 @@ export interface TaskEventPayload {
 export interface ServerToClientEvents {
   // Chat — messages
   'chat:message:new': (data: ChatMessage) => void
+  'chat:message:edited': (data: { messageId: string; conversationId: string; content: string; editedAt: string }) => void
   'chat:message:deleted': (data: { messageId: string; conversationId: string }) => void
 
   // Chat — conversations

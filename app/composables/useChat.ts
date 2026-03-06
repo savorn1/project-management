@@ -6,6 +6,7 @@ const activeConversationId = ref<string | null>(null)
 const messages = ref<ChatMessage[]>([])
 const totalUnread = ref(0)
 const onlineUsers = ref<Set<string>>(new Set())
+const lastSeenMap = ref<Map<string, number>>(new Map()) // userId → unix ms when they went offline
 const typingMap = ref<Map<string, { userId: string; userName: string; timer: ReturnType<typeof setTimeout> }>>(new Map())
 
 // Pagination state
@@ -268,6 +269,15 @@ export function useChat() {
     return true
   }
 
+  async function editMessage(messageId: string, content: string) {
+    const updated = await chatApi.editMessage(messageId, content)
+    if (updated) {
+      messages.value = messages.value.map((m) =>
+        m._id === messageId ? { ...m, content: updated.content, editedAt: updated.editedAt } : m,
+      )
+    }
+  }
+
   async function deleteMessage(messageId: string) {
     const ok = await chatApi.deleteMessage(messageId)
     if (ok) {
@@ -349,6 +359,12 @@ export function useChat() {
     bumpConversation(msg.conversationId)
   }
 
+  function onMessageEdited({ messageId, content, editedAt }: { messageId: string; content: string; editedAt: string }) {
+    messages.value = messages.value.map((m) =>
+      m._id === messageId ? { ...m, content, editedAt } : m,
+    )
+  }
+
   function onMessageDeleted({ messageId, conversationId }: { messageId: string; conversationId: string }) {
     if (conversationId !== activeConversationId.value) return
     messages.value = messages.value.map((m) =>
@@ -420,12 +436,24 @@ export function useChat() {
     return onlineUsers.value.has(userId)
   }
 
+  function getLastSeen(userId: string): string {
+    if (onlineUsers.value.has(userId)) return 'Online'
+    const ts = lastSeenMap.value.get(userId)
+    if (!ts) return 'Offline'
+    const diff = Math.floor((Date.now() - ts) / 1000)
+    if (diff < 60) return 'Just now'
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+    return `${Math.floor(diff / 86400)}d ago`
+  }
+
   function startListening() {
     if (socketListenersRegistered || !user.value?.id) return
     socketListenersRegistered = true
     joinRoom(`user:${user.value.id}`)
 
     on('chat:message:new', onNewMessage)
+    on('chat:message:edited', onMessageEdited)
     on('chat:message:deleted', onMessageDeleted)
     on('chat:conversation:new', onConversationNew)
     on('chat:member:added', onMemberAdded)
@@ -436,8 +464,14 @@ export function useChat() {
     on('chat:typing', onTyping)
     on('user:status', ({ userId, online }: { userId: string; online: boolean }) => {
       const next = new Set(onlineUsers.value)
-      if (online) next.add(userId)
-      else next.delete(userId)
+      if (online) {
+        next.add(userId)
+      } else {
+        next.delete(userId)
+        const m = new Map(lastSeenMap.value)
+        m.set(userId, Date.now())
+        lastSeenMap.value = m
+      }
       onlineUsers.value = next
     })
   }
@@ -464,6 +498,7 @@ export function useChat() {
 
     // Message actions
     sendMessage,
+    editMessage,
     sendTyping,
     deleteMessage,
     loadMoreMessages,
@@ -483,6 +518,7 @@ export function useChat() {
     isMyMessage,
     isUnread,
     isOnline,
+    getLastSeen,
     formatTime,
     formatDate,
     lastMessagePreview,

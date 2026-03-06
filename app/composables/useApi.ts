@@ -887,6 +887,13 @@ export function useApi() {
       })
     },
 
+    async editMessage(messageId: string, content: string): Promise<ChatMessage | null> {
+      return await request<ChatMessage>(`/chat/messages/${messageId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ content }),
+      })
+    },
+
     async deleteMessage(messageId: string): Promise<boolean> {
       const response = await request(`/chat/messages/${messageId}`, {
         method: 'DELETE',

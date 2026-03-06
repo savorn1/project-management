@@ -14,7 +14,7 @@
     <div class="flex-1 flex h-full overflow-hidden">
 
     <!-- Main chat column -->
-    <div class="flex-1 flex flex-col h-full overflow-hidden min-w-0">
+    <div class="relative flex-1 flex flex-col h-full overflow-hidden min-w-0">
 
       <!-- Empty state -->
       <div v-if="!activeConversation" class="flex-1 flex flex-col items-center justify-center text-center p-8">
@@ -54,12 +54,28 @@
             </p>
           </div>
 
-          <!-- Real-time connection status + members toggle -->
+          <!-- Search + controls -->
           <div class="ml-auto flex items-center gap-2">
-            <span
-              class="w-2 h-2 rounded-full"
-              :class="isConnected ? 'bg-emerald-400 shadow-[0_0_6px] shadow-emerald-400/60' : 'bg-gray-600'"
-            />
+            <!-- Search bar -->
+            <div class="relative">
+              <input
+                v-model="searchQuery"
+                type="text"
+                placeholder="Search…"
+                class="w-32 focus:w-44 transition-all duration-200 bg-slate-800/60 border border-slate-700/40 rounded-lg px-2.5 py-1 text-xs text-gray-300 placeholder-gray-600 focus:outline-none focus:border-indigo-500/50"
+              />
+              <svg v-if="!searchQuery" class="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-600 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <button v-else @click="searchQuery = ''" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <span class="w-2 h-2 rounded-full flex-shrink-0"
+              :class="isConnected ? 'bg-emerald-400 shadow-[0_0_6px] shadow-emerald-400/60' : 'bg-gray-600'" />
             <span class="text-[10px] text-gray-600">{{ isConnected ? 'Live' : 'Offline' }}</span>
 
             <!-- Members panel toggle (group only) -->
@@ -78,7 +94,7 @@
         </div>
 
         <!-- Messages -->
-        <div ref="scrollRef" class="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+        <div ref="scrollRef" class="relative flex-1 overflow-y-auto px-5 py-4 space-y-3">
           <!-- Loading skeleton -->
           <div v-if="loadingMessages" class="space-y-4">
             <div v-for="i in 6" :key="i" class="flex gap-2" :class="i % 3 === 0 ? 'flex-row-reverse' : ''">
@@ -128,7 +144,13 @@
                 :message="msg"
                 :mine="isMyMessage(msg)"
                 :sender-name="senderName(msg.senderId)"
+                :current-user-id="currentUserId"
+                :highlighted="msg._id === highlightedId"
+                :reply-to-message="msg.replyTo ? messageMap.get(msg.replyTo) && { _id: msg.replyTo, content: messageMap.get(msg.replyTo)!.content, senderName: senderName(messageMap.get(msg.replyTo)!.senderId) } : undefined"
                 @delete="deleteMessage"
+                @reply="startReply"
+                @edit="handleEdit"
+                @scroll-to="scrollToMessage"
               />
             </template>
           </template>
@@ -161,6 +183,27 @@
           <div ref="bottomRef" />
         </div>
 
+        <!-- Scroll-to-bottom FAB -->
+        <Transition
+          enter-active-class="transition ease-out duration-150"
+          enter-from-class="opacity-0 scale-75"
+          enter-to-class="opacity-100 scale-100"
+          leave-active-class="transition ease-in duration-100"
+          leave-from-class="opacity-100 scale-100"
+          leave-to-class="opacity-0 scale-75"
+        >
+          <button
+            v-if="!isAtBottom"
+            @click="scrollToBottom"
+            class="absolute bottom-24 right-5 z-10 w-9 h-9 rounded-full bg-slate-700 hover:bg-slate-600 border border-slate-600/60 shadow-lg flex items-center justify-center text-gray-300 hover:text-white transition-all"
+            title="Scroll to bottom"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </Transition>
+
         <!-- Blocked notice or input -->
         <div
           v-if="isBlockedInConversation"
@@ -175,8 +218,10 @@
           v-else
           ref="inputRef"
           :members="conversationMembers"
+          :replying-to="replyingTo ?? undefined"
           @send="onSend"
           @typing="onTyping"
+          @cancel-reply="replyingTo = null"
         />
       </template>
     </div><!-- end main chat column -->
@@ -196,9 +241,14 @@
       >
         <!-- Panel header -->
         <div class="px-4 py-3 border-b border-slate-800/60 flex items-center justify-between flex-shrink-0">
-          <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-            Members · {{ activeConversation.participants.length }}
-          </span>
+          <div>
+            <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              Members · {{ activeConversation.participants.length }}
+            </span>
+            <span class="ml-2 text-[10px] text-emerald-400/80">
+              {{ activeConversation.participants.filter(id => isOnline(id)).length }} online
+            </span>
+          </div>
           <button
             @click="showAddMembers = !showAddMembers"
             class="w-6 h-6 rounded-md flex items-center justify-center transition-colors"
@@ -260,14 +310,21 @@
               activeConversation.blockedMembers?.includes(participantId) ? 'opacity-50' : '',
             ]"
           >
-            <!-- Avatar -->
-            <div
-              class="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0"
-              :class="activeConversation.admins?.includes(participantId)
-                ? 'bg-gradient-to-br from-amber-500 to-orange-600'
-                : 'bg-gradient-to-br from-slate-600 to-slate-700'"
-            >
-              {{ (memberMap.get(participantId) ?? '?').charAt(0).toUpperCase() }}
+            <!-- Avatar + online dot -->
+            <div class="relative flex-shrink-0">
+              <div
+                class="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
+                :class="activeConversation.admins?.includes(participantId)
+                  ? 'bg-gradient-to-br from-amber-500 to-orange-600'
+                  : 'bg-gradient-to-br from-slate-600 to-slate-700'"
+              >
+                {{ (memberMap.get(participantId) ?? '?').charAt(0).toUpperCase() }}
+              </div>
+              <!-- Online indicator dot -->
+              <span
+                class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-slate-900 flex-shrink-0"
+                :class="isOnline(participantId) ? 'bg-emerald-400' : 'bg-slate-600'"
+              />
             </div>
 
             <!-- Name + badges -->
@@ -277,10 +334,18 @@
                 <span v-if="participantId === currentUserId" class="text-[10px] text-gray-600 font-normal">(you)</span>
               </p>
               <div class="flex items-center gap-1 flex-wrap">
+                <!-- Online status -->
+                <span
+                  class="text-[9px] font-medium"
+                  :class="isOnline(participantId) ? 'text-emerald-400' : 'text-gray-600'"
+                >{{ getLastSeen(participantId) }}</span>
+
+                <span v-if="activeConversation.admins?.includes(participantId)" class="text-[9px] text-gray-700">·</span>
                 <span
                   v-if="activeConversation.admins?.includes(participantId)"
                   class="text-[9px] font-semibold uppercase tracking-wide text-amber-400/80"
                 >Admin</span>
+                <span v-if="activeConversation.blockedMembers?.includes(participantId)" class="text-[9px] text-gray-700">·</span>
                 <span
                   v-if="activeConversation.blockedMembers?.includes(participantId)"
                   class="text-[9px] font-semibold uppercase tracking-wide text-red-400/70"
@@ -393,6 +458,7 @@ const {
   sendMessage: chatSend,
   sendTyping,
   deleteMessage: chatDelete,
+  editMessage: chatEdit,
   loadMoreMessages,
   leaveGroup: chatLeave,
   removeMember: chatRemove,
@@ -402,6 +468,8 @@ const {
   conversationName,
   conversationInitials,
   isMyMessage,
+  isOnline,
+  getLastSeen,
   formatDate,
 } = useChat()
 
@@ -415,6 +483,18 @@ const loadingMessages = ref(false)
 const scrollRef = ref<HTMLElement | null>(null)
 const bottomRef = ref<HTMLElement | null>(null)
 const inputRef = ref<{ focus: () => void } | null>(null)
+
+// Search
+const searchQuery = ref('')
+
+// Reply state
+const replyingTo = ref<{ _id: string; content: string; senderName: string } | null>(null)
+
+// Scroll-to-bottom button visibility
+const isAtBottom = ref(true)
+
+// Highlighted message (scroll-to-original animation)
+const highlightedId = ref<string | null>(null)
 
 const currentUserId = computed(() => user.value?.id ?? '')
 
@@ -483,10 +563,24 @@ async function confirmAddMembers() {
   }
 }
 
+// Search filter
+const filteredMessages = computed(() => {
+  if (!searchQuery.value.trim()) return messages.value
+  const q = searchQuery.value.toLowerCase()
+  return messages.value.filter(m => m.content.toLowerCase().includes(q))
+})
+
+// Map messageId → message for resolving replyTo
+const messageMap = computed(() => {
+  const map = new Map<string, ChatMessage>()
+  for (const m of messages.value) map.set(m._id, m as ChatMessage)
+  return map
+})
+
 // Group messages by calendar date
 const groupedMessages = computed(() => {
   const groups: Record<string, ChatMessage[]> = {}
-  for (const msg of messages.value) {
+  for (const msg of filteredMessages.value) {
     const key = new Date(msg.createdAt).toDateString()
     if (!groups[key]) groups[key] = []
     groups[key]!.push(msg as ChatMessage)
@@ -507,8 +601,32 @@ async function handleSelect(id: string) {
 }
 
 async function onSend(content: string, files: File[] = []) {
-  await chatSend(content, files)
+  await chatSend(content, files, replyingTo.value?._id)
+  replyingTo.value = null
   scrollToBottom()
+}
+
+function startReply(msg: ChatMessage) {
+  replyingTo.value = {
+    _id: msg._id,
+    content: msg.content,
+    senderName: senderName(msg.senderId),
+  }
+  nextTick(() => inputRef.value?.focus())
+}
+
+async function handleEdit(messageId: string, content: string) {
+  await chatEdit(messageId, content)
+}
+
+function scrollToMessage(messageId: string) {
+  const el = scrollRef.value?.querySelector(`[data-msg-id="${messageId}"]`)
+  if (!el) return
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  // Re-trigger animation if clicking the same message again
+  highlightedId.value = null
+  nextTick(() => { highlightedId.value = messageId })
+  setTimeout(() => { if (highlightedId.value === messageId) highlightedId.value = null }, 2200)
 }
 
 function onTyping(isTyping: boolean) {
@@ -587,8 +705,9 @@ async function handleLoadMore() {
 
 function onScroll() {
   const el = scrollRef.value
-  if (!el || el.scrollTop > 80) return
-  handleLoadMore()
+  if (!el) return
+  isAtBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight < 60
+  if (el.scrollTop <= 80) handleLoadMore()
 }
 
 // Attach/detach the scroll listener whenever the container mounts/unmounts

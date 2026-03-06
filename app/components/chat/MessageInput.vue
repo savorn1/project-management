@@ -1,6 +1,35 @@
 <template>
   <div class="relative px-4 py-3 border-t border-slate-800/60">
 
+    <!-- Reply preview strip -->
+    <Transition
+      enter-active-class="transition ease-out duration-150"
+      enter-from-class="opacity-0 -translate-y-1"
+      enter-to-class="opacity-100 translate-y-0"
+      leave-active-class="transition ease-in duration-100"
+      leave-from-class="opacity-100 translate-y-0"
+      leave-to-class="opacity-0 -translate-y-1"
+    >
+      <div
+        v-if="replyingTo"
+        class="flex items-center gap-2 mb-2 px-3 py-2 bg-slate-700/40 border border-slate-600/30 rounded-xl"
+      >
+        <div class="w-0.5 h-8 rounded-full bg-indigo-400/60 flex-shrink-0" />
+        <div class="flex-1 min-w-0">
+          <p class="text-[10px] font-semibold text-indigo-300 mb-0.5">{{ replyingTo.senderName }}</p>
+          <p class="text-[11px] text-gray-500 truncate">{{ replyingTo.content || '📎 Attachment' }}</p>
+        </div>
+        <button
+          @click="$emit('cancel-reply')"
+          class="w-5 h-5 rounded flex items-center justify-center text-gray-600 hover:text-gray-300 hover:bg-slate-700 transition-colors flex-shrink-0"
+        >
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </Transition>
+
     <!-- File validation error -->
     <Transition
       enter-active-class="transition ease-out duration-150"
@@ -200,6 +229,55 @@
           @change="onFileChange"
         />
 
+        <!-- Formatting help button -->
+        <div class="relative">
+          <button
+            @click.stop="showFormatHelp = !showFormatHelp"
+            class="w-8 h-8 rounded-xl flex items-center justify-center transition-colors flex-shrink-0 text-[11px] font-bold"
+            :class="showFormatHelp ? 'text-indigo-400 bg-indigo-500/10' : 'text-gray-500 hover:text-indigo-400 hover:bg-indigo-500/10'"
+            title="Formatting help"
+          >Aa</button>
+
+          <Transition
+            enter-active-class="transition ease-out duration-100"
+            enter-from-class="opacity-0 translate-y-1"
+            enter-to-class="opacity-100 translate-y-0"
+            leave-active-class="transition ease-in duration-75"
+            leave-from-class="opacity-100 translate-y-0"
+            leave-to-class="opacity-0 translate-y-1"
+          >
+            <div
+              v-if="showFormatHelp"
+              class="absolute bottom-full left-0 mb-2 w-52 bg-slate-800 border border-slate-700/60 rounded-2xl shadow-2xl shadow-black/40 p-3 z-20"
+              @click.stop
+            >
+              <p class="text-[10px] font-semibold uppercase tracking-widest text-gray-600 mb-2">Formatting</p>
+              <div class="space-y-1.5">
+                <div class="flex items-center justify-between gap-2">
+                  <code class="text-[11px] text-gray-400 bg-slate-900/60 px-1.5 py-0.5 rounded">**bold**</code>
+                  <strong class="text-[11px] text-gray-300">bold</strong>
+                </div>
+                <div class="flex items-center justify-between gap-2">
+                  <code class="text-[11px] text-gray-400 bg-slate-900/60 px-1.5 py-0.5 rounded">*italic*</code>
+                  <em class="text-[11px] text-gray-300">italic</em>
+                </div>
+                <div class="flex items-center justify-between gap-2">
+                  <code class="text-[11px] text-gray-400 bg-slate-900/60 px-1.5 py-0.5 rounded">`inline code`</code>
+                  <code class="text-[11px] text-indigo-300">code</code>
+                </div>
+                <div class="flex items-center justify-between gap-2">
+                  <code class="text-[11px] text-gray-400 bg-slate-900/60 px-1.5 py-0.5 rounded">```code block```</code>
+                  <span class="text-[11px] text-gray-500">block</span>
+                </div>
+                <div class="border-t border-slate-700/40 pt-1.5">
+                  <code class="text-[11px] text-gray-400 bg-slate-900/60 px-1.5 py-0.5 rounded">@name</code>
+                  <span class="text-[11px] text-gray-500 ml-1">to mention</span>
+                </div>
+              </div>
+            </div>
+          </Transition>
+        </div>
+
         <div class="flex-1" />
 
         <!-- Hint -->
@@ -229,11 +307,13 @@ import type { TeamMember } from '~/types'
 
 const props = defineProps<{
   members: TeamMember[]
+  replyingTo?: { _id: string; content: string; senderName: string }
 }>()
 
 const emit = defineEmits<{
   send: [content: string, files: File[]]
   typing: [isTyping: boolean]
+  'cancel-reply': []
 }>()
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20 MB
@@ -359,6 +439,9 @@ async function submit() {
   emit('send', content, files)
   loading.value = false
 }
+
+// ── Formatting help ──────────────────────────────────────────────────────────
+const showFormatHelp = ref(false)
 
 // ── Emoji picker ────────────────────────────────────────────────────────────
 const showEmojiPicker = ref(false)
