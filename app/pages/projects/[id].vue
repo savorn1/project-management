@@ -3,38 +3,84 @@
     <div class="text-gray-400">Loading project...</div>
   </div>
   <div class="space-y-6" v-else-if="project">
-    <!-- Project Header -->
-    <div class="flex items-start justify-between">
-      <div class="flex items-center gap-4">
-        <NuxtLink to="/projects" class="text-gray-400 hover:text-white transition-colors">
-          ← Back
-        </NuxtLink>
-        <div :class="`w-14 h-14 rounded-xl bg-gradient-to-br ${getProjectGradient(project.key)} flex items-center justify-center text-sm font-bold text-white flex-shrink-0 shadow-lg`">
-          {{ project.key.slice(0, 3) }}
-        </div>
-        <div>
-          <div class="flex items-center gap-2.5">
-            <h1 class="text-2xl font-bold text-white">{{ project.name }}</h1>
-            <span class="text-[11px] font-mono text-gray-500 bg-slate-700/60 px-2 py-0.5 rounded tracking-widest">{{ project.key }}</span>
+    <!-- Project Hero Card -->
+    <div class="relative overflow-hidden rounded-2xl border border-slate-700/40 bg-gradient-to-br from-slate-800/80 via-slate-800/60 to-slate-900/80 shadow-xl">
+      <div :class="`absolute inset-0 bg-gradient-to-br ${getProjectGradient(project.key)} opacity-[0.06] pointer-events-none`"></div>
+      <div class="relative px-6 py-5">
+        <!-- Top row: nav + title + settings -->
+        <div class="flex items-start justify-between gap-4">
+          <div class="flex items-center gap-4 min-w-0">
+            <!-- Back link -->
+            <NuxtLink to="/projects" class="flex items-center gap-1 text-gray-500 hover:text-white transition-colors text-xs flex-shrink-0">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+              Projects
+            </NuxtLink>
+            <span class="text-slate-600 text-sm flex-shrink-0">/</span>
+            <!-- Project icon + name -->
+            <div class="flex items-center gap-3 min-w-0">
+              <div :class="`w-12 h-12 rounded-xl bg-gradient-to-br ${getProjectGradient(project.key)} flex items-center justify-center text-sm font-bold text-white flex-shrink-0 shadow-lg shadow-black/30`">
+                {{ project.key.slice(0, 3) }}
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h1 class="text-xl font-bold text-white leading-tight">{{ project.name }}</h1>
+                  <span class="text-[10px] font-mono text-gray-500 bg-slate-700/60 px-2 py-0.5 rounded tracking-widest flex-shrink-0">{{ project.key }}</span>
+                </div>
+                <p v-if="project.description" class="text-gray-400 text-xs mt-0.5 line-clamp-1">{{ project.description }}</p>
+              </div>
+            </div>
           </div>
-          <p class="text-gray-400 text-sm mt-1">{{ project.description }}</p>
+
+          <!-- Settings button -->
+          <button
+            v-if="memberStatus.isMember"
+            @click="showSettings = !showSettings"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-200 flex-shrink-0"
+            :class="showSettings
+              ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-400'
+              : 'bg-slate-800/50 border-slate-700/30 text-gray-400 hover:text-white hover:border-slate-600/50'"
+          >
+            <svg class="w-3.5 h-3.5 transition-transform duration-300" :class="showSettings ? 'rotate-45' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Settings
+          </button>
+        </div>
+
+        <!-- Stats + progress row (members only) -->
+        <div v-if="memberStatus.isMember" class="mt-4 pt-4 border-t border-slate-700/30 flex items-center gap-6">
+          <div class="flex items-baseline gap-1.5">
+            <span class="text-2xl font-bold text-white">{{ taskCounts.total }}</span>
+            <span class="text-xs text-gray-500">tasks</span>
+          </div>
+          <div class="flex items-baseline gap-1.5">
+            <span class="text-lg font-semibold text-emerald-400">{{ completedTasks }}</span>
+            <span class="text-xs text-gray-500">done</span>
+          </div>
+          <div class="flex items-baseline gap-1.5">
+            <span class="text-lg font-semibold text-blue-400">{{ inProgressTasks }}</span>
+            <span class="text-xs text-gray-500">in progress</span>
+          </div>
+          <div class="flex items-baseline gap-1.5">
+            <span class="text-lg font-semibold text-gray-300">{{ projectMembers.length }}</span>
+            <span class="text-xs text-gray-500">members</span>
+          </div>
+          <!-- Progress bar -->
+          <div v-if="taskCounts.total > 0" class="flex-1 flex items-center gap-3 ml-2">
+            <div class="flex-1 h-1.5 bg-slate-700/60 rounded-full overflow-hidden">
+              <div
+                class="h-full rounded-full transition-all duration-700 ease-out"
+                :class="progress === 100 ? 'bg-gradient-to-r from-emerald-500 to-teal-500' : 'bg-gradient-to-r from-indigo-500 to-blue-500'"
+                :style="{ width: `${progress || 0}%` }"
+              ></div>
+            </div>
+            <span class="text-sm font-bold flex-shrink-0" :class="progress === 100 ? 'text-emerald-400' : 'text-white'">{{ progress }}%</span>
+          </div>
         </div>
       </div>
-
-      <button
-        v-if="memberStatus.isMember"
-        @click="showSettings = !showSettings"
-        class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium border transition-all duration-200"
-        :class="showSettings
-          ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-400'
-          : 'bg-slate-800/50 border-slate-700/30 text-gray-400 hover:text-white hover:border-slate-600/50'"
-      >
-        <svg class="w-4 h-4 transition-transform duration-300" :class="showSettings ? 'rotate-45' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-        Settings
-      </button>
     </div>
 
     <!-- Project Settings Panel -->
@@ -111,147 +157,6 @@
       </button>
     </div>
 
-    <!-- Project Stats (members only) -->
-    <div v-if="memberStatus.isMember" class="grid grid-cols-4 gap-4">
-      <StatCard label="Total Tasks" :value="taskCounts.total" icon="📋" color="blue" />
-      <StatCard label="Completed" :value="completedTasks" icon="✅" color="emerald" />
-      <StatCard label="In Progress" :value="inProgressTasks" icon="⚡" color="amber" />
-      <StatCard label="Progress" :value="`${progress}%`" icon="📊" color="indigo" />
-    </div>
-
-    <!-- Progress Bar (members only, when there are tasks) -->
-    <div v-if="memberStatus.isMember && taskCounts.total > 0" class="bg-slate-800/30 border border-slate-700/30 rounded-xl px-5 py-4">
-      <div class="flex items-center justify-between mb-2.5">
-        <div class="flex items-center gap-4">
-          <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Completion</span>
-          <div class="flex items-center gap-3 text-xs text-gray-500">
-            <span class="flex items-center gap-1.5">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0"></span>
-              {{ completedTasks }} done
-            </span>
-            <span class="flex items-center gap-1.5">
-              <span class="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0"></span>
-              {{ inProgressTasks }} in progress
-            </span>
-            <span class="flex items-center gap-1.5">
-              <span class="w-1.5 h-1.5 rounded-full bg-slate-600 flex-shrink-0"></span>
-              {{ taskCounts.total - completedTasks - inProgressTasks }} todo
-            </span>
-          </div>
-        </div>
-        <span class="text-sm font-bold" :class="progress === 100 ? 'text-emerald-400' : 'text-white'">{{ progress }}%</span>
-      </div>
-      <div class="w-full h-1.5 bg-slate-700/60 rounded-full overflow-hidden">
-        <div
-          class="h-full rounded-full transition-all duration-700 ease-out"
-          :class="progress === 100 ? 'bg-gradient-to-r from-emerald-500 to-teal-500' : 'bg-gradient-to-r from-indigo-500 to-blue-500'"
-          :style="{ width: `${progress || 0}%` }"
-        ></div>
-      </div>
-    </div>
-
-    <!-- Project Members (members only) -->
-    <div v-if="memberStatus.isMember && projectMembers.length > 0" class="bg-slate-800/30 border border-slate-700/30 rounded-xl p-5">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Members ({{ projectMembers.length }})</h3>
-        <span v-if="memberTotalPages > 1" class="text-xs text-gray-500">Page {{ memberPage }} of {{ memberTotalPages }}</span>
-      </div>
-      <div class="flex flex-wrap gap-2.5">
-        <div
-          v-for="member in pagedMembers"
-          :key="member._id"
-          class="flex items-center gap-2.5 bg-slate-800/60 border border-slate-700/30 hover:border-slate-600/50 rounded-lg px-3 py-2 transition-colors"
-        >
-          <div class="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs font-semibold text-white flex-shrink-0 shadow-sm">
-            {{ getMemberInitials(member.user?.name) }}
-          </div>
-          <div class="min-w-0">
-            <div class="flex items-center gap-1.5">
-              <p class="text-sm text-white font-medium truncate leading-snug">{{ member.user?.name || 'Unknown' }}</p>
-              <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold capitalize flex-shrink-0" :class="getRoleBadgeClass(member.role)">
-                {{ member.role }}
-              </span>
-            </div>
-            <p v-if="member.user?.email" class="text-[10px] text-gray-500 truncate mt-0.5">{{ member.user.email }}</p>
-          </div>
-        </div>
-      </div>
-      <!-- Pagination -->
-      <div v-if="memberTotalPages > 1" class="flex items-center justify-center gap-2 mt-4 pt-4 border-t border-slate-700/30">
-        <button
-          @click="memberPage--"
-          :disabled="memberPage === 1"
-          class="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-700/50 text-gray-400 hover:text-white hover:border-slate-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-        >
-          ← Prev
-        </button>
-        <button
-          v-for="p in memberTotalPages"
-          :key="p"
-          @click="memberPage = p"
-          class="w-7 h-7 text-xs font-medium rounded-lg transition-colors"
-          :class="p === memberPage ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white hover:bg-slate-700/50'"
-        >
-          {{ p }}
-        </button>
-        <button
-          @click="memberPage++"
-          :disabled="memberPage === memberTotalPages"
-          class="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-700/50 text-gray-400 hover:text-white hover:border-slate-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-        >
-          Next →
-        </button>
-      </div>
-    </div>
-
-    <!-- Milestones (members only) -->
-    <div v-if="memberStatus.isMember" class="bg-slate-800/30 border border-slate-700/30 rounded-xl p-5">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-          Milestones
-          <span v-if="milestones.length" class="ml-1.5 px-1.5 py-0.5 bg-slate-700/60 rounded text-slate-400 text-[10px] font-medium">{{ milestones.length }}</span>
-        </h3>
-        <button
-          @click="openMilestoneForm()"
-          class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 hover:border-indigo-500/40 rounded-lg transition-colors"
-        >
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
-          </svg>
-          Add Milestone
-        </button>
-      </div>
-
-      <!-- Empty state -->
-      <div v-if="!milestones.length" class="flex flex-col items-center justify-center py-8 text-center">
-        <div class="w-10 h-10 rounded-xl bg-slate-700/30 flex items-center justify-center mb-2">
-          <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
-          </svg>
-        </div>
-        <p class="text-xs text-gray-600">No milestones yet</p>
-      </div>
-
-      <!-- Milestone grid -->
-      <div v-else class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <MilestoneCard
-          v-for="m in milestones"
-          :key="m._id"
-          :milestone="m"
-          @edit="openMilestoneForm(m)"
-          @delete="deleteMilestone"
-        />
-      </div>
-    </div>
-
-    <!-- Milestone Form Modal -->
-    <MilestoneFormModal
-      v-model="showMilestoneModal"
-      :project-id="projectId"
-      :milestone="editingMilestone"
-      @saved="onMilestoneSaved"
-    />
-
     <!-- View switcher + layouts (members only) -->
     <div v-if="memberStatus.isMember" class="space-y-4">
       <!-- Layout tabs -->
@@ -285,6 +190,98 @@
       <!-- Timeline view -->
       <ProjectTimelineView v-else-if="layoutView === 'timeline'" :project-id="projectId" @select-task="openPreview" />
     </div>
+
+    <!-- Team & Milestones collapsible (members only) -->
+    <div v-if="memberStatus.isMember" class="bg-slate-800/30 border border-slate-700/30 rounded-xl overflow-hidden">
+      <!-- Collapse toggle header -->
+      <button
+        type="button"
+        @click="showProjectDetails = !showProjectDetails"
+        class="w-full flex items-center justify-between px-5 py-3.5 hover:bg-slate-800/50 transition-colors"
+      >
+        <div class="flex items-center gap-3">
+          <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Team &amp; Milestones</span>
+          <span class="text-[11px] text-gray-600">{{ projectMembers.length }} member{{ projectMembers.length !== 1 ? 's' : '' }} · {{ milestones.length }} milestone{{ milestones.length !== 1 ? 's' : '' }}</span>
+        </div>
+        <svg class="w-4 h-4 text-gray-500 transition-transform duration-200" :class="showProjectDetails ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      <div v-if="showProjectDetails" class="border-t border-slate-700/30">
+        <!-- Members -->
+        <div v-if="projectMembers.length > 0" class="p-5 border-b border-slate-700/30">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Members ({{ projectMembers.length }})</h3>
+            <span v-if="memberTotalPages > 1" class="text-xs text-gray-500">Page {{ memberPage }} of {{ memberTotalPages }}</span>
+          </div>
+          <div class="flex flex-wrap gap-2.5">
+            <div
+              v-for="member in pagedMembers"
+              :key="member._id"
+              class="flex items-center gap-2.5 bg-slate-800/60 border border-slate-700/30 hover:border-slate-600/50 rounded-lg px-3 py-2 transition-colors"
+            >
+              <div class="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs font-semibold text-white flex-shrink-0 shadow-sm">
+                {{ getMemberInitials(member.user?.name) }}
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5">
+                  <p class="text-sm text-white font-medium truncate leading-snug">{{ member.user?.name || 'Unknown' }}</p>
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold capitalize flex-shrink-0" :class="getRoleBadgeClass(member.role)">
+                    {{ member.role }}
+                  </span>
+                </div>
+                <p v-if="member.user?.email" class="text-[10px] text-gray-500 truncate mt-0.5">{{ member.user.email }}</p>
+              </div>
+            </div>
+          </div>
+          <!-- Pagination -->
+          <div v-if="memberTotalPages > 1" class="flex items-center justify-center gap-2 mt-4 pt-4 border-t border-slate-700/30">
+            <button @click="memberPage--" :disabled="memberPage === 1" class="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-700/50 text-gray-400 hover:text-white hover:border-slate-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">← Prev</button>
+            <button v-for="p in memberTotalPages" :key="p" @click="memberPage = p" class="w-7 h-7 text-xs font-medium rounded-lg transition-colors" :class="p === memberPage ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white hover:bg-slate-700/50'">{{ p }}</button>
+            <button @click="memberPage++" :disabled="memberPage === memberTotalPages" class="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-700/50 text-gray-400 hover:text-white hover:border-slate-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">Next →</button>
+          </div>
+        </div>
+
+        <!-- Milestones -->
+        <div class="p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Milestones
+              <span v-if="milestones.length" class="ml-1.5 px-1.5 py-0.5 bg-slate-700/60 rounded text-slate-400 text-[10px] font-medium">{{ milestones.length }}</span>
+            </h3>
+            <button
+              @click="openMilestoneForm()"
+              class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 hover:border-indigo-500/40 rounded-lg transition-colors"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+              </svg>
+              Add Milestone
+            </button>
+          </div>
+          <div v-if="!milestones.length" class="flex flex-col items-center justify-center py-8 text-center">
+            <div class="w-10 h-10 rounded-xl bg-slate-700/30 flex items-center justify-center mb-2">
+              <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+              </svg>
+            </div>
+            <p class="text-xs text-gray-600">No milestones yet</p>
+          </div>
+          <div v-else class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <MilestoneCard v-for="m in milestones" :key="m._id" :milestone="m" @edit="openMilestoneForm(m)" @delete="deleteMilestone" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Milestone Form Modal -->
+    <MilestoneFormModal
+      v-model="showMilestoneModal"
+      :project-id="projectId"
+      :milestone="editingMilestone"
+      @saved="onMilestoneSaved"
+    />
 
     <!-- Task Preview Slide-over -->
     <Teleport to="body">
@@ -894,6 +891,7 @@ const progress = computed(() => {
 
 const isPageLoading = ref(true)
 const showSettings = ref(false)
+const showProjectDetails = ref(false)
 
 // Layout view
 type LayoutView = 'board' | 'list' | 'calendar' | 'timeline'
