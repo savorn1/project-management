@@ -24,7 +24,7 @@ export function useNotifications() {
     // Join personal room to receive targeted notifications
     joinRoom(`user:${user.value.id}`)
 
-    on<AppNotification>('notification:new', (incoming) => {
+    on('notification:new', (incoming) => {
       notifications.value = [incoming, ...notifications.value]
       unreadCount.value++
 

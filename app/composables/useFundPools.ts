@@ -122,9 +122,9 @@ export function useFundPools() {
 
   function setupRealtime() {
     joinRoom('fund-pools')
-    on<FundPool>('fund-pool:updated', handlePoolUpdated)
+    on('fund-pool:updated', handlePoolUpdated)
     joinRoom('feature-flags')
-    on<{ key: string; enabled: boolean }>('feature-flag:updated', handleFlagUpdated)
+    on('feature-flag:updated', handleFlagUpdated)
     loadExecutorFlag()
   }
 

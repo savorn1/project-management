@@ -191,8 +191,11 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   document.addEventListener('keydown', onKeydown)
+  if (props.projectId && props.modelValue) {
+    projectTasks.value = await tasksApi.getByProject(props.projectId)
+  }
 })
 
 onUnmounted(() => {

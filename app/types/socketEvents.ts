@@ -1,4 +1,4 @@
-import type { ChatMessage, Conversation, PaymentConfirmedEvent } from '~/types'
+import type { AppNotification, ChatMessage, Conversation, FundPool, PaymentConfirmedEvent, Project } from '~/types'
 
 // ── Task event payload ─────────────────────────────────────────────────────────
 
@@ -16,17 +16,17 @@ export interface TaskEventPayload {
 
 export interface ServerToClientEvents {
   // Chat — messages
-  'chat:message:new':     (data: ChatMessage) => void
+  'chat:message:new': (data: ChatMessage) => void
   'chat:message:deleted': (data: { messageId: string; conversationId: string }) => void
 
   // Chat — conversations
   'chat:conversation:new': (data: Conversation) => void
 
   // Chat — members
-  'chat:member:added':     (data: { conversationId: string; userIds: string[] }) => void
-  'chat:member:left':      (data: { conversationId: string; userId: string }) => void
-  'chat:member:removed':   (data: { conversationId: string; userId: string }) => void
-  'chat:member:blocked':   (data: { conversationId: string; userId: string }) => void
+  'chat:member:added': (data: { conversationId: string; userIds: string[] }) => void
+  'chat:member:left': (data: { conversationId: string; userId: string }) => void
+  'chat:member:removed': (data: { conversationId: string; userId: string }) => void
+  'chat:member:blocked': (data: { conversationId: string; userId: string }) => void
   'chat:member:unblocked': (data: { conversationId: string; userId: string }) => void
 
   // Chat — typing
@@ -41,26 +41,39 @@ export interface ServerToClientEvents {
   'user:status': (data: { userId: string; online: boolean }) => void
 
   // Tasks
-  'task:moved':     (data: TaskEventPayload) => void
-  'task:updated':   (data: TaskEventPayload) => void
-  'task:created':   (data: TaskEventPayload) => void
-  'task:deleted':   (data: TaskEventPayload) => void
+  'task:moved': (data: TaskEventPayload) => void
+  'task:updated': (data: TaskEventPayload) => void
+  'task:created': (data: TaskEventPayload) => void
+  'task:deleted': (data: TaskEventPayload) => void
   'task:reordered': (data: TaskEventPayload) => void
+  'task:comment.added': (data: { taskId: string; userId: string; commentId: string; hasAttachment: boolean; timestamp: string }) => void
+
+  // Fund pools
+  'fund-pool:updated': (data: FundPool) => void
+  'feature-flag:updated': (data: { key: string; enabled: boolean }) => void
 
   // Points / gamification
   'points:earned': (data: { points: number; totalPoints: number }) => void
 
+  // Projects
+  'project:created': (data: { project: Project; userId?: string }) => void
+  'project:updated': (data: { project: Project }) => void
+  'project:deleted': (data: { project: { _id: string } }) => void
+
+  // Notifications
+  'notification:new': (data: AppNotification) => void
+
   // Payments
   'payment:confirmed': (data: PaymentConfirmedEvent) => void
-  'payment:expired':   (data: { qrId: string; orderId: string }) => void
+  'payment:expired': (data: { qrId: string; orderId: string }) => void
 }
 
 // ── Client → Server events ─────────────────────────────────────────────────────
 
 export interface ClientToServerEvents {
-  joinRoom:              (data: { room: string }) => void
-  leaveRoom:             (data: { room: string }) => void
-  joinConversationRoom:  (data: { conversationId: string }) => void
+  joinRoom: (data: { room: string }) => void
+  leaveRoom: (data: { room: string }) => void
+  joinConversationRoom: (data: { conversationId: string }) => void
   leaveConversationRoom: (data: { conversationId: string }) => void
-  'chat:typing':         (data: { conversationId: string; isTyping: boolean }) => void
+  'chat:typing': (data: { conversationId: string; isTyping: boolean }) => void
 }

@@ -181,6 +181,7 @@ function onKeydown(e: KeyboardEvent) {
 
 onMounted(() => {
   document.addEventListener('keydown', onKeydown)
+  if (props.projectId) loadLabels(props.projectId)
 })
 
 onUnmounted(() => {

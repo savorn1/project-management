@@ -42,13 +42,14 @@ export function useMentionInput(
   function findMentionTrigger(text: string, cursorPos: number): { start: number; query: string } | null {
     let i = cursorPos - 1
     while (i >= 0) {
-      if (text[i] === '@') {
-        if (i === 0 || /\s/.test(text[i - 1])) {
+      const ch = text.charAt(i)
+      if (ch === '@') {
+        if (i === 0 || /\s/.test(text.charAt(i - 1))) {
           return { start: i, query: text.slice(i + 1, cursorPos) }
         }
         return null
       }
-      if (/\s/.test(text[i])) return null
+      if (/\s/.test(ch)) return null
       i--
     }
     return null

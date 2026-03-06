@@ -251,6 +251,7 @@ async function uploadAll() {
 
   for (let i = 0; i < staged.value.length; i++) {
     const file = staged.value[i]
+    if (!file) continue
     uploadProgress.value[i] = 0
 
     const formData = new FormData()

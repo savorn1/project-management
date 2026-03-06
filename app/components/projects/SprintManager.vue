@@ -213,8 +213,8 @@ function startEdit(sprint: Sprint) {
   editingId.value = sprint._id
   editName.value = sprint.name
   editGoal.value = sprint.goal || ''
-  editStartDate.value = sprint.startDate ? sprint.startDate.split('T')[0] : ''
-  editEndDate.value = sprint.endDate ? sprint.endDate.split('T')[0] : ''
+  editStartDate.value = sprint.startDate?.split('T')[0] ?? ''
+  editEndDate.value = sprint.endDate?.split('T')[0] ?? ''
   nextTick(() => {
     editInputRef.value?.focus()
   })

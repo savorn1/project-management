@@ -84,17 +84,21 @@ export function useKanban(projectId: string) {
         if (!col) return
         if (!col.find(t => t._id === task._id)) {
           col.unshift(task)
-          if (columnMeta.value[task.status]) columnMeta.value[task.status].total++
+          const meta = columnMeta.value[task.status]
+          if (meta) meta.total++
         }
       } else {
         // Deletion: remove from whichever column has the task
         const currentIds = new Set(tasks.value.map(t => t._id))
         for (const status of Object.keys(columnTasks.value) as TaskStatus[]) {
-          const before = columnTasks.value[status].length
-          columnTasks.value[status] = columnTasks.value[status].filter(t => currentIds.has(t._id))
-          const removed = before - columnTasks.value[status].length
-          if (removed > 0 && columnMeta.value[status]) {
-            columnMeta.value[status].total = Math.max(0, columnMeta.value[status].total - removed)
+          const col = columnTasks.value[status]
+          if (!col) continue
+          const before = col.length
+          columnTasks.value[status] = col.filter(t => currentIds.has(t._id))
+          const removed = before - columnTasks.value[status]!.length
+          const meta = columnMeta.value[status]
+          if (removed > 0 && meta) {
+            meta.total = Math.max(0, meta.total - removed)
           }
         }
       }

@@ -37,7 +37,7 @@ export function useTaskComments() {
     // Join the task room for real-time updates
     currentRoom = `task:${taskId}`
     joinRoom(currentRoom)
-    on<CommentAddedEvent>('task:comment.added', onCommentAdded)
+    on('task:comment.added', onCommentAdded)
   }
 
   function onCommentAdded(event: CommentAddedEvent) {

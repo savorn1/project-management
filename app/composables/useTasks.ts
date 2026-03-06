@@ -1,4 +1,5 @@
-import type { Task, TaskStatus, TaskPriority } from '~/types'
+import type { Task, TaskPriority, TaskStatus } from '~/types'
+import type { TaskEventPayload } from '~/types/socketEvents'
 
 const tasks = ref<Task[]>([])
 const isLoading = ref(false)
@@ -30,42 +31,45 @@ export function useTasks() {
   })
 
   // Socket event handlers
-  function handleTaskCreated(data: { task: Task; userId?: string }) {
-    // Skip if this client created the task
-    if (data.userId && data.userId === socket.clientId) return
-
-    const exists = tasks.value.find(t => t._id === data.task._id)
-    if (!exists) {
-      tasks.value.push(data.task)
-      toast.info('New task created')
+  function handleTaskCreated(payload: TaskEventPayload) {
+    if (payload.clientId && payload.clientId === socket.clientId) return
+    if (payload.data.task) {
+      const exists = tasks.value.some(t => t._id === payload.taskId)
+      if (!exists) {
+        tasks.value.push(payload.data.task as Task)
+        toast.info('New task created')
+      }
     }
   }
 
-  function handleTaskUpdated(data: { task: Task }) {
-    const index = tasks.value.findIndex(t => t._id === data.task._id)
-    if (index !== -1) {
-      tasks.value[index] = { ...tasks.value[index], ...data.task }
-    } else {
-      // Task might have been moved to a project we're viewing
-      tasks.value.push(data.task)
+  function handleTaskUpdated(payload: TaskEventPayload) {
+    if (payload.clientId && payload.clientId === socket.clientId) return
+    const index = tasks.value.findIndex(t => t._id === payload.taskId)
+    if (index !== -1 && payload.data.task) {
+      tasks.value[index] = { ...tasks.value[index], ...(payload.data.task as Partial<Task>) } as Task
+    } else if (index === -1 && payload.data.task) {
+      tasks.value.push(payload.data.task as Task)
     }
   }
 
-  function handleTaskDeleted(data: { task: { _id: string } }) {
-    const index = tasks.value.findIndex(t => t._id === data.task._id)
+  function handleTaskDeleted(payload: TaskEventPayload) {
+    if (payload.clientId && payload.clientId === socket.clientId) return
+    const index = tasks.value.findIndex(t => t._id === payload.taskId)
     if (index !== -1) {
       tasks.value.splice(index, 1)
       toast.info('Task deleted')
     }
   }
 
-  function handleTaskReordered(data: { task: { taskOrders: { taskId: string; order: number }[] } }) {
-    data.task.taskOrders.forEach(({ taskId, order }) => {
-      const task = tasks.value.find(t => t._id === taskId)
-      if (task) {
-        task.order = order
+  function handleTaskReordered(payload: TaskEventPayload) {
+    if (payload.clientId && payload.clientId === socket.clientId) return
+    const taskOrders = payload.data.taskOrders as { taskId: string; order: number }[]
+    if (taskOrders) {
+      for (const { taskId, order } of taskOrders) {
+        const task = tasks.value.find(t => t._id === taskId)
+        if (task) task.order = order
       }
-    })
+    }
   }
 
   // Setup socket listeners for a project
@@ -166,12 +170,10 @@ export function useTasks() {
   }
 
   async function updateTask(id: string, data: Partial<Task>) {
-    const index = tasks.value.findIndex(t => t._id === id)
-    if (index === -1) return
-
     const updated = await tasksApi.update(id, data)
     if (updated) {
-      tasks.value[index] = { ...tasks.value[index], ...updated }
+      const index = tasks.value.findIndex(t => t._id === id)
+      if (index !== -1) tasks.value[index] = { ...tasks.value[index], ...updated }
     }
   }
 
@@ -187,13 +189,10 @@ export function useTasks() {
   }
 
   async function moveTask(taskId: string, newStatus: TaskStatus) {
-    const task = tasks.value.find(t => t._id === taskId)
-    if (task) {
-      const updated = await tasksApi.updateStatus(taskId, newStatus)
-      if (updated) {
-        const index = tasks.value.findIndex(t => t._id === taskId)
-        if (index !== -1) tasks.value[index] = { ...tasks.value[index]!, ...updated }
-      }
+    const updated = await tasksApi.updateStatus(taskId, newStatus)
+    if (updated) {
+      const index = tasks.value.findIndex(t => t._id === taskId)
+      if (index !== -1) tasks.value[index] = { ...tasks.value[index]!, ...updated }
     }
   }
 

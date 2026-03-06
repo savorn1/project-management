@@ -188,6 +188,7 @@ function onKeydown(e: KeyboardEvent) {
 
 onMounted(() => {
   document.addEventListener('keydown', onKeydown)
+  if (props.projectId) loadSprints(props.projectId)
 })
 
 onUnmounted(() => {
