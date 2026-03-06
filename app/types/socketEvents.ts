@@ -1,4 +1,4 @@
-import type { AppNotification, ChatMessage, Conversation, FundPool, PaymentConfirmedEvent, Project } from '~/types'
+import type { AppNotification, ChatMessage, Conversation, FundPool, MessageReaction, PaymentConfirmedEvent, PinnedMessage, Project } from '~/types'
 
 // ── Task event payload ─────────────────────────────────────────────────────────
 
@@ -19,6 +19,9 @@ export interface ServerToClientEvents {
   'chat:message:new': (data: ChatMessage) => void
   'chat:message:edited': (data: { messageId: string; conversationId: string; content: string; editedAt: string }) => void
   'chat:message:deleted': (data: { messageId: string; conversationId: string }) => void
+  'chat:message:reaction': (data: { messageId: string; conversationId: string; reactions: MessageReaction[] }) => void
+  'chat:message:pinned': (data: { conversationId: string; pinnedMessage: PinnedMessage }) => void
+  'chat:message:unpinned': (data: { conversationId: string; messageId: string }) => void
 
   // Chat — conversations
   'chat:conversation:new': (data: Conversation) => void

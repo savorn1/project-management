@@ -373,6 +373,7 @@ export interface Conversation {
   admins: string[]
   blockedMembers: string[]
   lastMessage?: LastMessageSnapshot
+  pinnedMessages?: PinnedMessage[]
   createdAt: string
   updatedAt: string
   /** Returned by API: persisted unread count from UserConversation */
@@ -393,6 +394,18 @@ export interface MessageReadReceipt {
   readAt: string
 }
 
+export interface MessageReaction {
+  emoji: string
+  userId: string
+}
+
+export interface PinnedMessage {
+  messageId: string
+  pinnedBy: string
+  pinnedAt: string
+  content?: string
+}
+
 export interface ChatMessage {
   _id: string
   conversationId: string
@@ -402,6 +415,7 @@ export interface ChatMessage {
   replyTo?: string
   attachments: MessageAttachment[]
   readBy: ReadonlyArray<MessageReadReceipt>
+  reactions: MessageReaction[]
   isDeleted: boolean
   deletedAt?: string
   editedAt?: string

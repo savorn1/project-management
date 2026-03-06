@@ -78,6 +78,22 @@
               :class="isConnected ? 'bg-emerald-400 shadow-[0_0_6px] shadow-emerald-400/60' : 'bg-gray-600'" />
             <span class="text-[10px] text-gray-600">{{ isConnected ? 'Live' : 'Offline' }}</span>
 
+            <!-- Pinned messages toggle -->
+            <button
+              v-if="activeConversation.pinnedMessages?.length"
+              @click="showPinned = !showPinned"
+              class="ml-1 w-7 h-7 rounded-lg flex items-center justify-center transition-colors relative"
+              :class="showPinned ? 'bg-amber-500/20 text-amber-400' : 'text-gray-600 hover:text-gray-400 hover:bg-slate-800/60'"
+              title="Pinned messages"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+              </svg>
+              <span class="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-amber-500 text-[8px] font-bold text-white flex items-center justify-center">
+                {{ activeConversation.pinnedMessages.length }}
+              </span>
+            </button>
+
             <!-- Members panel toggle (group only) -->
             <button
               v-if="activeConversation.type === 'group'"
@@ -151,6 +167,10 @@
                 @reply="startReply"
                 @edit="handleEdit"
                 @scroll-to="scrollToMessage"
+                @react="handleReact"
+                @pin="handlePin"
+                @forward="(m) => forwardMessage = m"
+                @open-image="(img) => openLightbox(img, (msg.attachments ?? []).filter(a => a.mimeType.startsWith('image/')))"
               />
             </template>
           </template>
@@ -431,6 +451,69 @@
     </Transition>
     </div><!-- end message area flex wrapper -->
 
+    <!-- ── Pinned messages dropdown ────────────────────────────────── -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition ease-out duration-150"
+        enter-from-class="opacity-0 -translate-y-1"
+        enter-to-class="opacity-100 translate-y-0"
+        leave-active-class="transition ease-in duration-100"
+        leave-from-class="opacity-100 translate-y-0"
+        leave-to-class="opacity-0 -translate-y-1"
+      >
+        <div
+          v-if="showPinned && activeConversation?.pinnedMessages?.length"
+          class="fixed top-16 right-4 z-[9990] w-72 bg-slate-900 border border-slate-700/60 rounded-2xl shadow-2xl shadow-black/40 overflow-hidden"
+        >
+          <div class="flex items-center justify-between px-4 py-2.5 border-b border-slate-800/60">
+            <span class="text-xs font-semibold text-amber-400">📌 Pinned Messages</span>
+            <button @click="showPinned = false" class="text-gray-600 hover:text-gray-300 transition-colors">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div class="max-h-64 overflow-y-auto divide-y divide-slate-800/40">
+            <div
+              v-for="pin in [...(activeConversation.pinnedMessages ?? [])].reverse()"
+              :key="pin.messageId"
+              class="flex items-start gap-2 px-4 py-2.5 hover:bg-slate-800/40 transition-colors group/pin"
+            >
+              <div class="flex-1 min-w-0">
+                <p class="text-[10px] text-gray-600 mb-0.5">{{ senderName(pin.pinnedBy) }}</p>
+                <p
+                  class="text-xs text-gray-300 truncate cursor-pointer hover:text-indigo-300 transition-colors"
+                  @click="scrollToMessage(pin.messageId); showPinned = false"
+                >{{ pin.content || '📎 Attachment' }}</p>
+              </div>
+              <button
+                @click="handleUnpin(pin.messageId)"
+                class="opacity-0 group-hover/pin:opacity-100 text-gray-600 hover:text-red-400 transition-all flex-shrink-0 mt-0.5"
+                title="Unpin"
+              >
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+      <div v-if="showPinned" class="fixed inset-0 z-[9989]" @click="showPinned = false" />
+    </Teleport>
+
+    <!-- ── Image Lightbox ───────────────────────────────────────────── -->
+    <ImageLightbox v-model="lightboxImage" :images="lightboxImages" />
+
+    <!-- ── Forward Modal ───────────────────────────────────────────── -->
+    <ForwardModal
+      v-if="forwardMessage"
+      :conversations="conversations as Conversation[]"
+      :content="forwardMessage.content"
+      @close="forwardMessage = null"
+      @forwarded="forwardMessage = null"
+    />
+
     <!-- ── New Conversation Modal ───────────────────────────────────── -->
     <NewConversationModal
       v-if="showModal"
@@ -441,7 +524,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ChatMessage, Conversation, TeamMember } from '~/types'
+import type { ChatMessage, Conversation, MessageAttachment, TeamMember } from '~/types'
 
 definePageMeta({ layout: 'default' })
 
@@ -459,6 +542,9 @@ const {
   sendTyping,
   deleteMessage: chatDelete,
   editMessage: chatEdit,
+  toggleReaction: chatReact,
+  pinMessage: chatPin,
+  unpinMessage: chatUnpin,
   loadMoreMessages,
   leaveGroup: chatLeave,
   removeMember: chatRemove,
@@ -495,6 +581,16 @@ const isAtBottom = ref(true)
 
 // Highlighted message (scroll-to-original animation)
 const highlightedId = ref<string | null>(null)
+
+// Lightbox
+const lightboxImage = ref<MessageAttachment | null>(null)
+const lightboxImages = ref<MessageAttachment[]>([])
+
+// Pinned panel
+const showPinned = ref(false)
+
+// Forward modal
+const forwardMessage = ref<ChatMessage | null>(null)
 
 const currentUserId = computed(() => user.value?.id ?? '')
 
@@ -617,6 +713,25 @@ function startReply(msg: ChatMessage) {
 
 async function handleEdit(messageId: string, content: string) {
   await chatEdit(messageId, content)
+}
+
+async function handleReact(messageId: string, emoji: string) {
+  await chatReact(messageId, emoji)
+}
+
+async function handlePin(messageId: string) {
+  if (!activeConversation.value) return
+  await chatPin(activeConversation.value._id, messageId)
+}
+
+async function handleUnpin(messageId: string) {
+  if (!activeConversation.value) return
+  await chatUnpin(activeConversation.value._id, messageId)
+}
+
+function openLightbox(attachment: MessageAttachment, allImages: MessageAttachment[]) {
+  lightboxImages.value = allImages
+  lightboxImage.value = attachment
 }
 
 function scrollToMessage(messageId: string) {

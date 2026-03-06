@@ -944,6 +944,25 @@ export function useApi() {
         { method: 'POST' },
       )
     },
+
+    async toggleReaction(messageId: string, emoji: string): Promise<ChatMessage | null> {
+      return await request<ChatMessage>(`/chat/messages/${messageId}/reactions`, {
+        method: 'POST',
+        body: JSON.stringify({ emoji }),
+      })
+    },
+
+    async pinMessage(conversationId: string, messageId: string): Promise<Conversation | null> {
+      return await request<Conversation>(`/chat/conversations/${conversationId}/pin/${messageId}`, {
+        method: 'POST',
+      })
+    },
+
+    async unpinMessage(conversationId: string, messageId: string): Promise<Conversation | null> {
+      return await request<Conversation>(`/chat/conversations/${conversationId}/pin/${messageId}`, {
+        method: 'DELETE',
+      })
+    },
   }
 
   // Health check

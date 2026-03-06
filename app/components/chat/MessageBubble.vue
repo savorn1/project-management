@@ -83,18 +83,16 @@
               class="flex flex-wrap gap-1"
               :class="mine ? 'justify-end' : 'justify-start'"
             >
-              <a
+              <button
                 v-for="img in imageAttachments"
                 :key="img.url"
-                :href="img.url"
-                target="_blank"
-                rel="noopener"
-                class="block rounded-xl overflow-hidden border border-slate-700/40 hover:opacity-90 transition-opacity"
+                @click="$emit('open-image', img)"
+                class="block rounded-xl overflow-hidden border border-slate-700/40 hover:opacity-90 transition-opacity cursor-zoom-in"
                 :style="imageAttachments.length === 1 ? 'max-width:240px' : 'width:112px;height:112px'"
               >
                 <img :src="img.url" :alt="img.originalName" class="object-cover w-full h-full"
                   :style="imageAttachments.length === 1 ? 'max-height:200px' : ''" />
-              </a>
+              </button>
             </div>
             <a
               v-for="file in fileAttachments"
@@ -120,6 +118,27 @@
             v-if="mine && readCount > 0"
             class="text-[9px] text-indigo-300/50 mt-0.5 select-none"
           >Seen by {{ readCount }}</p>
+
+          <!-- Reaction bar -->
+          <div
+            v-if="groupedReactions.length > 0"
+            class="flex flex-wrap gap-1 mt-1.5"
+            :class="mine ? 'justify-end' : 'justify-start'"
+          >
+            <button
+              v-for="group in groupedReactions"
+              :key="group.emoji"
+              @click="$emit('react', message._id, group.emoji)"
+              class="flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[11px] transition-colors"
+              :class="group.reacted
+                ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300'
+                : 'bg-slate-800/60 border-slate-700/40 text-gray-400 hover:bg-slate-700/50'"
+              :title="group.emoji"
+            >
+              <span>{{ group.emoji }}</span>
+              <span class="font-medium">{{ group.count }}</span>
+            </button>
+          </div>
         </template>
       </template>
 
@@ -174,6 +193,59 @@
             </svg>
           </button>
 
+          <!-- React -->
+          <div class="relative">
+            <button
+              @click.stop="showReactionPicker = !showReactionPicker"
+              class="w-6 h-6 rounded-lg flex items-center justify-center text-gray-600 hover:text-yellow-400 hover:bg-yellow-500/10 transition-colors"
+              title="React"
+            >
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+            <!-- Quick emoji picker -->
+            <Teleport to="body">
+              <div
+                v-if="showReactionPicker"
+                class="fixed z-[9999] flex gap-1 px-2 py-1.5 bg-slate-800 border border-slate-700/60 rounded-2xl shadow-2xl shadow-black/40"
+                :style="reactionPickerStyle"
+                @click.stop
+              >
+                <button
+                  v-for="emoji in quickEmojis"
+                  :key="emoji"
+                  @click="pickReaction(emoji)"
+                  class="w-7 h-7 flex items-center justify-center text-base rounded-lg hover:bg-slate-700/60 transition-colors"
+                >{{ emoji }}</button>
+              </div>
+              <div v-if="showReactionPicker" class="fixed inset-0 z-[9998]" @click="showReactionPicker = false" />
+            </Teleport>
+          </div>
+
+          <!-- Pin -->
+          <button
+            @click="$emit('pin', message._id)"
+            class="w-6 h-6 rounded-lg flex items-center justify-center text-gray-600 hover:text-amber-400 hover:bg-amber-500/10 transition-colors"
+            title="Pin message"
+          >
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+            </svg>
+          </button>
+
+          <!-- Forward -->
+          <button
+            v-if="message.content"
+            @click="$emit('forward', message)"
+            class="w-6 h-6 rounded-lg flex items-center justify-center text-gray-600 hover:text-indigo-400 hover:bg-indigo-500/10 transition-colors"
+            title="Forward"
+          >
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 9l3 3m0 0l-3 3m3-3H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
+
           <!-- Delete (own messages only) -->
           <button
             v-if="mine"
@@ -214,6 +286,10 @@ const emit = defineEmits<{
   reply: [message: ChatMessage]
   edit: [messageId: string, content: string]
   'scroll-to': [messageId: string]
+  'open-image': [attachment: MessageAttachment]
+  react: [messageId: string, emoji: string]
+  pin: [messageId: string]
+  forward: [message: ChatMessage]
 }>()
 
 const { formatTime } = useChat()
@@ -234,6 +310,17 @@ const imageAttachments = computed<MessageAttachment[]>(() =>
 const fileAttachments = computed<MessageAttachment[]>(() =>
   (props.message.attachments ?? []).filter((a) => !a.mimeType.startsWith('image/')),
 )
+
+const groupedReactions = computed(() => {
+  const map = new Map<string, { emoji: string; count: number; reacted: boolean }>()
+  for (const r of (props.message.reactions ?? [])) {
+    const entry = map.get(r.emoji) ?? { emoji: r.emoji, count: 0, reacted: false }
+    entry.count++
+    if (r.userId === props.currentUserId) entry.reacted = true
+    map.set(r.emoji, entry)
+  }
+  return [...map.values()]
+})
 
 const readCount = computed(() => {
   const count = (props.message.readBy ?? []).filter(
@@ -316,6 +403,30 @@ async function copyContent() {
   } catch {
     // clipboard not available
   }
+}
+
+// ── Reaction picker ───────────────────────────────────────────────────────────
+
+const quickEmojis = ['👍','❤️','😂','😮','😢','🔥','👏','🙏']
+const showReactionPicker = ref(false)
+const reactionPickerStyle = ref('')
+
+watch(showReactionPicker, (val) => {
+  if (!val) return
+  nextTick(() => {
+    // Position picker near the action buttons using mouse position fallback
+    const btn = document.activeElement as HTMLElement | null
+    if (!btn) return
+    const rect = btn.getBoundingClientRect()
+    const top = rect.top - 48
+    const left = Math.min(rect.left, window.innerWidth - 260)
+    reactionPickerStyle.value = `top:${top}px;left:${left}px`
+  })
+})
+
+function pickReaction(emoji: string) {
+  emit('react', props.message._id, emoji)
+  showReactionPicker.value = false
 }
 
 // ── Edit ─────────────────────────────────────────────────────────────────────

@@ -287,6 +287,26 @@ export function useChat() {
     }
   }
 
+  async function toggleReaction(messageId: string, emoji: string) {
+    const updated = await chatApi.toggleReaction(messageId, emoji)
+    if (updated) {
+      messages.value = messages.value.map((m) =>
+        m._id === messageId ? { ...m, reactions: updated.reactions ?? [] } : m,
+      )
+    }
+  }
+
+  async function pinMessage(conversationId: string, messageId: string) {
+    await chatApi.pinMessage(conversationId, messageId)
+  }
+
+  async function unpinMessage(conversationId: string, messageId: string) {
+    const updated = await chatApi.unpinMessage(conversationId, messageId)
+    if (updated) {
+      patchConversation(conversationId, { pinnedMessages: updated.pinnedMessages ?? [] })
+    }
+  }
+
   // ── Typing indicator ──────────────────────────────────────────────────────
 
   let typingTimeout: ReturnType<typeof setTimeout> | null = null
@@ -357,12 +377,49 @@ export function useChat() {
     }
     patchConversation(msg.conversationId, { lastMessage: toLastMessageSnapshot(msg) })
     bumpConversation(msg.conversationId)
+
+    // Desktop notification for @mentions
+    const userName = user.value?.name ?? ''
+    const isMentioned =
+      msg.content.includes('@[everyone]') ||
+      (userName && msg.content.includes(`@[${userName}]`))
+    if (isMentioned && msg.senderId !== user.value?.id && Notification.permission === 'granted') {
+      const conv = conversations.value.find((c) => c._id === msg.conversationId)
+      const convName = conv ? conversationName(conv) : 'Chat'
+      const n = new Notification(`Mentioned in ${convName}`, {
+        body: msg.content.replace(/@\[([^\]]+)\]\([^)]*\)/g, '@$1').replace(/@\[([^\]]+)\]/g, '@$1').slice(0, 100),
+        icon: '/favicon.ico',
+      })
+      n.onclick = () => { window.focus(); n.close() }
+    }
   }
 
   function onMessageEdited({ messageId, content, editedAt }: { messageId: string; content: string; editedAt: string }) {
     messages.value = messages.value.map((m) =>
       m._id === messageId ? { ...m, content, editedAt } : m,
     )
+  }
+
+  function onMessageReaction({ messageId, reactions }: { messageId: string; reactions: import('~/types').MessageReaction[] }) {
+    messages.value = messages.value.map((m) =>
+      m._id === messageId ? { ...m, reactions } : m,
+    )
+  }
+
+  function onMessagePinned({ conversationId, pinnedMessage }: { conversationId: string; pinnedMessage: import('~/types').PinnedMessage }) {
+    const conv = conversations.value.find((c) => c._id === conversationId)
+    if (!conv) return
+    patchConversation(conversationId, {
+      pinnedMessages: [...(conv.pinnedMessages ?? []), pinnedMessage],
+    })
+  }
+
+  function onMessageUnpinned({ conversationId, messageId }: { conversationId: string; messageId: string }) {
+    const conv = conversations.value.find((c) => c._id === conversationId)
+    if (!conv) return
+    patchConversation(conversationId, {
+      pinnedMessages: (conv.pinnedMessages ?? []).filter((p) => p.messageId !== messageId),
+    })
   }
 
   function onMessageDeleted({ messageId, conversationId }: { messageId: string; conversationId: string }) {
@@ -452,9 +509,17 @@ export function useChat() {
     socketListenersRegistered = true
     joinRoom(`user:${user.value.id}`)
 
+    // Request desktop notification permission for @mention alerts
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => { })
+    }
+
     on('chat:message:new', onNewMessage)
     on('chat:message:edited', onMessageEdited)
     on('chat:message:deleted', onMessageDeleted)
+    on('chat:message:reaction', onMessageReaction)
+    on('chat:message:pinned', onMessagePinned)
+    on('chat:message:unpinned', onMessageUnpinned)
     on('chat:conversation:new', onConversationNew)
     on('chat:member:added', onMemberAdded)
     on('chat:member:left', onMemberLeft)
@@ -499,8 +564,11 @@ export function useChat() {
     // Message actions
     sendMessage,
     editMessage,
-    sendTyping,
     deleteMessage,
+    toggleReaction,
+    pinMessage,
+    unpinMessage,
+    sendTyping,
     loadMoreMessages,
 
     // Member actions
