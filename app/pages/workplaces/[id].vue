@@ -6,47 +6,115 @@
     </div>
 
     <template v-else-if="currentWorkplace">
-      <!-- Header -->
-      <div class="flex items-start justify-between">
-        <div class="flex items-center gap-4">
-          <NuxtLink to="/workplaces" class="text-gray-400 hover:text-white transition-colors">
-            ← Back
-          </NuxtLink>
-          <div :class="`w-14 h-14 rounded-xl bg-gradient-to-br ${getWorkplaceGradient(currentWorkplace.name)} flex items-center justify-center text-base font-bold text-white flex-shrink-0 shadow-lg`">
+      <!-- Back link -->
+      <NuxtLink
+        to="/workplaces"
+        class="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm"
+      >
+        <span class="text-base leading-none">←</span>
+        Back to workplaces
+      </NuxtLink>
+
+      <!-- Workplace Hero (matches ProjectCard style) -->
+      <BaseCard noPadding class="overflow-hidden">
+        <!-- Cover area -->
+        <div class="relative h-44 overflow-hidden group">
+          <div
+            v-if="currentWorkplace.coverImage"
+            class="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
+            :style="{ backgroundImage: `url(${currentWorkplace.coverImage})` }"
+          />
+          <div
+            v-else
+            :class="`absolute inset-0 bg-gradient-to-br ${getCoverGradient(currentWorkplace.slug)} transition-transform duration-500 group-hover:scale-105`"
+          />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+
+          <!-- Cover actions (top-right) -->
+          <div class="absolute top-3 right-3 flex items-center gap-1.5">
+            <button
+              @click.prevent.stop="copyLink"
+              class="w-8 h-8 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white/70 hover:text-white hover:bg-black/50 transition-all"
+              title="Copy link"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+            </button>
+            <button
+              @click.prevent.stop="showEditModal = true"
+              class="w-8 h-8 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white/70 hover:text-white hover:bg-black/50 transition-all"
+              title="Edit workplace"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+            <button
+              @click.prevent.stop="showCoverModal = true"
+              class="w-8 h-8 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white/70 hover:text-white hover:bg-black/50 transition-all"
+              title="Edit cover"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+              </svg>
+            </button>
+            <button
+              @click.prevent.stop="showAddMemberModal = true"
+              class="w-8 h-8 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white/70 hover:text-white hover:bg-black/50 transition-all"
+              title="Add member"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Avatar (bottom-left) -->
+          <div
+            :class="`absolute bottom-3 left-3 w-11 h-11 rounded-2xl bg-gradient-to-br ${getWorkplaceGradient(currentWorkplace.name)} flex items-center justify-center text-sm font-bold text-white shadow-lg ring-2 ring-black/20`"
+          >
             {{ getWorkplaceInitials(currentWorkplace.name) }}
           </div>
-          <div>
-            <div class="flex items-center gap-2.5">
-              <h1 class="text-2xl font-bold text-white">{{ currentWorkplace.name }}</h1>
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize" :class="planBadgeClass">
-                {{ currentWorkplace.plan }}
-              </span>
-            </div>
-            <p class="text-[11px] font-mono text-gray-500 mt-1">taskflow.io/{{ currentWorkplace.slug }}</p>
+
+          <!-- Badges (bottom-right) -->
+          <div class="absolute bottom-3 right-3 flex items-center gap-1.5">
+            <BaseBadge size="xs" variant="soft" :color="planBadgeColor">{{ formatPlan(currentWorkplace.plan) }}</BaseBadge>
+            <BaseBadge
+              size="xs"
+              variant="soft"
+              :color="currentWorkplace.status === 'active' ? 'emerald' : 'slate'"
+            >
+              {{ formatStatus(currentWorkplace.status) }}
+            </BaseBadge>
           </div>
         </div>
-        <div class="flex gap-2">
-          <BaseButton variant="ghost" @click="showEditModal = true">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            Edit
-          </BaseButton>
-          <BaseButton @click="showAddMemberModal = true">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-            </svg>
-            Add Member
-          </BaseButton>
-        </div>
-      </div>
 
-      <!-- Stats -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard label="Projects" :value="workplaceProjects.length" icon="📁" color="indigo" />
-        <StatCard label="Members" :value="workplaceMembers.length" icon="👥" color="emerald" />
-        <StatCard label="Plan" :value="currentWorkplace.plan.toUpperCase()" icon="⭐" color="amber" />
-      </div>
+        <!-- Info area -->
+        <div class="px-5 pt-4 pb-4">
+          <div class="flex items-start justify-between gap-4">
+            <div class="min-w-0">
+              <h1 class="text-2xl font-bold text-white truncate">{{ currentWorkplace.name }}</h1>
+              <p class="text-[11px] font-mono text-gray-500 mt-1 truncate">taskflow.io/{{ currentWorkplace.slug }}</p>
+            </div>
+            <div class="hidden md:flex items-center gap-2.5">
+              <div class="px-3 py-2 rounded-xl bg-slate-800/30 border border-slate-700/30">
+                <p class="text-[10px] text-gray-500 uppercase tracking-wide">Projects</p>
+                <p class="text-sm font-semibold text-gray-200 leading-tight">{{ workplaceProjects.length }}</p>
+              </div>
+              <div class="px-3 py-2 rounded-xl bg-slate-800/30 border border-slate-700/30">
+                <p class="text-[10px] text-gray-500 uppercase tracking-wide">Members</p>
+                <p class="text-sm font-semibold text-gray-200 leading-tight">{{ workplaceMembers.length }}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between mt-4 pt-3 border-t border-slate-700/30">
+            <span class="text-[11px] text-gray-600">Created on {{ formatDate(currentWorkplace.createdAt) }}</span>
+            <span class="text-[11px] text-gray-600 font-mono">{{ currentWorkplace.slug }}</span>
+          </div>
+        </div>
+      </BaseCard>
 
       <!-- Tabs -->
       <div class="border-b border-slate-700/30">
@@ -93,57 +161,13 @@
           <!-- Project cards grid -->
           <div class="flex-1 min-w-0">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <BaseCard
+              <ProjectCard
                 v-for="project in workplaceProjects"
                 :key="project._id"
-                class="hover:border-indigo-500/40 hover:bg-slate-800/30 transition-all duration-200 cursor-pointer flex flex-col"
-              >
-                <NuxtLink :to="`/projects/${project._id}`" class="block flex-1">
-                  <!-- Header -->
-                  <div class="flex items-start gap-3">
-                    <div :class="`w-10 h-10 rounded-lg bg-gradient-to-br ${getProjectGradient(project.key)} flex items-center justify-center text-xs font-bold text-white flex-shrink-0 shadow-md`">
-                      {{ project.key.slice(0, 3) }}
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <div class="flex items-center gap-2">
-                        <h3 class="text-white font-semibold truncate">{{ project.name }}</h3>
-                        <span class="text-[10px] font-mono text-gray-500 bg-slate-700/60 px-1.5 py-0.5 rounded flex-shrink-0">{{ project.key }}</span>
-                      </div>
-                      <p
-                        class="text-xs mt-0.5 line-clamp-2"
-                        :class="project.description ? 'text-gray-500' : 'text-gray-600 italic'"
-                      >
-                        {{ project.description || 'Describe your vision...' }}
-                      </p>
-                    </div>
-                  </div>
-
-                  <!-- Footer -->
-                  <div class="flex items-center justify-between mt-4 pt-3 border-t border-slate-700/50">
-                    <BaseBadge :color="project.status === 'active' ? 'emerald' : 'slate'">
-                      {{ project.status }}
-                    </BaseBadge>
-                    <div class="flex items-center gap-2">
-                      <span class="text-[10px] text-gray-600">{{ formatRelativeTime(project.updatedAt) }}</span>
-                      <div class="flex items-center gap-1">
-                        <span class="w-1.5 h-1.5 rounded-full flex-shrink-0" :class="getPriorityDotClass(project.priority)"></span>
-                        <span :class="`text-xs font-medium capitalize ${getPriorityTextColor(project.priority)}`">{{ project.priority }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </NuxtLink>
-
-                <!-- Join button -->
-                <div v-if="memberStatusMap[project._id] && !memberStatusMap[project._id]!.isMember" class="mt-3 pt-3 border-t border-slate-700/40">
-                  <button
-                    @click.prevent.stop="handleJoinProject(project._id)"
-                    :disabled="joiningProjectId === project._id"
-                    class="w-full py-1.5 text-xs font-medium bg-indigo-600/15 border border-indigo-500/25 hover:bg-indigo-600/30 hover:border-indigo-500/40 disabled:opacity-50 text-indigo-400 rounded-lg transition-all"
-                  >
-                    {{ joiningProjectId === project._id ? 'Joining...' : '+ Join Project' }}
-                  </button>
-                </div>
-              </BaseCard>
+                :project="project"
+                :member-status="memberStatusMap[project._id]"
+                @request-join="handleJoinProject"
+              />
             </div>
 
             <EmptyState
@@ -431,6 +455,68 @@
       </template>
     </BaseModal>
 
+    <!-- Cover Image Modal -->
+    <BaseModal v-model="showCoverModal" title="Workplace Cover" size="md">
+      <div class="space-y-5">
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Cover image</p>
+            <button
+              v-if="coverPreview"
+              type="button"
+              class="text-xs text-rose-400 hover:text-rose-300 transition-colors"
+              @click="removeCover"
+            >
+              Remove
+            </button>
+          </div>
+
+          <div
+            class="relative w-full h-44 rounded-xl overflow-hidden cursor-pointer border-2 border-dashed transition-colors"
+            :class="coverPreview ? 'border-transparent' : 'border-slate-700 hover:border-slate-500'"
+            @click="coverInput?.click()"
+          >
+            <img v-if="coverPreview" :src="coverPreview" alt="Cover" class="w-full h-full object-cover" />
+            <div v-else class="absolute inset-0 bg-gradient-to-r from-indigo-600/20 via-purple-600/15 to-slate-800/10 flex flex-col items-center justify-center gap-2 text-slate-500">
+              <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span class="text-sm">Click to upload a cover photo</span>
+              <span class="text-xs">Recommended: 1200 × 300 px</span>
+            </div>
+            <div v-if="uploadingCover" class="absolute inset-0 bg-black/50 flex items-center justify-center">
+              <svg class="w-8 h-8 text-white animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+              </svg>
+            </div>
+          </div>
+
+          <input ref="coverInput" type="file" accept="image/*" class="hidden" @change="onCoverSelected" />
+        </div>
+
+        <div>
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Or paste an image URL</p>
+          <div class="flex gap-2">
+            <input
+              v-model="coverUrlInput"
+              type="url"
+              placeholder="https://..."
+              class="flex-1 px-3 py-2 bg-slate-700/30 border border-slate-600/30 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500/50 text-sm transition-colors"
+            />
+            <BaseButton variant="ghost" :disabled="!coverUrlInput.trim()" @click="saveCoverUrl">Save</BaseButton>
+          </div>
+          <p class="text-xs text-gray-600 mt-1">Tip: use a wide image for best results.</p>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <BaseButton variant="ghost" @click="showCoverModal = false">Close</BaseButton>
+        </div>
+      </template>
+    </BaseModal>
+
     <!-- Add Member Modal -->
     <BaseModal v-model="showAddMemberModal" title="Add Member" size="md">
       <div class="space-y-5">
@@ -611,6 +697,9 @@ const { projectsApi, membershipApi } = useApi()
 const { createProject } = useProjects()
 const { members: allUsers, loadMembers } = useTeam()
 const socket = useSocket()
+const config = useRuntimeConfig()
+const apiBase = config.public.apiBase
+const { getAuthHeader, user } = useAuth()
 
 const workplaceProjects = ref<Project[]>([])
 const memberStatusMap = ref<Record<string, { isMember: boolean; role: string | null }>>({})
@@ -619,6 +708,7 @@ const activeTab = ref('projects')
 const showEditModal = ref(false)
 const showAddMemberModal = ref(false)
 const showCreateProjectModal = ref(false)
+const showCoverModal = ref(false)
 
 const tabs = [
   { id: 'projects', label: 'Projects' },
@@ -674,6 +764,12 @@ const newProjectForm = ref({
 
 const keyManuallyEdited = ref(false)
 
+// Cover image state
+const coverPreview = ref<string | null>(null)
+const coverInput = ref<HTMLInputElement | null>(null)
+const uploadingCover = ref(false)
+const coverUrlInput = ref('')
+
 const priorityOptions: { value: ProjectPriority, label: string, icon: string, activeClass: string }[] = [
   { value: 'low', label: 'Low', icon: '🟢', activeClass: 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300' },
   { value: 'medium', label: 'Medium', icon: '🔵', activeClass: 'bg-blue-500/10 border-blue-500/40 text-blue-300' },
@@ -700,13 +796,13 @@ function onKeyInput(event: Event) {
   newProjectForm.value.key = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '')
 }
 
-const planBadgeClass = computed(() => {
-  const map: Record<string, string> = {
-    free: 'bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20',
-    pro: 'bg-indigo-500/10 text-indigo-400 ring-1 ring-indigo-500/20',
-    enterprise: 'bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/20',
+const planBadgeColor = computed(() => {
+  const map: Record<string, 'emerald' | 'indigo' | 'amber' | 'slate'> = {
+    free: 'emerald',
+    pro: 'indigo',
+    enterprise: 'amber',
   }
-  return map[currentWorkplace.value?.plan || 'free'] || 'bg-slate-600/30 text-gray-400'
+  return map[currentWorkplace.value?.plan || 'free'] || 'slate'
 })
 
 const recentProjects = computed(() =>
@@ -758,6 +854,8 @@ onMounted(async () => {
   if (currentWorkplace.value) {
     editForm.value.name = currentWorkplace.value.name
     editForm.value.plan = currentWorkplace.value.plan
+    coverPreview.value = currentWorkplace.value.coverImage ?? null
+    coverUrlInput.value = currentWorkplace.value.coverImage ?? ''
   }
 
   // Setup real-time project updates for this workplace
@@ -766,6 +864,15 @@ onMounted(async () => {
   socket.on('project:created', onProjectCreated)
   socket.on('project:updated', onProjectUpdated)
   socket.on('project:deleted', onProjectDeleted)
+})
+
+watch(currentWorkplace, (w) => {
+  if (w) {
+    if (w.coverImage !== undefined) {
+      coverPreview.value = w.coverImage || null
+      coverUrlInput.value = w.coverImage || ''
+    }
+  }
 })
 
 onUnmounted(() => {
@@ -820,11 +927,93 @@ async function handleJoinProject(projectId: string) {
   joiningProjectId.value = null
 }
 
+function copyLink() {
+  navigator.clipboard.writeText(`${window.location.origin}/workplaces/${workplaceId}`)
+}
+
+function formatStatus(status: string): string {
+  const map: Record<string, string> = {
+    active: 'Active',
+    archived: 'Archived',
+  }
+  return map[status] || status
+}
+
+function formatPlan(plan: string): string {
+  const map: Record<string, string> = {
+    free: 'Free',
+    pro: 'Pro',
+    enterprise: 'Enterprise',
+  }
+  return map[plan] || plan
+}
+
+function formatDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function getCoverGradient(seedStr: string): string {
+  const gradients = [
+    'from-blue-950 via-blue-900 to-sky-800',
+    'from-violet-950 via-purple-900 to-indigo-800',
+    'from-slate-900 via-slate-800 to-slate-700',
+    'from-emerald-950 via-teal-900 to-cyan-800',
+    'from-rose-950 via-rose-900 to-pink-800',
+    'from-amber-950 via-orange-900 to-amber-800',
+  ]
+  return gradients[(seedStr.charCodeAt(0) || 0) % gradients.length]!
+}
+
 async function handleUpdate() {
   if (editForm.value.name) {
     await updateWorkplace(workplaceId, editForm.value)
     showEditModal.value = false
   }
+}
+
+async function uploadImage(file: File): Promise<string | null> {
+  const fd = new FormData()
+  fd.append('file', file)
+  const params = new URLSearchParams({ uploaderId: user.value?.id ?? 'user' })
+  const res = await fetch(`${apiBase}/uploads/single?${params}`, {
+    method: 'POST',
+    headers: { ...getAuthHeader() },
+    body: fd,
+  })
+  if (!res.ok) return null
+  const json = await res.json().catch(() => null)
+  return json?.data?.url ?? null
+}
+
+async function onCoverSelected(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  coverPreview.value = URL.createObjectURL(file)
+  uploadingCover.value = true
+  try {
+    const url = await uploadImage(file)
+    if (url) {
+      await updateWorkplace(workplaceId, { coverImage: url })
+      coverPreview.value = url
+      coverUrlInput.value = url
+    }
+  } finally {
+    uploadingCover.value = false
+    ;(e.target as HTMLInputElement).value = ''
+  }
+}
+
+async function saveCoverUrl() {
+  const url = coverUrlInput.value.trim()
+  if (!url) return
+  await updateWorkplace(workplaceId, { coverImage: url })
+  coverPreview.value = url
+}
+
+async function removeCover() {
+  coverPreview.value = null
+  coverUrlInput.value = ''
+  await updateWorkplace(workplaceId, { coverImage: '' })
 }
 
 async function handleDelete() {
@@ -902,26 +1091,6 @@ function getProjectGradient(key: string): string {
     'from-indigo-500 to-purple-600',
   ]
   return gradients[(key.charCodeAt(0) || 0) % gradients.length]!
-}
-
-function getPriorityDotClass(priority: string): string {
-  const map: Record<string, string> = {
-    low: 'bg-emerald-400',
-    medium: 'bg-blue-400',
-    high: 'bg-amber-400',
-    critical: 'bg-rose-400',
-  }
-  return map[priority] || 'bg-gray-400'
-}
-
-function getPriorityTextColor(priority: string): string {
-  const colors: Record<string, string> = {
-    low: 'text-emerald-400',
-    medium: 'text-blue-400',
-    high: 'text-amber-400',
-    critical: 'text-rose-400',
-  }
-  return colors[priority] || 'text-gray-400'
 }
 
 function getMemberInitials(name?: string): string {

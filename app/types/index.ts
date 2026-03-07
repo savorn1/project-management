@@ -125,6 +125,7 @@ export interface Workplace {
   _id: string
   name: string
   slug: string
+  coverImage?: string
   ownerId: string
   plan: WorkplacePlan
   status: WorkplaceStatus
@@ -136,6 +137,7 @@ export interface WorkplaceInput {
   name: string
   slug: string
   plan?: WorkplacePlan
+  coverImage?: string
 }
 
 export interface WorkplaceMember {
@@ -432,4 +434,5 @@ export interface DashboardStats {
   teamMembers: number
   tasksThisWeek: number
 }
+
 
