@@ -494,20 +494,6 @@
 
           <input ref="coverInput" type="file" accept="image/*" class="hidden" @change="onCoverSelected" />
         </div>
-
-        <div>
-          <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Or paste an image URL</p>
-          <div class="flex gap-2">
-            <input
-              v-model="coverUrlInput"
-              type="url"
-              placeholder="https://..."
-              class="flex-1 px-3 py-2 bg-slate-700/30 border border-slate-600/30 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500/50 text-sm transition-colors"
-            />
-            <BaseButton variant="ghost" :disabled="!coverUrlInput.trim()" @click="saveCoverUrl">Save</BaseButton>
-          </div>
-          <p class="text-xs text-gray-600 mt-1">Tip: use a wide image for best results.</p>
-        </div>
       </div>
 
       <template #footer>
@@ -768,7 +754,6 @@ const keyManuallyEdited = ref(false)
 const coverPreview = ref<string | null>(null)
 const coverInput = ref<HTMLInputElement | null>(null)
 const uploadingCover = ref(false)
-const coverUrlInput = ref('')
 
 const priorityOptions: { value: ProjectPriority, label: string, icon: string, activeClass: string }[] = [
   { value: 'low', label: 'Low', icon: '🟢', activeClass: 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300' },
@@ -855,7 +840,6 @@ onMounted(async () => {
     editForm.value.name = currentWorkplace.value.name
     editForm.value.plan = currentWorkplace.value.plan
     coverPreview.value = currentWorkplace.value.coverImage ?? null
-    coverUrlInput.value = currentWorkplace.value.coverImage ?? ''
   }
 
   // Setup real-time project updates for this workplace
@@ -870,7 +854,6 @@ watch(currentWorkplace, (w) => {
   if (w) {
     if (w.coverImage !== undefined) {
       coverPreview.value = w.coverImage || null
-      coverUrlInput.value = w.coverImage || ''
     }
   }
 })
@@ -995,7 +978,6 @@ async function onCoverSelected(e: Event) {
     if (url) {
       await updateWorkplace(workplaceId, { coverImage: url })
       coverPreview.value = url
-      coverUrlInput.value = url
     }
   } finally {
     uploadingCover.value = false
@@ -1003,16 +985,8 @@ async function onCoverSelected(e: Event) {
   }
 }
 
-async function saveCoverUrl() {
-  const url = coverUrlInput.value.trim()
-  if (!url) return
-  await updateWorkplace(workplaceId, { coverImage: url })
-  coverPreview.value = url
-}
-
 async function removeCover() {
   coverPreview.value = null
-  coverUrlInput.value = ''
   await updateWorkplace(workplaceId, { coverImage: '' })
 }
 
