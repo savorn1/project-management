@@ -94,6 +94,18 @@
               </span>
             </button>
 
+            <!-- Starred messages toggle -->
+            <button
+              @click="showStarred = !showStarred"
+              class="ml-1 w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+              :class="showStarred ? 'bg-amber-500/20 text-amber-400' : 'text-gray-600 hover:text-gray-400 hover:bg-slate-800/60'"
+              title="Starred messages"
+            >
+              <svg class="w-4 h-4" :fill="showStarred ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+              </svg>
+            </button>
+
             <!-- Members panel toggle (group only) -->
             <button
               v-if="activeConversation.type === 'group'"
@@ -154,24 +166,47 @@
                 <div class="flex-1 h-px bg-slate-800/60" />
               </div>
 
-              <MessageBubble
-                v-for="msg in group"
-                :key="msg._id"
-                :message="msg"
-                :mine="isMyMessage(msg)"
-                :sender-name="senderName(msg.senderId)"
-                :current-user-id="currentUserId"
-                :highlighted="msg._id === highlightedId"
-                :reply-to-message="msg.replyTo ? messageMap.get(msg.replyTo) && { _id: msg.replyTo, content: messageMap.get(msg.replyTo)!.content, senderName: senderName(messageMap.get(msg.replyTo)!.senderId) } : undefined"
-                @delete="deleteMessage"
-                @reply="startReply"
-                @edit="handleEdit"
-                @scroll-to="scrollToMessage"
-                @react="handleReact"
-                @pin="handlePin"
-                @forward="(m) => forwardMessage = m"
-                @open-image="(img) => openLightbox(img, (msg.attachments ?? []).filter(a => a.mimeType.startsWith('image/')))"
-              />
+              <template v-for="msg in group" :key="msg._id">
+                <!-- Unread separator -->
+                <div
+                  v-if="unreadSeparatorId && msg._id === unreadSeparatorId"
+                  class="flex items-center gap-3 py-1"
+                >
+                  <div class="flex-1 h-px bg-indigo-500/30" />
+                  <span class="text-[10px] font-semibold text-indigo-400/70 px-2 py-0.5 bg-indigo-500/10 rounded-full border border-indigo-500/20 flex-shrink-0">
+                    New Messages
+                  </span>
+                  <div class="flex-1 h-px bg-indigo-500/30" />
+                </div>
+
+                <MessageBubble
+                  :message="msg"
+                  :mine="isMyMessage(msg)"
+                  :sender-name="senderName(msg.senderId)"
+                  :current-user-id="currentUserId"
+                  :highlighted="msg._id === highlightedId"
+                  :is-starred="starredIds.has(msg._id)"
+                  :reply-to-message="msg.replyTo ? messageMap.get(msg.replyTo) && { _id: msg.replyTo, content: messageMap.get(msg.replyTo)!.content, senderName: senderName(messageMap.get(msg.replyTo)!.senderId) } : undefined"
+                  @delete="deleteMessage"
+                  @reply="startReply"
+                  @edit="handleEdit"
+                  @scroll-to="scrollToMessage"
+                  @react="handleReact"
+                  @pin="handlePin"
+                  @forward="(m) => forwardMessage = m"
+                  @thread="(m) => threadMessage = m"
+                  @star="handleStar"
+                  @open-image="(img) => openLightbox(img, (msg.attachments ?? []).filter(a => a.mimeType.startsWith('image/')))"
+                />
+
+                <!-- Link preview (first URL in the message, not shown for deleted messages) -->
+                <div
+                  v-if="!msg.isDeleted && extractUrl(msg.content)"
+                  :class="isMyMessage(msg) ? 'flex justify-end' : 'flex justify-start pl-9'"
+                >
+                  <LinkPreview :url="extractUrl(msg.content)!" :mine="isMyMessage(msg)" />
+                </div>
+              </template>
             </template>
           </template>
 
@@ -189,7 +224,7 @@
                 {{ typingUsers[0]!.charAt(0).toUpperCase() }}
               </div>
               <div class="flex items-center gap-1 px-3 py-2 bg-slate-800/80 rounded-2xl rounded-tl-sm border border-slate-700/40">
-                <span class="text-[11px] text-gray-400 mr-1">{{ typingUsers[0] }} is typing</span>
+                <span class="text-[11px] text-gray-400 mr-1">{{ typingLabel }} {{ typingUsers.length === 1 ? 'is' : 'are' }} typing</span>
                 <span class="flex gap-0.5">
                   <span class="w-1 h-1 rounded-full bg-gray-500 animate-bounce" style="animation-delay: 0ms" />
                   <span class="w-1 h-1 rounded-full bg-gray-500 animate-bounce" style="animation-delay: 150ms" />
@@ -239,6 +274,7 @@
           ref="inputRef"
           :members="conversationMembers"
           :replying-to="replyingTo ?? undefined"
+          :initial-draft="draftToRestore"
           @send="onSend"
           @typing="onTyping"
           @cancel-reply="replyingTo = null"
@@ -379,7 +415,7 @@
             >
               <!-- Loading spinner -->
               <div
-                v-if="memberActionLoading === participantId"
+                v-if="memberActionLoading.has(participantId)"
                 class="w-4 h-4 border border-white/20 border-t-white/60 rounded-full animate-spin"
               />
 
@@ -438,7 +474,7 @@
         >
           <button
             @click="leaveGroup"
-            :disabled="memberActionLoading === currentUserId"
+            :disabled="memberActionLoading.has(currentUserId)"
             class="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-red-500/20 text-red-400/80 hover:text-red-400 hover:bg-red-500/10 text-xs font-medium transition-colors disabled:opacity-50"
           >
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -448,6 +484,41 @@
           </button>
         </div>
       </div>
+    </Transition>
+    <!-- ── Thread panel ────────────────────────────────────────────── -->
+    <Transition
+      enter-active-class="transition-all duration-200 ease-out"
+      enter-from-class="opacity-0 translate-x-4"
+      enter-to-class="opacity-100 translate-x-0"
+      leave-active-class="transition-all duration-150 ease-in"
+      leave-from-class="opacity-100 translate-x-0"
+      leave-to-class="opacity-0 translate-x-4"
+    >
+      <ThreadPanel
+        v-if="activeConversation && threadMessage"
+        :root-message-id="threadMessage._id"
+        :conversation-id="activeConversation._id"
+        :member-map="memberMap"
+        @close="threadMessage = null"
+      />
+    </Transition>
+
+    <!-- ── Starred panel ──────────────────────────────────────────── -->
+    <Transition
+      enter-active-class="transition-all duration-200 ease-out"
+      enter-from-class="opacity-0 translate-x-4"
+      enter-to-class="opacity-100 translate-x-0"
+      leave-active-class="transition-all duration-150 ease-in"
+      leave-from-class="opacity-100 translate-x-0"
+      leave-to-class="opacity-0 translate-x-4"
+    >
+      <StarredPanel
+        v-if="showStarred"
+        :member-map="memberMap"
+        :conversation-name-map="conversationNameMap"
+        @close="showStarred = false"
+        @navigate="handleStarNavigate"
+      />
     </Transition>
     </div><!-- end message area flex wrapper -->
 
@@ -536,6 +607,8 @@ const {
   typingUsers,
   messageHasMore,
   messageLoadingMore,
+  unreadSeparatorId,
+  starredIds,
   loadConversations,
   selectConversation,
   sendMessage: chatSend,
@@ -550,6 +623,8 @@ const {
   removeMember: chatRemove,
   blockMember: chatBlock,
   unblockMember: chatUnblock,
+  starMessage,
+  unstarMessage,
   startListening,
   conversationName,
   conversationInitials,
@@ -568,7 +643,7 @@ const showMembers = ref(true)
 const loadingMessages = ref(false)
 const scrollRef = ref<HTMLElement | null>(null)
 const bottomRef = ref<HTMLElement | null>(null)
-const inputRef = ref<{ focus: () => void } | null>(null)
+const inputRef = ref<{ focus: () => void; getDraft: () => string } | null>(null)
 
 // Search
 const searchQuery = ref('')
@@ -589,8 +664,26 @@ const lightboxImages = ref<MessageAttachment[]>([])
 // Pinned panel
 const showPinned = ref(false)
 
+// Draft message persistence
+const draftToRestore = ref('')
+
+// Typing label for multiple users
+const typingLabel = computed(() => {
+  const users = typingUsers.value
+  if (users.length === 0) return ''
+  if (users.length === 1) return users[0]
+  if (users.length === 2) return `${users[0]} and ${users[1]}`
+  return `${users.slice(0, 2).join(', ')} and ${users.length - 2} more`
+})
+
 // Forward modal
 const forwardMessage = ref<ChatMessage | null>(null)
+
+// Thread panel
+const threadMessage = ref<ChatMessage | null>(null)
+
+// Starred panel
+const showStarred = ref(false)
 
 const currentUserId = computed(() => user.value?.id ?? '')
 
@@ -632,6 +725,12 @@ const addableMembersFiltered = computed(() =>
   ),
 )
 
+function teamFromMemberMap(): TeamMember[] {
+  return Array.from(memberMap.value.entries()).map(([_id, name]) => ({
+    _id, name, email: '', role: 'admin' as const, isActive: true, isEmailVerified: true, createdAt: '',
+  }))
+}
+
 function toggleAddMember(id: string) {
   const s = new Set(selectedToAdd.value)
   s.has(id) ? s.delete(id) : s.add(id)
@@ -648,11 +747,7 @@ async function confirmAddMembers() {
   )
   addingMembers.value = false
   if (updated) {
-    // Refresh conversation list to get updated participants
-    const team = Array.from(memberMap.value.entries()).map(([_id, name]) => ({
-      _id, name, email: '', role: 'admin' as const, isActive: true, isEmailVerified: true, createdAt: '',
-    }))
-    await loadConversations(team)
+    await loadConversations(teamFromMemberMap())
     selectedToAdd.value = new Set()
     addMemberSearch.value = ''
     showAddMembers.value = false
@@ -688,10 +783,25 @@ function senderName(senderId: string): string {
   return memberMap.value.get(senderId) ?? senderId.slice(-4)
 }
 
+let selectingConvId = ''
+
 async function handleSelect(id: string) {
+  // Save draft from the current conversation before switching
+  if (activeConversationId.value && inputRef.value) {
+    const draft = inputRef.value.getDraft()
+    if (draft.trim()) localStorage.setItem(`chat-draft:${activeConversationId.value}`, draft)
+    else localStorage.removeItem(`chat-draft:${activeConversationId.value}`)
+  }
+
+  selectingConvId = id
   loadingMessages.value = true
   await selectConversation(id)
+
+  // Guard: user may have switched again while awaiting
+  if (selectingConvId !== id) return
+
   loadingMessages.value = false
+  draftToRestore.value = localStorage.getItem(`chat-draft:${id}`) ?? ''
   scrollToBottom()
   nextTick(() => inputRef.value?.focus())
 }
@@ -729,6 +839,36 @@ async function handleUnpin(messageId: string) {
   await chatUnpin(activeConversation.value._id, messageId)
 }
 
+async function handleStar(messageId: string) {
+  if (starredIds.value.has(messageId)) {
+    await unstarMessage(messageId)
+  } else {
+    await starMessage(messageId)
+  }
+}
+
+async function handleStarNavigate(conversationId: string, messageId: string) {
+  if (activeConversationId.value !== conversationId) {
+    await handleSelect(conversationId)
+  }
+  await nextTick()
+  scrollToMessage(messageId)
+}
+
+const conversationNameMap = computed(() => {
+  const map = new Map<string, string>()
+  for (const conv of conversations.value) {
+    map.set(conv._id, conversationName(conv as Conversation))
+  }
+  return map
+})
+
+/** Extract the first HTTP(S) URL from a message's content, or null */
+function extractUrl(content: string): string | null {
+  const match = content.match(/https?:\/\/[^\s<>"]+/)
+  return match ? match[0]!.replace(/[.,;:!?)\]]+$/, '') : null
+}
+
 function openLightbox(attachment: MessageAttachment, allImages: MessageAttachment[]) {
   lightboxImages.value = allImages
   lightboxImage.value = attachment
@@ -754,41 +894,46 @@ async function deleteMessage(id: string) {
 
 async function handleCreated(id: string) {
   showModal.value = false
-  const team = Array.from(memberMap.value.entries()).map(([_id, name]) => ({
-    _id, name, email: '', role: 'admin' as const, isActive: true, isEmailVerified: true, createdAt: '',
-  }))
-  await loadConversations(team)
+  await loadConversations(teamFromMemberMap())
   await handleSelect(id)
 }
 
 // ── Member actions ────────────────────────────────────────────────────────
 
-const memberActionLoading = ref<string | null>(null) // tracks which userId is loading
+const memberActionLoading = ref<Set<string>>(new Set())
+
+function setMemberLoading(userId: string, isLoading: boolean) {
+  const s = new Set(memberActionLoading.value)
+  if (isLoading) s.add(userId)
+  else s.delete(userId)
+  memberActionLoading.value = s
+}
 
 async function leaveGroup() {
   if (!activeConversation.value) return
-  memberActionLoading.value = currentUserId.value
+  if (!confirm('Leave this group? You will need to be re-added to rejoin.')) return
+  setMemberLoading(currentUserId.value, true)
   await chatLeave(activeConversation.value._id)
-  memberActionLoading.value = null
+  setMemberLoading(currentUserId.value, false)
 }
 
 async function removeMember(userId: string) {
   if (!activeConversation.value) return
-  memberActionLoading.value = userId
+  setMemberLoading(userId, true)
   await chatRemove(activeConversation.value._id, userId)
-  memberActionLoading.value = null
+  setMemberLoading(userId, false)
 }
 
 async function toggleBlock(userId: string) {
   if (!activeConversation.value) return
-  memberActionLoading.value = userId
+  setMemberLoading(userId, true)
   const isBlocked = activeConversation.value.blockedMembers?.includes(userId)
   if (isBlocked) {
     await chatUnblock(activeConversation.value._id, userId)
   } else {
     await chatBlock(activeConversation.value._id, userId)
   }
-  memberActionLoading.value = null
+  setMemberLoading(userId, false)
 }
 
 function scrollToBottom() {

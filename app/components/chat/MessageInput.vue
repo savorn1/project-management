@@ -303,11 +303,12 @@
 </template>
 
 <script setup lang="ts">
-import type { TeamMember } from '~/types'
+import type { TeamMember } from '~/types';
 
 const props = defineProps<{
   members: TeamMember[]
   replyingTo?: { _id: string; content: string; senderName: string }
+  initialDraft?: string
 }>()
 
 const emit = defineEmits<{
@@ -335,8 +336,14 @@ function showError(message: string) {
   errorTimer = setTimeout(() => { fileError.value = '' }, 4000)
 }
 
-const { showDropdown, filteredOptions, selectedIndex, handleInput, handleKeydown: mentionKeydown, selectOption } =
-  useMentionInput(textareaRef, toRef(props, 'members'), text)
+const { 
+  showDropdown, 
+  filteredOptions, 
+  selectedIndex, 
+  handleInput, 
+  handleKeydown: mentionKeydown, 
+  selectOption 
+} = useMentionInput(textareaRef, toRef(props, 'members'), text)
 
 function autoResize() {
   const el = textareaRef.value
@@ -495,5 +502,14 @@ watch(showEmojiPicker, (val) => {
 onUnmounted(() => document.removeEventListener('mousedown', onDocMouseDown))
 // ────────────────────────────────────────────────────────────────────────────
 
-defineExpose({ focus: () => textareaRef.value?.focus() })
+// Restore draft when conversation switches
+watch(() => props.initialDraft, (draft) => {
+  text.value = draft ?? ''
+  nextTick(() => autoResize())
+})
+
+defineExpose({
+  focus: () => textareaRef.value?.focus(),
+  getDraft: () => text.value,
+})
 </script>

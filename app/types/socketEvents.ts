@@ -20,6 +20,7 @@ export interface ServerToClientEvents {
   'chat:message:edited': (data: { messageId: string; conversationId: string; content: string; editedAt: string }) => void
   'chat:message:deleted': (data: { messageId: string; conversationId: string }) => void
   'chat:message:reaction': (data: { messageId: string; conversationId: string; reactions: MessageReaction[] }) => void
+  'chat:message:readBy': (data: { conversationId: string; messageId: string; userId: string; readAt: string }) => void
   'chat:message:pinned': (data: { conversationId: string; pinnedMessage: PinnedMessage }) => void
   'chat:message:unpinned': (data: { conversationId: string; messageId: string }) => void
 

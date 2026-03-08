@@ -382,6 +382,10 @@ export interface Conversation {
   unreadCount?: number
   /** Frontend-only: live unread count (initialized from unreadCount, updated via socket) */
   _unread?: number
+  /** Whether this conversation is muted for the current user (no notifications) */
+  muted?: boolean
+  /** ID of last message the current user has read (returned by API, used for unread separator) */
+  lastReadMessageId?: string | null
 }
 
 export interface MessageAttachment {
@@ -423,6 +427,21 @@ export interface ChatMessage {
   editedAt?: string
   createdAt: string
   updatedAt: string
+  /** Frontend-only: optimistic send state */
+  _status?: 'sending' | 'sent'
+}
+
+export interface LinkPreview {
+  url: string
+  title: string | null
+  description: string | null
+  image: string | null
+  siteName: string | null
+}
+
+export interface StarredMessage {
+  message: ChatMessage
+  conversationId: string
 }
 
 // Dashboard Stats

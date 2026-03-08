@@ -7,7 +7,12 @@ const messages = ref<ChatMessage[]>([])
 const totalUnread = ref(0)
 const onlineUsers = ref<Set<string>>(new Set())
 const lastSeenMap = ref<Map<string, number>>(new Map()) // userId → unix ms when they went offline
-const typingMap = ref<Map<string, { userId: string; userName: string; timer: ReturnType<typeof setTimeout> }>>(new Map())
+// Flat map keyed by `${conversationId}:${userId}` — avoids nested Map reactivity issues
+const typingMap = ref<Map<string, { userName: string; timer: ReturnType<typeof setTimeout> }>>(new Map())
+// First unread message ID when a conversation is opened (cleared on conversation switch)
+const unreadSeparatorId = ref<string | null>(null)
+// Starred message IDs for the active conversation
+const starredIds = ref<Set<string>>(new Set())
 
 // Pagination state
 const messagePage = ref(1)
@@ -32,9 +37,15 @@ export function useChat() {
   /** Names of users currently typing in the active conversation (excluding self) */
   const typingUsers = computed<string[]>(() => {
     if (!activeConversationId.value) return []
-    const entry = typingMap.value.get(activeConversationId.value)
-    if (!entry || entry.userId === user.value?.id) return []
-    return [entry.userName]
+    const prefix = `${activeConversationId.value}:`
+    const result: string[] = []
+    for (const [key, entry] of typingMap.value) {
+      if (key.startsWith(prefix)) {
+        const userId = key.slice(prefix.length)
+        if (userId !== user.value?.id) result.push(entry.userName)
+      }
+    }
+    return result
   })
 
   // ── Internal helpers ──────────────────────────────────────────────────────
@@ -200,11 +211,31 @@ export function useChat() {
     messageTotal.value = 0
     messageHasMore.value = false
     messageLoadingMore.value = false
+    unreadSeparatorId.value = null
+    starredIds.value = new Set()
     await loadMessages(id)
 
     socketEmit('joinConversationRoom', { conversationId: id })
 
     const selected = conversations.value.find((c) => c._id === id)
+
+    // Set unread separator to the first message the user hasn't seen yet
+    if (selected && (selected._unread ?? 0) > 0 && messages.value.length > 0) {
+      const lastReadId = selected.lastReadMessageId
+      if (lastReadId) {
+        const lastReadIdx = messages.value.findIndex((m) => m._id === lastReadId)
+        const firstUnread = lastReadIdx >= 0 ? messages.value[lastReadIdx + 1] : messages.value[0]
+        unreadSeparatorId.value = firstUnread?._id ?? null
+      } else {
+        unreadSeparatorId.value = messages.value[0]?._id ?? null
+      }
+    }
+
+    // Seed starred IDs for this conversation (fire-and-forget)
+    chatApi.getStarredMessages().then((starred) => {
+      starredIds.value = new Set(starred.filter((s) => s.conversationId === id).map((s) => s.message._id))
+    }).catch(() => { })
+
     if (selected?.lastMessage) {
       chatApi.markAsRead(id, selected.lastMessage.messageId).catch(() => { })
       patchConversation(id, { _unread: 0 })
@@ -261,11 +292,34 @@ export function useChat() {
     if (!content.trim() && files.length === 0) return false
     sendTyping(false)
 
-    const msg = await chatApi.sendMessage(activeConversationId.value, content.trim(), replyTo, files)
-    if (!msg) return false
+    const convId = activeConversationId.value
+    const tempId = `temp_${Date.now()}`
+    const tempMsg: ChatMessage = {
+      _id: tempId,
+      conversationId: convId,
+      senderId: user.value?.id ?? '',
+      content: content.trim(),
+      type: files.length > 0 ? (files[0]!.type.startsWith('image/') ? 'image' : 'file') : 'text',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      attachments: [],
+      readBy: [],
+      reactions: [],
+      isDeleted: false,
+      _status: 'sending',
+    }
+    messages.value = [...messages.value, tempMsg]
 
-    messages.value = [...messages.value, msg]
-    patchConversation(activeConversationId.value, { lastMessage: toLastMessageSnapshot(msg) })
+    const msg = await chatApi.sendMessage(convId, content.trim(), replyTo, files)
+    if (!msg) {
+      messages.value = messages.value.filter((m) => m._id !== tempId)
+      return false
+    }
+
+    messages.value = messages.value.map((m) =>
+      m._id === tempId ? { ...msg, _status: 'sent' as const } : m,
+    )
+    patchConversation(convId, { lastMessage: toLastMessageSnapshot(msg) })
     return true
   }
 
@@ -284,6 +338,15 @@ export function useChat() {
       messages.value = messages.value.map((m) =>
         m._id === messageId ? { ...m, isDeleted: true, content: '' } : m,
       )
+      // Patch lastMessage snapshot so the conversation list preview updates immediately
+      if (activeConversationId.value) {
+        const conv = conversations.value.find((c) => c._id === activeConversationId.value)
+        if (conv?.lastMessage?.messageId === messageId) {
+          patchConversation(activeConversationId.value, {
+            lastMessage: { ...conv.lastMessage, content: '', type: undefined },
+          })
+        }
+      }
     }
   }
 
@@ -337,6 +400,23 @@ export function useChat() {
 
   // ── Member management ─────────────────────────────────────────────────────
 
+  async function muteConversation(conversationId: string, mute: boolean): Promise<void> {
+    await chatApi.muteConversation(conversationId, mute)
+    patchConversation(conversationId, { muted: mute })
+  }
+
+  async function starMessage(messageId: string): Promise<void> {
+    await chatApi.starMessage(messageId)
+    starredIds.value = new Set([...starredIds.value, messageId])
+  }
+
+  async function unstarMessage(messageId: string): Promise<void> {
+    await chatApi.unstarMessage(messageId)
+    const next = new Set(starredIds.value)
+    next.delete(messageId)
+    starredIds.value = next
+  }
+
   async function leaveGroup(conversationId: string): Promise<boolean> {
     const ok = await chatApi.leaveGroup(conversationId)
     if (ok !== null) dropConversation(conversationId)
@@ -364,28 +444,38 @@ export function useChat() {
   // ── Socket event handlers ─────────────────────────────────────────────────
 
   function onNewMessage(msg: ChatMessage) {
-    if (msg.conversationId === activeConversationId.value) {
+    const isActive = msg.conversationId === activeConversationId.value
+    const isFromSelf = msg.senderId === user.value?.id
+    const found = conversations.value.find((c) => c._id === msg.conversationId)
+    const convName = found ? conversationName(found) : 'Chat'
+    const isMuted = found?.muted ?? false
+
+    if (isActive) {
       messages.value = [...messages.value, msg]
       chatApi.markAsRead(msg.conversationId, msg._id).catch(() => { })
     } else {
-      const found = conversations.value.find((c) => c._id === msg.conversationId)
-      const name = found ? conversationName(found) : 'Chat'
       const preview = buildPreview(msg.type, msg.content, msg.attachments?.length)
-      toast.info(`💬 ${name}: ${preview}`)
+      if (!isMuted) {
+        toast.info(`💬 ${convName}: ${preview}`)
+        // Browser notification when tab is hidden (muted conversations are silent)
+        if (!isFromSelf && document.hidden && Notification.permission === 'granted') {
+          const n = new Notification(convName, { body: preview, icon: '/favicon.ico' })
+          n.onclick = () => { window.focus(); n.close() }
+        }
+      }
       totalUnread.value++
       patchConversation(msg.conversationId, { _unread: (found?._unread ?? 0) + 1 })
     }
+
     patchConversation(msg.conversationId, { lastMessage: toLastMessageSnapshot(msg) })
     bumpConversation(msg.conversationId)
 
-    // Desktop notification for @mentions
+    // @mention notification (skip if muted, and only when tab is visible or active conv)
     const userName = user.value?.name ?? ''
     const isMentioned =
       msg.content.includes('@[everyone]') ||
       (userName && msg.content.includes(`@[${userName}]`))
-    if (isMentioned && msg.senderId !== user.value?.id && Notification.permission === 'granted') {
-      const conv = conversations.value.find((c) => c._id === msg.conversationId)
-      const convName = conv ? conversationName(conv) : 'Chat'
+    if (isMentioned && !isFromSelf && !isMuted && Notification.permission === 'granted' && (isActive || !document.hidden)) {
       const n = new Notification(`Mentioned in ${convName}`, {
         body: msg.content.replace(/@\[([^\]]+)\]\([^)]*\)/g, '@$1').replace(/@\[([^\]]+)\]/g, '@$1').slice(0, 100),
         icon: '/favicon.ico',
@@ -398,6 +488,15 @@ export function useChat() {
     messages.value = messages.value.map((m) =>
       m._id === messageId ? { ...m, content, editedAt } : m,
     )
+  }
+
+  function onMessageReadBy({ messageId, userId, readAt }: { conversationId: string; messageId: string; userId: string; readAt: string }) {
+    messages.value = messages.value.map((m) => {
+      if (m._id !== messageId) return m
+      const already = (m.readBy ?? []).some((r) => r.userId === userId)
+      if (already) return m
+      return { ...m, readBy: [...(m.readBy ?? []), { userId, readAt }] }
+    })
   }
 
   function onMessageReaction({ messageId, reactions }: { messageId: string; reactions: import('~/types').MessageReaction[] }) {
@@ -423,10 +522,19 @@ export function useChat() {
   }
 
   function onMessageDeleted({ messageId, conversationId }: { messageId: string; conversationId: string }) {
-    if (conversationId !== activeConversationId.value) return
-    messages.value = messages.value.map((m) =>
-      m._id === messageId ? { ...m, isDeleted: true, content: '' } : m,
-    )
+    // Update messages array only for the active conversation
+    if (conversationId === activeConversationId.value) {
+      messages.value = messages.value.map((m) =>
+        m._id === messageId ? { ...m, isDeleted: true, content: '' } : m,
+      )
+    }
+    // Always patch the conversation's lastMessage snapshot so the preview updates
+    const conv = conversations.value.find((c) => c._id === conversationId)
+    if (conv?.lastMessage?.messageId === messageId) {
+      patchConversation(conversationId, {
+        lastMessage: { ...conv.lastMessage, content: '', type: undefined },
+      })
+    }
   }
 
   function onConversationNew(incoming: Conversation) {
@@ -473,18 +581,19 @@ export function useChat() {
     userId: string; userName: string; isTyping: boolean; conversationId: string
   }) {
     if (userId === user.value?.id) return
+    const key = `${conversationId}:${userId}`
     const current = new Map(typingMap.value)
-    const existing = current.get(conversationId)
+    const existing = current.get(key)
     if (existing) clearTimeout(existing.timer)
     if (isTyping) {
       const timer = setTimeout(() => {
         const m = new Map(typingMap.value)
-        m.delete(conversationId)
+        m.delete(key)
         typingMap.value = m
       }, 4000)
-      current.set(conversationId, { userId, userName, timer })
+      current.set(key, { userName, timer })
     } else {
-      current.delete(conversationId)
+      current.delete(key)
     }
     typingMap.value = current
   }
@@ -518,6 +627,7 @@ export function useChat() {
     on('chat:message:edited', onMessageEdited)
     on('chat:message:deleted', onMessageDeleted)
     on('chat:message:reaction', onMessageReaction)
+    on('chat:message:readBy', onMessageReadBy)
     on('chat:message:pinned', onMessagePinned)
     on('chat:message:unpinned', onMessageUnpinned)
     on('chat:conversation:new', onConversationNew)
@@ -554,6 +664,8 @@ export function useChat() {
     typingUsers,
     messageHasMore: readonly(messageHasMore),
     messageLoadingMore: readonly(messageLoadingMore),
+    unreadSeparatorId: readonly(unreadSeparatorId),
+    starredIds: readonly(starredIds),
 
     // Conversation actions
     loadConversations,
@@ -576,6 +688,9 @@ export function useChat() {
     removeMember,
     blockMember,
     unblockMember,
+    muteConversation,
+    starMessage,
+    unstarMessage,
 
     // Real-time
     startListening,

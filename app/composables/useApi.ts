@@ -963,6 +963,37 @@ export function useApi() {
         method: 'DELETE',
       })
     },
+
+    async muteConversation(conversationId: string, mute: boolean): Promise<void> {
+      await request(`/chat/conversations/${conversationId}/mute`, {
+        method: 'POST',
+        body: JSON.stringify({ mute }),
+      })
+    },
+
+    async getThreadMessages(conversationId: string, messageId: string): Promise<{ root: ChatMessage | null; replies: ChatMessage[] }> {
+      const response = await request<{ root: ChatMessage | null; replies: ChatMessage[] }>(
+        `/chat/conversations/${conversationId}/messages/${messageId}/thread`,
+      )
+      return response ?? { root: null, replies: [] }
+    },
+
+    async starMessage(messageId: string): Promise<void> {
+      await request(`/chat/messages/${messageId}/star`, { method: 'POST' })
+    },
+
+    async unstarMessage(messageId: string): Promise<void> {
+      await request(`/chat/messages/${messageId}/star`, { method: 'DELETE' })
+    },
+
+    async getStarredMessages(): Promise<import('~/types').StarredMessage[]> {
+      const response = await request<import('~/types').StarredMessage[]>('/chat/starred')
+      return response ?? []
+    },
+
+    async getLinkPreview(url: string): Promise<import('~/types').LinkPreview | null> {
+      return await request<import('~/types').LinkPreview>(`/chat/link-preview?url=${encodeURIComponent(url)}`)
+    },
   }
 
   // Health check
