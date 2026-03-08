@@ -126,21 +126,35 @@
           <!-- Delivery status + read receipts (own messages only) -->
           <div v-if="mine" class="flex items-center gap-1 mt-0.5 select-none">
             <!-- Sending spinner -->
-            <svg v-if="message._status === 'sending'" class="w-2.5 h-2.5 text-gray-600 animate-spin" fill="none" viewBox="0 0 24 24">
+            <svg v-if="receiptState === 'sending'" class="w-2.5 h-2.5 text-gray-600 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
-            <!-- Sent check -->
-            <svg v-else-if="readCount === 0" class="w-2.5 h-2.5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+
+            <!-- Sent (✓) -->
+            <svg v-else-if="receiptState === 'sent'" class="w-2.5 h-2.5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" title="Sent">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
             </svg>
-            <!-- Read by N (clickable for detail) -->
-            <button
-              v-if="readCount > 0"
-              ref="readByBtnRef"
-              @click.stop="showReadBy = !showReadBy"
-              class="text-[9px] text-indigo-300/50 hover:text-indigo-200/80 transition-colors underline-offset-2 hover:underline"
-            >Seen by {{ readCount }}</button>
+
+            <!-- Delivered (✓✓) -->
+            <svg v-else-if="receiptState === 'delivered'" class="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" title="Delivered">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M4 12l4 4L18 6" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M8 12l4 4L22 6" />
+            </svg>
+
+            <!-- Read (colored ✓✓) + read-by list -->
+            <div v-else class="flex items-center gap-1">
+              <svg class="w-3 h-3 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" title="Read">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M4 12l4 4L18 6" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M8 12l4 4L22 6" />
+              </svg>
+              <button
+                v-if="readCount > 0"
+                ref="readByBtnRef"
+                @click.stop="showReadBy = !showReadBy"
+                class="text-[9px] text-indigo-300/50 hover:text-indigo-200/80 transition-colors underline-offset-2 hover:underline"
+              >Seen by {{ readCount }}</button>
+            </div>
           </div>
 
           <!-- Read-by popover -->
@@ -357,6 +371,8 @@ const props = defineProps<{
   highlighted?: boolean
   isStarred?: boolean
   memberMap?: Map<string, string>
+  /** Used for group read/delivered rules (ALL others). */
+  participantsCount?: number
 }>()
 
 const emit = defineEmits<{
@@ -408,6 +424,47 @@ const readCount = computed(() => {
     (r) => r.userId !== props.currentUserId,
   ).length
   return count
+})
+
+const deliveredCount = computed(() => {
+  const count = (props.message.deliveredTo ?? []).filter(
+    (r) => r.userId !== props.currentUserId,
+  ).length
+  return count
+})
+
+/**
+ * Rule:
+ * - ✓   = saved/sent (default when not sending)
+ * - ✓✓  = delivered to at least 1 recipient (for private/group)
+ * - colored ✓✓ = read (for group: ALL others read; for private: recipient read)
+ */
+const receiptState = computed<'sending' | 'sent' | 'delivered' | 'read'>(() => {
+  if (props.message._status === 'sending') return 'sending'
+  const participantsCount: number | null = typeof props.participantsCount === 'number' ? props.participantsCount : null
+
+  const isGroup = !!participantsCount && participantsCount > 2
+
+  // READ rule:
+  // - private: readCount > 0
+  // - group: readCount >= (participantsCount - 1)
+  if (participantsCount && participantsCount > 2) {
+    const others = Math.max(participantsCount - 1, 0)
+    if (others > 0 && readCount.value >= others) return 'read'
+  } else {
+    if (readCount.value > 0) return 'read'
+  }
+
+  // DELIVERED rule:
+  // - private: deliveredCount > 0
+  // - group: deliveredCount >= (participantsCount - 1)
+  if (isGroup) {
+    const others = Math.max((participantsCount ?? 0) - 1, 0)
+    if (others > 0 && deliveredCount.value >= others) return 'delivered'
+  } else {
+    if (deliveredCount.value > 0) return 'delivered'
+  }
+  return 'sent'
 })
 
 const fullDateTime = computed(() =>

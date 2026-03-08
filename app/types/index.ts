@@ -414,6 +414,11 @@ export interface MessageReadReceipt {
   readAt: string
 }
 
+export interface MessageDeliveryReceipt {
+  userId: string
+  deliveredAt: string
+}
+
 export interface MessageReaction {
   emoji: string
   userId: string
@@ -435,6 +440,7 @@ export interface ChatMessage {
   replyTo?: string
   attachments: MessageAttachment[]
   readBy: ReadonlyArray<MessageReadReceipt>
+  deliveredTo?: ReadonlyArray<MessageDeliveryReceipt>
   reactions: MessageReaction[]
   isDeleted: boolean
   deletedAt?: string
@@ -471,5 +477,6 @@ export interface DashboardStats {
   teamMembers: number
   tasksThisWeek: number
 }
+
 
 

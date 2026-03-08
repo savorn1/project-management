@@ -89,7 +89,21 @@
             {{ conversationInitials(activeConversation) }}
           </div>
           <div>
-            <p class="text-sm font-semibold text-white">{{ conversationName(activeConversation) }}</p>
+            <div class="flex items-center gap-2">
+              <p class="text-sm font-semibold text-white">{{ conversationName(activeConversation) }}</p>
+
+              <!-- Rename group (admins only) -->
+              <button
+                v-if="activeConversation.type === 'group' && activeConversation.admins?.includes(currentUserId)"
+                @click="openRenameGroup()"
+                class="w-6 h-6 rounded-md flex items-center justify-center text-gray-600 hover:text-indigo-300 hover:bg-slate-800/60 transition-colors"
+                title="Rename group"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+              </button>
+            </div>
             <p class="text-[11px] text-gray-500">
               {{ activeConversation.type === 'group'
                 ? `${activeConversation.participants.length} members`
@@ -294,6 +308,7 @@
                   :mine="isMyMessage(msg)"
                   :sender-name="senderName(msg.senderId)"
                   :current-user-id="currentUserId"
+                  :participants-count="activeConversation.participants.length"
                   :highlighted="msg._id === highlightedId"
                   :is-starred="starredIds.has(msg._id)"
                   :member-map="memberMap"
@@ -721,6 +736,49 @@
       @close="showModal = false"
       @created="handleCreated"
     />
+
+    <!-- Rename group modal (simple prompt-like modal) -->
+    <Teleport to="body">
+      <div v-if="showRenameModal" class="fixed inset-0 z-[9999] flex items-center justify-center">
+        <div class="absolute inset-0 bg-black/60" @click="showRenameModal = false" />
+        <div class="relative w-[360px] max-w-[92vw] bg-slate-900 border border-slate-700/60 rounded-2xl shadow-2xl shadow-black/40 p-4">
+          <div class="flex items-center justify-between">
+            <p class="text-sm font-semibold text-white">Rename group</p>
+            <button @click="showRenameModal = false" class="text-gray-600 hover:text-gray-300 transition-colors" title="Close">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <p class="mt-1 text-xs text-gray-600">This will update the name for all members.</p>
+
+          <input
+            v-model="renameGroupName"
+            type="text"
+            maxlength="60"
+            class="mt-3 w-full bg-slate-800/60 border border-slate-700/40 rounded-xl px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500/50"
+            placeholder="Group name"
+            @keydown.enter.prevent="confirmRenameGroup"
+          />
+
+          <div class="mt-4 flex items-center justify-end gap-2">
+            <button
+              @click="showRenameModal = false"
+              class="px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-400 hover:text-gray-200 hover:bg-slate-800/60 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              @click="confirmRenameGroup"
+              :disabled="renamingGroup || !renameGroupName.trim()"
+              class="px-3 py-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 text-indigo-300 text-xs font-semibold transition-colors disabled:opacity-50"
+            >
+              {{ renamingGroup ? 'Saving…' : 'Save' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -749,6 +807,7 @@ const {
   pinMessage: chatPin,
   unpinMessage: chatUnpin,
   loadMoreMessages,
+  loadMessagesAround,
   leaveGroup: chatLeave,
   removeMember: chatRemove,
   blockMember: chatBlock,
@@ -825,6 +884,11 @@ const showStarred = ref(false)
 // Global search
 const showGlobalSearch = ref(false)
 
+// Rename group modal
+const showRenameModal = ref(false)
+const renameGroupName = ref('')
+const renamingGroup = ref(false)
+
 // User status picker
 const showStatusPicker = ref(false)
 const statusBtnRef = ref<HTMLElement | null>(null)
@@ -889,6 +953,27 @@ onMounted(() => {
 })
 
 const currentUserId = computed(() => user.value?.id ?? '')
+
+function openRenameGroup() {
+  if (!activeConversation.value || activeConversation.value.type !== 'group') return
+  showRenameModal.value = true
+  renameGroupName.value = activeConversation.value.name ?? ''
+}
+
+async function confirmRenameGroup() {
+  if (!activeConversation.value || activeConversation.value.type !== 'group') return
+  const name = renameGroupName.value.trim()
+  if (!name) return
+  renamingGroup.value = true
+  const { chatApi } = useApi()
+  const updated = await chatApi.updateGroup(activeConversation.value._id, { name })
+  renamingGroup.value = false
+  if (updated) {
+    // Optimistic UI update (socket will also sync all members)
+    await loadConversations(teamFromMemberMap())
+    showRenameModal.value = false
+  }
+}
 
 const isBlockedInConversation = computed(() =>
   !!activeConversation.value?.blockedMembers?.includes(currentUserId.value),
@@ -1055,6 +1140,14 @@ async function handleStarNavigate(conversationId: string, messageId: string) {
     await handleSelect(conversationId)
   }
   await nextTick()
+  // If message isn't currently rendered (older than current page), load a context window around it.
+  const exists = messages.value.some((m) => m._id === messageId)
+  if (!exists) {
+    const ok = await loadMessagesAround(conversationId, messageId, 60)
+    if (ok) {
+      await nextTick()
+    }
+  }
   scrollToMessage(messageId)
 }
 

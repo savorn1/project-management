@@ -8,16 +8,19 @@ import type {
   FundPoolExecution,
   FundPoolInput,
   Label,
+  LinkPreview,
+  Milestone,
   Order,
   PaymentQrDetail,
   PaymentQrResult,
   PaymentQrStatusResult,
-  QrHistoryRecord,
-  SampleOrderResult,
   Project,
   ProjectInput,
   ProjectMember,
+  QrHistoryRecord,
+  SampleOrderResult,
   Sprint,
+  StarredMessage,
   Task,
   TaskActivity,
   TaskComment,
@@ -26,7 +29,6 @@ import type {
   WorkplaceInput,
   WorkplaceMemberWithUser,
   WorkplaceMember as WpMember,
-  Milestone
 } from '~/types'
 
 interface ListResponse<T> {
@@ -744,9 +746,9 @@ export function useApi() {
       limit?: number
     } = {}): Promise<{ data: QrHistoryRecord[]; total: number }> {
       const qs = new URLSearchParams()
-      if (params.status)  qs.set('status',  params.status)
+      if (params.status) qs.set('status', params.status)
       if (params.orderId) qs.set('orderId', params.orderId)
-      if (params.skip  != null) qs.set('skip',  String(params.skip))
+      if (params.skip != null) qs.set('skip', String(params.skip))
       if (params.limit != null) qs.set('limit', String(params.limit))
       const query = qs.toString() ? `?${qs.toString()}` : ''
       const response = await request<{ success: boolean; data: QrHistoryRecord[]; total: number }>(
@@ -842,6 +844,17 @@ export function useApi() {
       return response ?? { data: [], total: 0 }
     },
 
+    /** Get a context window of messages around a specific messageId (oldest → newest). */
+    async getMessagesAround(
+      conversationId: string,
+      messageId: string,
+      limit = 50,
+    ): Promise<{ data: ChatMessage[]; total: number; anchorId: string } | null> {
+      return await request<{ data: ChatMessage[]; total: number; anchorId: string }>(
+        `/chat/conversations/${conversationId}/messages/around/${messageId}?limit=${limit}`,
+      )
+    },
+
     async sendMessage(
       conversationId: string,
       content: string,
@@ -883,6 +896,12 @@ export function useApi() {
 
     async markAsRead(conversationId: string, messageId: string): Promise<void> {
       await request(`/chat/conversations/${conversationId}/messages/${messageId}/read`, {
+        method: 'POST',
+      })
+    },
+
+    async markAsDelivered(conversationId: string, messageId: string): Promise<void> {
+      await request(`/chat/conversations/${conversationId}/messages/${messageId}/delivered`, {
         method: 'POST',
       })
     },
@@ -986,17 +1005,17 @@ export function useApi() {
       await request(`/chat/messages/${messageId}/star`, { method: 'DELETE' })
     },
 
-    async getStarredMessages(): Promise<import('~/types').StarredMessage[]> {
-      const response = await request<import('~/types').StarredMessage[]>('/chat/starred')
+    async getStarredMessages(): Promise<StarredMessage[]> {
+      const response = await request<StarredMessage[]>('/chat/starred')
       return response ?? []
     },
 
-    async getLinkPreview(url: string): Promise<import('~/types').LinkPreview | null> {
-      return await request<import('~/types').LinkPreview>(`/chat/link-preview?url=${encodeURIComponent(url)}`)
+    async getLinkPreview(url: string): Promise<LinkPreview | null> {
+      return await request<LinkPreview>(`/chat/link-preview?url=${encodeURIComponent(url)}`)
     },
 
-    async searchMessages(q: string, limit = 30): Promise<import('~/types').StarredMessage[]> {
-      const response = await request<import('~/types').StarredMessage[]>(
+    async searchMessages(q: string, limit = 30): Promise<StarredMessage[]> {
+      const response = await request<StarredMessage[]>(
         `/chat/messages/search?q=${encodeURIComponent(q)}&limit=${limit}`
       )
       return response ?? []
@@ -1008,8 +1027,8 @@ export function useApi() {
       })
     },
 
-    async getArchivedConversations(): Promise<import('~/types').Conversation[]> {
-      return await request<import('~/types').Conversation[]>('/chat/conversations/archived') ?? []
+    async getArchivedConversations(): Promise<Conversation[]> {
+      return await request<Conversation[]>('/chat/conversations/archived') ?? []
     },
 
     async archiveConversation(conversationId: string, archive: boolean): Promise<void> {
@@ -1018,14 +1037,14 @@ export function useApi() {
       })
     },
 
-    async createPoll(conversationId: string, question: string, options: string[]): Promise<import('~/types').ChatMessage | null> {
-      return await request<import('~/types').ChatMessage>(`/chat/conversations/${conversationId}/poll`, {
+    async createPoll(conversationId: string, question: string, options: string[]): Promise<ChatMessage | null> {
+      return await request<ChatMessage>(`/chat/conversations/${conversationId}/poll`, {
         method: 'POST', body: JSON.stringify({ question, options }),
       })
     },
 
-    async votePoll(messageId: string, optionIndex: number): Promise<import('~/types').ChatMessage | null> {
-      return await request<import('~/types').ChatMessage>(`/chat/messages/${messageId}/poll/vote`, {
+    async votePoll(messageId: string, optionIndex: number): Promise<ChatMessage | null> {
+      return await request<ChatMessage>(`/chat/messages/${messageId}/poll/vote`, {
         method: 'POST', body: JSON.stringify({ optionIndex }),
       })
     },

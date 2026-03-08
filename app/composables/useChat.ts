@@ -28,6 +28,10 @@ const messageTotal = ref(0)
 const messageHasMore = ref(false)
 const messageLoadingMore = ref(false)
 
+// When messages were loaded via an “around message” jump, we disable infinite-scroll pagination.
+// (Pagination expects page-based “newest first” API, whereas “around” is a context window.)
+const messageWindowMode = ref<'paged' | 'around'>('paged')
+
 let socketListenersRegistered = false
 
 export function useChat() {
@@ -35,6 +39,15 @@ export function useChat() {
   const { user } = useAuth()
   const { on, emit: socketEmit, joinRoom } = useSocket()
   const toast = useToast()
+
+  // Conversation member rooms — used for scalable message fanout
+  const joinedConversationRooms = new Set<string>()
+
+  function joinConversationMemberRoom(conversationId: string) {
+    if (!conversationId || joinedConversationRooms.has(conversationId)) return
+    joinedConversationRooms.add(conversationId)
+    socketEmit('joinConversationMemberRoom', { conversationId })
+  }
 
   // ── Computed ──────────────────────────────────────────────────────────────
 
@@ -203,6 +216,12 @@ export function useChat() {
     sortConversations()
     recalcUnread()
 
+    // Join conversation member rooms for scalable broadcasts
+    // (If the socket isn't connected yet, socket.io will buffer the emits.)
+    for (const c of conversations.value) {
+      joinConversationMemberRoom(c._id)
+    }
+
     // Seed online users from presence endpoint
     const onlineIds = await chatApi.getPresence()
     onlineUsers.value = new Set(onlineIds)
@@ -219,6 +238,7 @@ export function useChat() {
     messageTotal.value = 0
     messageHasMore.value = false
     messageLoadingMore.value = false
+    messageWindowMode.value = 'paged'
     unreadSeparatorId.value = null
     starredIds.value = new Set()
     await loadMessages(id)
@@ -257,10 +277,24 @@ export function useChat() {
     messagePage.value = 1
     messageTotal.value = total
     messageHasMore.value = messages.value.length < total
+    messageWindowMode.value = 'paged'
+  }
+
+  /** Load a message context window around a specific messageId (for search → jump). */
+  async function loadMessagesAround(conversationId: string, messageId: string, limit = 50): Promise<boolean> {
+    const res = await chatApi.getMessagesAround(conversationId, messageId, limit)
+    if (!res) return false
+    messages.value = res.data
+    messageTotal.value = res.total
+    messageHasMore.value = false
+    messageLoadingMore.value = false
+    messageWindowMode.value = 'around'
+    return true
   }
 
   async function loadMoreMessages(): Promise<void> {
     if (!activeConversationId.value || !messageHasMore.value || messageLoadingMore.value) return
+    if (messageWindowMode.value !== 'paged') return
     messageLoadingMore.value = true
     try {
       const nextPage = messagePage.value + 1
@@ -531,7 +565,15 @@ export function useChat() {
     const isMuted = found?.muted ?? false
 
     if (isActive) {
-      messages.value = [...messages.value, msg]
+      // When switching to room-based fanout, the sender will also receive their own message.
+      // Deduplicate so we don't double-insert (temp message already exists).
+      const exists = messages.value.some((m) => m._id === msg._id)
+      messages.value = exists ? messages.value : [...messages.value, msg]
+      // Delivery ack: as soon as we receive the message on this client, mark it delivered.
+      // (Skip own messages.)
+      if (!isFromSelf) {
+        chatApi.markAsDelivered(msg.conversationId, msg._id).catch(() => { })
+      }
       chatApi.markAsRead(msg.conversationId, msg._id).catch(() => { })
     } else {
       const preview = buildPreview(msg.type, msg.content, msg.attachments?.length)
@@ -579,6 +621,15 @@ export function useChat() {
     })
   }
 
+  function onMessageDelivered({ messageId, userId, deliveredAt }: { conversationId: string; messageId: string; userId: string; deliveredAt: string }) {
+    messages.value = messages.value.map((m) => {
+      if (m._id !== messageId) return m
+      const already = (m.deliveredTo ?? []).some((r) => r.userId === userId)
+      if (already) return m
+      return { ...m, deliveredTo: [...(m.deliveredTo ?? []), { userId, deliveredAt }] }
+    })
+  }
+
   function onMessageReaction({ messageId, reactions }: { messageId: string; reactions: import('~/types').MessageReaction[] }) {
     messages.value = messages.value.map((m) =>
       m._id === messageId ? { ...m, reactions } : m,
@@ -620,7 +671,18 @@ export function useChat() {
   function onConversationNew(incoming: Conversation) {
     if (conversations.value.find((c) => c._id === incoming._id)) return
     conversations.value = [incoming, ...conversations.value]
+    joinConversationMemberRoom(incoming._id)
     toast.info(`💬 You've been added to a new conversation`)
+  }
+
+  function onConversationUpdated(data: { conversationId: string; name: string | null; avatar: string | null; admins: string[]; updatedAt: string }) {
+    patchConversation(data.conversationId, {
+      name: data.name ?? undefined,
+      avatar: data.avatar ?? undefined,
+      admins: data.admins,
+      updatedAt: data.updatedAt,
+    })
+    sortConversations()
   }
 
   function onMemberAdded({ conversationId, userIds }: { conversationId: string; userIds: string[] }) {
@@ -708,9 +770,11 @@ export function useChat() {
     on('chat:message:deleted', onMessageDeleted)
     on('chat:message:reaction', onMessageReaction)
     on('chat:message:readBy', onMessageReadBy)
+    on('chat:message:delivered', onMessageDelivered)
     on('chat:message:pinned', onMessagePinned)
     on('chat:message:unpinned', onMessageUnpinned)
     on('chat:conversation:new', onConversationNew)
+    on('chat:conversation:updated', onConversationUpdated)
     on('chat:member:added', onMemberAdded)
     on('chat:member:left', onMemberLeft)
     on('chat:member:removed', onMemberRemoved)
@@ -794,6 +858,7 @@ export function useChat() {
     unpinMessage,
     sendTyping,
     loadMoreMessages,
+    loadMessagesAround,
 
     // Member actions
     leaveGroup,

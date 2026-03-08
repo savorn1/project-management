@@ -21,11 +21,13 @@ export interface ServerToClientEvents {
   'chat:message:deleted': (data: { messageId: string; conversationId: string }) => void
   'chat:message:reaction': (data: { messageId: string; conversationId: string; reactions: MessageReaction[] }) => void
   'chat:message:readBy': (data: { conversationId: string; messageId: string; userId: string; readAt: string }) => void
+  'chat:message:delivered': (data: { conversationId: string; messageId: string; userId: string; deliveredAt: string }) => void
   'chat:message:pinned': (data: { conversationId: string; pinnedMessage: PinnedMessage }) => void
   'chat:message:unpinned': (data: { conversationId: string; messageId: string }) => void
 
   // Chat — conversations
   'chat:conversation:new': (data: Conversation) => void
+  'chat:conversation:updated': (data: { conversationId: string; name: string | null; avatar: string | null; admins: string[]; updatedAt: string }) => void
 
   // Chat — members
   'chat:member:added': (data: { conversationId: string; userIds: string[] }) => void
@@ -86,6 +88,10 @@ export interface ClientToServerEvents {
   joinRoom: (data: { room: string }) => void
   leaveRoom: (data: { room: string }) => void
   joinConversationRoom: (data: { conversationId: string }) => void
+
+  /** Join conversation member room (used for message delivery fanout) */
+  joinConversationMemberRoom: (data: { conversationId: string }) => void
+  leaveConversationMemberRoom: (data: { conversationId: string }) => void
   leaveConversationRoom: (data: { conversationId: string }) => void
   'chat:typing': (data: { conversationId: string; isTyping: boolean }) => void
   'user:setStatus': (data: { emoji: string; text: string }) => void
