@@ -589,6 +589,26 @@ export function useChat() {
       patchConversation(msg.conversationId, { _unread: (found?._unread ?? 0) + 1 })
     }
 
+    // Notification sound — plays for all incoming (non-self, non-muted) messages
+    if (!isFromSelf && !isMuted) {
+      try {
+        const AudioCtx = (window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)
+        const ctx = new AudioCtx()
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.type = 'sine'
+        osc.frequency.setValueAtTime(880, ctx.currentTime)
+        osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.08)
+        gain.gain.setValueAtTime(0.08, ctx.currentTime)
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35)
+        osc.start(ctx.currentTime)
+        osc.stop(ctx.currentTime + 0.35)
+        setTimeout(() => ctx.close(), 1000)
+      } catch { /* AudioContext unavailable or user hasn't interacted yet */ }
+    }
+
     patchConversation(msg.conversationId, { lastMessage: toLastMessageSnapshot(msg) })
     bumpConversation(msg.conversationId)
 

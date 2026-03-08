@@ -1,0 +1,202 @@
+<template>
+  <div class="relative group/conv border-b border-slate-800/30 last:border-0">
+    <button
+      @click="$emit('select')"
+      class="w-full px-3 py-2.5 flex items-center gap-2.5 hover:bg-slate-800/40 transition-colors text-left"
+      :class="activeId === item._id ? 'bg-indigo-500/10 border-l-2 border-l-indigo-500' : ''"
+    >
+      <!-- Avatar -->
+      <div class="relative flex-shrink-0">
+        <div
+          class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white"
+          :class="item.type === 'group' ? 'bg-gradient-to-br from-violet-500 to-indigo-600' : 'bg-gradient-to-br from-emerald-500 to-teal-600'"
+        >{{ initials }}</div>
+        <span
+          v-if="isPinned"
+          class="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-amber-500 rounded-full flex items-center justify-center"
+          title="Pinned"
+        >
+          <svg class="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2l4 4-8 8-4-4 8-8z"/>
+          </svg>
+        </span>
+      </div>
+
+      <!-- Content -->
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center justify-between gap-1">
+          <p class="text-xs font-semibold text-gray-200 truncate">{{ name }}</p>
+          <span class="text-[10px] text-gray-600 flex-shrink-0">{{ timeAgo }}</span>
+        </div>
+        <!-- Label dots -->
+        <div v-if="labels.length > 0" class="flex items-center gap-1 mb-0.5">
+          <span
+            v-for="lk in labels"
+            :key="lk"
+            class="w-1.5 h-1.5 rounded-full flex-shrink-0"
+            :style="{ background: labelColor(lk) }"
+            :title="labelName(lk)"
+          />
+        </div>
+        <div class="flex items-center gap-1">
+          <svg v-if="item.muted" class="w-2.5 h-2.5 text-gray-700 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+          </svg>
+          <p class="text-[11px] text-gray-500 truncate">{{ preview }}</p>
+        </div>
+      </div>
+
+      <!-- Unread badge -->
+      <span
+        v-if="(item._unread ?? 0) > 0"
+        class="flex-shrink-0 min-w-[18px] h-4.5 px-1.5 rounded-full bg-indigo-500 text-white text-[10px] font-bold flex items-center justify-center"
+      >{{ item._unread }}</span>
+    </button>
+
+    <!-- Hover actions -->
+    <div class="absolute right-2 top-1/2 -translate-y-1/2 hidden group-hover/conv:flex items-center gap-0.5 bg-slate-900/90 rounded-lg border border-slate-700/40 p-0.5">
+      <!-- Pin -->
+      <button
+        @click.stop="$emit('toggle-pin')"
+        class="w-6 h-6 rounded flex items-center justify-center transition-colors"
+        :class="isPinned ? 'text-amber-400 hover:text-amber-300' : 'text-gray-600 hover:text-gray-300'"
+        :title="isPinned ? 'Unpin' : 'Pin'"
+      >
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2l4 4-8 8-4-4 8-8z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14l-4 4" />
+        </svg>
+      </button>
+
+      <!-- Label -->
+      <div class="relative">
+        <button
+          @click.stop="toggleLabelPicker"
+          class="w-6 h-6 rounded flex items-center justify-center text-gray-600 hover:text-gray-300 transition-colors"
+          title="Labels"
+        >
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-5 5a2 2 0 01-2.828 0l-7-7A2 2 0 013 9.414V5a2 2 0 012-2z" />
+          </svg>
+        </button>
+
+        <!-- Label picker dropdown (teleported) -->
+        <Teleport to="body">
+          <div
+            v-if="showLabelPicker"
+            class="fixed inset-0"
+            style="z-index: 99998;"
+            @click.stop="showLabelPicker = false"
+          />
+          <div
+            v-if="showLabelPicker"
+            class="fixed bg-slate-800 border border-slate-700/60 rounded-xl shadow-2xl py-1 min-w-[130px]"
+            style="z-index: 99999;"
+            :style="pickerStyle"
+          >
+            <button
+              v-for="l in labelDefs"
+              :key="l.key"
+              @click.stop="toggleLabel(l.key)"
+              class="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-slate-700/60 transition-colors"
+              :class="labels.includes(l.key) ? 'text-gray-200' : 'text-gray-500'"
+            >
+              <span class="w-2 h-2 rounded-full flex-shrink-0" :style="{ background: l.color }" />
+              {{ l.name }}
+              <svg v-if="labels.includes(l.key)" class="w-3 h-3 ml-auto text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+              </svg>
+            </button>
+          </div>
+        </Teleport>
+      </div>
+
+      <!-- Mute -->
+      <button
+        @click.stop="$emit('toggle-mute')"
+        class="w-6 h-6 rounded flex items-center justify-center transition-colors"
+        :class="item.muted ? 'text-amber-400 hover:text-amber-300' : 'text-gray-600 hover:text-gray-300'"
+        :title="item.muted ? 'Unmute' : 'Mute'"
+      >
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path v-if="!item.muted" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M12 6v12m0-12L7 9H4v6h3l5 3V6z" />
+          <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15zM17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+        </svg>
+      </button>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import type { Conversation } from '~/types'
+import type { LabelKey } from '~/components/chat/ConversationList.vue'
+import { LABELS } from '~/components/chat/ConversationList.vue'
+
+const props = defineProps<{
+  item: Conversation
+  activeId: string | null
+  isPinned: boolean
+  labels: LabelKey[]
+  labelDefs: typeof LABELS
+}>()
+
+const emit = defineEmits<{
+  select: []
+  'toggle-pin': []
+  'toggle-mute': []
+  'add-label': [key: LabelKey]
+  'remove-label': [key: LabelKey]
+}>()
+
+const { conversationName, conversationInitials, lastMessagePreview } = useChat()
+
+const name = computed(() => conversationName(props.item))
+const initials = computed(() => conversationInitials(props.item))
+const preview = computed(() => lastMessagePreview(props.item))
+
+const timeAgo = computed(() => {
+  const ts = props.item.lastMessage?.createdAt ?? props.item.updatedAt
+  if (!ts) return ''
+  const diff = Date.now() - new Date(ts).getTime()
+  const m = Math.floor(diff / 60000)
+  const h = Math.floor(diff / 3600000)
+  const d = Math.floor(diff / 86400000)
+  if (m < 1) return 'now'
+  if (m < 60) return `${m}m`
+  if (h < 24) return `${h}h`
+  if (d < 7) return `${d}d`
+  return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+})
+
+function labelColor(key: LabelKey) {
+  return props.labelDefs.find((l) => l.key === key)?.color ?? '#888'
+}
+function labelName(key: LabelKey) {
+  return props.labelDefs.find((l) => l.key === key)?.name ?? key
+}
+
+// Label picker
+const showLabelPicker = ref(false)
+const pickerStyle = ref<Record<string, string>>({})
+const pickerBtnRef = ref<HTMLElement | null>(null)
+
+function toggleLabelPicker(e: MouseEvent) {
+  if (showLabelPicker.value) { showLabelPicker.value = false; return }
+  const btn = (e.currentTarget as HTMLElement)
+  const rect = btn.getBoundingClientRect()
+  pickerStyle.value = {
+    top: `${rect.bottom + 4}px`,
+    left: `${Math.max(8, rect.left - 60)}px`,
+  }
+  showLabelPicker.value = true
+}
+
+function toggleLabel(key: LabelKey) {
+  if (props.labels.includes(key)) {
+    emit('remove-label', key)
+  } else {
+    emit('add-label', key)
+  }
+}
+</script>

@@ -79,7 +79,7 @@
           <!-- Text bubble -->
           <div
             v-if="message.content && message.type !== 'poll'"
-            class="px-3.5 py-2 rounded-2xl text-xs leading-relaxed"
+            class="px-3.5 py-2 rounded-2xl text-sm leading-relaxed"
             :class="mine
               ? 'bg-gradient-to-br from-indigo-600 to-violet-600 text-white rounded-tr-sm'
               : 'bg-slate-800/80 text-gray-200 rounded-tl-sm border border-slate-700/40'"
@@ -104,6 +104,24 @@
                   :style="imageAttachments.length === 1 ? 'max-height:200px' : ''" />
               </button>
             </div>
+            <!-- Audio attachments (voice messages) -->
+            <div
+              v-for="audio in audioAttachments"
+              :key="audio.url"
+              class="flex items-center gap-2.5 px-3 py-2 rounded-xl border max-w-[260px]"
+              :class="mine
+                ? 'bg-indigo-700/50 border-indigo-500/30'
+                : 'bg-slate-800/80 border-slate-700/40'"
+            >
+              <svg class="w-4 h-4 flex-shrink-0 text-indigo-400" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3zm-1 9V6a1 1 0 112 0v6a1 1 0 11-2 0zm-4 .5a5 5 0 0010 0h2a7 7 0 01-14 0h2z"/>
+              </svg>
+              <audio :src="audio.url" controls preload="metadata"
+                class="h-7 flex-1 min-w-0"
+                style="filter: invert(0.8) hue-rotate(200deg) brightness(1.2);"
+              />
+            </div>
+
             <a
               v-for="file in fileAttachments"
               :key="file.url"
@@ -152,7 +170,7 @@
                 v-if="readCount > 0"
                 ref="readByBtnRef"
                 @click.stop="showReadBy = !showReadBy"
-                class="text-[9px] text-indigo-300/50 hover:text-indigo-200/80 transition-colors underline-offset-2 hover:underline"
+                class="text-[11px] text-indigo-300/50 hover:text-indigo-200/80 transition-colors underline-offset-2 hover:underline"
               >Seen by {{ readCount }}</button>
             </div>
           </div>
@@ -202,149 +220,156 @@
       </template>
 
       <!-- Time + actions row -->
-      <div class="flex items-center gap-1.5 mt-1 px-0.5" :class="mine ? 'flex-row-reverse' : 'flex-row'">
+      <div class="flex items-center gap-2 mt-1 px-0.5" :class="mine ? 'flex-row-reverse' : 'flex-row'">
         <!-- Disappearing timer icon -->
         <svg
           v-if="message.expiresAt"
-          class="w-2.5 h-2.5 text-amber-500/60 flex-shrink-0"
+          class="w-3.5 h-3.5 text-amber-500/60 flex-shrink-0"
           :title="`Disappears ${formatTime(message.expiresAt!)}`"
           fill="none" stroke="currentColor" viewBox="0 0 24 24"
         >
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         <span
-          class="text-[10px] text-gray-600"
+          class="text-xs text-gray-600"
           :title="fullDateTime"
         >{{ formatTime(message.createdAt) }}{{ message.editedAt ? ' (edited)' : '' }}</span>
 
-        <!-- Hover actions -->
+        <!-- Hover actions: ··· | emoji | forward -->
         <div
           v-if="!message.isDeleted && !isEditMode"
-          class="flex items-center gap-0.5 opacity-0 group-hover/bubble:opacity-100 transition-opacity"
+          class="flex items-center gap-1 opacity-0 group-hover/bubble:opacity-100 transition-opacity bg-slate-800/90 border border-slate-700/50 rounded-xl px-1.5 py-1 shadow-lg"
           :class="mine ? 'flex-row-reverse' : 'flex-row'"
         >
-          <!-- Copy -->
-          <button
-            v-if="message.content"
-            @click="copyContent"
-            class="w-6 h-6 rounded-lg flex items-center justify-center text-gray-600 hover:text-gray-300 hover:bg-slate-700/50 transition-colors"
-            :title="copied ? 'Copied!' : 'Copy'"
-          >
-            <svg v-if="!copied" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>
-            <svg v-else class="w-3 h-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-            </svg>
-          </button>
+          <!-- ··· More menu -->
+          <div class="relative">
+            <button
+              ref="moreBtnRef"
+              @click.stop="toggleMoreMenu"
+              class="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-white hover:bg-slate-700/60 transition-colors"
+              title="More"
+            >
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>
+              </svg>
+            </button>
 
-          <!-- Reply -->
-          <button
-            @click="$emit('reply', message)"
-            class="w-6 h-6 rounded-lg flex items-center justify-center text-gray-600 hover:text-gray-300 hover:bg-slate-700/50 transition-colors"
-            title="Reply"
-          >
-            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-            </svg>
-          </button>
+            <!-- More menu popup -->
+            <Teleport to="body">
+              <div v-if="showMoreMenu" class="fixed inset-0 z-[9998]" @click="showMoreMenu = false" />
+              <div
+                v-if="showMoreMenu"
+                class="fixed z-[9999] bg-slate-800 border border-slate-700/50 rounded-2xl shadow-2xl shadow-black/50 py-1.5 min-w-[180px] overflow-hidden"
+                :style="moreMenuStyle"
+                @click.stop
+              >
+                <button @click="doAction('reply')"
+                  class="w-full flex items-center gap-3 px-4 py-3 text-base text-gray-200 hover:bg-slate-700/60 transition-colors text-left">
+                  <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                  </svg>
+                  Reply
+                </button>
+                <button @click="doAction('pin')"
+                  class="w-full flex items-center gap-3 px-4 py-3 text-base text-gray-200 hover:bg-slate-700/60 transition-colors text-left">
+                  <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2l4 4-8 8-4-4 8-8z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14l-4 4" />
+                  </svg>
+                  Pin
+                </button>
+                <button @click="doAction('star')"
+                  class="w-full flex items-center gap-3 px-4 py-3 text-base text-gray-200 hover:bg-slate-700/60 transition-colors text-left">
+                  <svg class="w-5 h-5 flex-shrink-0" :fill="isStarred ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24"
+                    :class="isStarred ? 'text-amber-400' : 'text-gray-400'">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                  </svg>
+                  {{ isStarred ? 'Unstar' : 'Star' }}
+                </button>
+                <button v-if="message.content" @click="doAction('copy')"
+                  class="w-full flex items-center gap-3 px-4 py-3 text-base text-gray-200 hover:bg-slate-700/60 transition-colors text-left">
+                  <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  {{ copied ? 'Copied!' : 'Copy' }}
+                </button>
+                <button v-if="!message.isDeleted" @click="doAction('thread')"
+                  class="w-full flex items-center gap-3 px-4 py-3 text-base text-gray-200 hover:bg-slate-700/60 transition-colors text-left">
+                  <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                  </svg>
+                  Thread
+                </button>
+                <button @click="doAction('remind')"
+                  class="w-full flex items-center gap-3 px-4 py-3 text-base text-gray-200 hover:bg-slate-700/60 transition-colors text-left">
+                  <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  Remind me
+                </button>
+                <button v-if="message.content" @click="doAction('create-task')"
+                  class="w-full flex items-center gap-3 px-4 py-3 text-base text-gray-200 hover:bg-slate-700/60 transition-colors text-left">
+                  <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  </svg>
+                  Create task
+                </button>
+                <template v-if="mine && message.content">
+                  <button @click="doAction('edit')"
+                    class="w-full flex items-center gap-3 px-4 py-3 text-base text-gray-200 hover:bg-slate-700/60 transition-colors text-left">
+                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    Edit
+                  </button>
+                </template>
+                <div v-if="mine" class="h-px bg-slate-700/60 mx-2 my-0.5" />
+                <button v-if="mine" @click="doAction('delete')"
+                  class="w-full flex items-center gap-3 px-4 py-3 text-base text-rose-400 hover:bg-rose-500/10 transition-colors text-left">
+                  <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Unsend
+                </button>
+                <button v-if="!mine" @click="doAction('report')"
+                  class="w-full flex items-center gap-3 px-4 py-3 text-base text-rose-400 hover:bg-rose-500/10 transition-colors text-left">
+                  <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+                  </svg>
+                  Report
+                </button>
+              </div>
+            </Teleport>
+          </div>
 
-          <!-- Thread -->
-          <button
-            v-if="!message.isDeleted"
-            @click="$emit('thread', message)"
-            class="w-6 h-6 rounded-lg flex items-center justify-center text-gray-600 hover:text-violet-400 hover:bg-violet-500/10 transition-colors"
-            title="View thread"
-          >
-            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-            </svg>
-          </button>
-
-          <!-- Edit (own messages only) -->
-          <button
-            v-if="mine && message.content"
-            @click="startEdit"
-            class="w-6 h-6 rounded-lg flex items-center justify-center text-gray-600 hover:text-gray-300 hover:bg-slate-700/50 transition-colors"
-            title="Edit"
-          >
-            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-          </button>
-
-          <!-- React -->
+          <!-- Emoji react -->
           <div class="relative">
             <button
               ref="reactionBtnRef"
               @click.stop="showReactionPicker = !showReactionPicker"
-              class="w-6 h-6 rounded-lg flex items-center justify-center text-gray-600 hover:text-yellow-400 hover:bg-yellow-500/10 transition-colors"
+              class="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/10 transition-colors"
               title="React"
             >
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </button>
-            <!-- Full emoji picker -->
             <Teleport to="body">
-              <div
-                v-if="showReactionPicker"
-                class="fixed z-[9999]"
-                :style="reactionPickerStyle"
-                @click.stop
-              >
+              <div v-if="showReactionPicker" class="fixed z-[9999]" :style="reactionPickerStyle" @click.stop>
                 <EmojiPicker @pick="pickReaction" />
               </div>
               <div v-if="showReactionPicker" class="fixed inset-0 z-[9998]" @click="showReactionPicker = false" />
             </Teleport>
           </div>
 
-          <!-- Pin -->
-          <button
-            @click="$emit('pin', message._id)"
-            class="w-6 h-6 rounded-lg flex items-center justify-center text-gray-600 hover:text-amber-400 hover:bg-amber-500/10 transition-colors"
-            title="Pin message"
-          >
-            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-            </svg>
-          </button>
-
           <!-- Forward -->
           <button
-            v-if="message.content"
             @click="$emit('forward', message)"
-            class="w-6 h-6 rounded-lg flex items-center justify-center text-gray-600 hover:text-indigo-400 hover:bg-indigo-500/10 transition-colors"
+            class="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-sky-400 hover:bg-sky-500/10 transition-colors"
             title="Forward"
           >
-            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 9l3 3m0 0l-3 3m3-3H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </button>
-
-          <!-- Star/bookmark -->
-          <button
-            @click="$emit('star', message._id)"
-            class="w-6 h-6 rounded-lg flex items-center justify-center transition-colors"
-            :class="isStarred
-              ? 'text-amber-400 hover:text-amber-300 hover:bg-amber-500/10'
-              : 'text-gray-600 hover:text-amber-400 hover:bg-amber-500/10'"
-            :title="isStarred ? 'Unstar' : 'Star'"
-          >
-            <svg class="w-3 h-3" :fill="isStarred ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-            </svg>
-          </button>
-
-          <!-- Delete (own messages only) -->
-          <button
-            v-if="mine"
-            @click="$emit('delete', message._id)"
-            class="w-6 h-6 rounded-lg flex items-center justify-center text-gray-600 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
-            title="Delete"
-          >
-            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
           </button>
         </div>
@@ -387,6 +412,8 @@ const emit = defineEmits<{
   thread: [message: ChatMessage]
   star: [messageId: string]
   vote: [messageId: string, optionIndex: number]
+  'create-task': [message: ChatMessage]
+  remind: [message: ChatMessage]
 }>()
 
 const { formatTime } = useChat()
@@ -404,8 +431,12 @@ const imageAttachments = computed<MessageAttachment[]>(() =>
   (props.message.attachments ?? []).filter((a) => a.mimeType.startsWith('image/')),
 )
 
+const audioAttachments = computed<MessageAttachment[]>(() =>
+  (props.message.attachments ?? []).filter((a) => a.mimeType.startsWith('audio/')),
+)
+
 const fileAttachments = computed<MessageAttachment[]>(() =>
-  (props.message.attachments ?? []).filter((a) => !a.mimeType.startsWith('image/')),
+  (props.message.attachments ?? []).filter((a) => !a.mimeType.startsWith('image/') && !a.mimeType.startsWith('audio/')),
 )
 
 const groupedReactions = computed(() => {
@@ -596,6 +627,43 @@ watch(showReactionPicker, (val) => {
 function pickReaction(emoji: string) {
   emit('react', props.message._id, emoji)
   showReactionPicker.value = false
+}
+
+// ── More menu ─────────────────────────────────────────────────────────────────
+
+const showMoreMenu = ref(false)
+const moreMenuStyle = ref<Record<string, string>>({})
+const moreBtnRef = ref<HTMLElement | null>(null)
+
+function toggleMoreMenu() {
+  if (showMoreMenu.value) { showMoreMenu.value = false; return }
+  nextTick(() => {
+    const btn = moreBtnRef.value
+    if (!btn) return
+    const rect = btn.getBoundingClientRect()
+    const menuW = 160
+    const menuH = 380
+    const left = Math.min(Math.max(rect.left, 8), window.innerWidth - menuW - 8)
+    const top = rect.top - menuH - 8 < 8 ? rect.bottom + 6 : rect.top - menuH - 6
+    moreMenuStyle.value = { top: `${top}px`, left: `${left}px` }
+    showMoreMenu.value = true
+  })
+}
+
+function doAction(action: string) {
+  showMoreMenu.value = false
+  switch (action) {
+    case 'reply':       emit('reply', props.message); break
+    case 'pin':         emit('pin', props.message._id); break
+    case 'star':        emit('star', props.message._id); break
+    case 'copy':        copyContent(); break
+    case 'thread':      emit('thread', props.message); break
+    case 'remind':      emit('remind', props.message); break
+    case 'create-task': emit('create-task', props.message); break
+    case 'edit':        startEdit(); break
+    case 'delete':      emit('delete', props.message._id); break
+    case 'report':      useToast().info('Message reported.'); break
+  }
 }
 
 // ── Edit ─────────────────────────────────────────────────────────────────────

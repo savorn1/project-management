@@ -91,6 +91,50 @@
       </div>
     </Teleport>
 
+    <!-- Schedule picker -->
+    <Teleport to="body">
+      <div
+        v-if="showSchedulePicker"
+        class="fixed inset-0"
+        style="z-index: 99998;"
+        @click.stop="showSchedulePicker = false"
+      />
+      <div
+        v-if="showSchedulePicker"
+        class="fixed bg-slate-800 border border-slate-700/60 rounded-2xl shadow-2xl shadow-black/60 p-3 w-64"
+        style="z-index: 99999;"
+        :style="schedulePickerStyle"
+        @click.stop
+      >
+        <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-600 mb-2 px-1">Schedule Message</p>
+        <div class="flex flex-col gap-0.5 mb-2">
+          <button
+            v-for="preset in schedulePresets"
+            :key="preset.ts"
+            @click="submitScheduled(preset.ts)"
+            class="w-full text-left px-2 py-1.5 rounded-lg text-xs text-gray-300 hover:bg-slate-700/60 hover:text-white transition-colors"
+          >{{ preset.label }}</button>
+        </div>
+        <div class="border-t border-slate-700/40 pt-2">
+          <p class="text-[10px] text-gray-600 mb-1 px-1">Custom date & time</p>
+          <div class="flex gap-1.5">
+            <input
+              v-model="customDateTime"
+              type="datetime-local"
+              :min="minDateTime"
+              class="flex-1 bg-slate-900/60 border border-slate-700/40 rounded-lg px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-indigo-500/50"
+            />
+            <button
+              @click="scheduleCustom"
+              :disabled="!customDateTime"
+              class="px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
+              :class="customDateTime ? 'bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/30' : 'text-gray-700 cursor-not-allowed'"
+            >Set</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- File validation error -->
     <Transition
       enter-active-class="transition ease-out duration-150"
@@ -182,6 +226,27 @@
             class="w-8 h-8 flex items-center justify-center text-[18px] rounded-lg hover:bg-slate-700/50 transition-colors"
           >{{ emoji }}</button>
         </div>
+      </div>
+    </Transition>
+
+    <!-- Recording bar -->
+    <Transition
+      enter-active-class="transition ease-out duration-150"
+      enter-from-class="opacity-0 -translate-y-1"
+      enter-to-class="opacity-100 translate-y-0"
+      leave-active-class="transition ease-in duration-100"
+      leave-from-class="opacity-100 translate-y-0"
+      leave-to-class="opacity-0 -translate-y-1"
+    >
+      <div v-if="isRecording" class="flex items-center gap-3 mb-2 px-3 py-2 bg-rose-500/10 border border-rose-500/20 rounded-xl">
+        <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse flex-shrink-0" />
+        <div class="flex items-center gap-0.5 flex-shrink-0">
+          <span v-for="n in 5" :key="n" class="w-0.5 bg-rose-400 rounded-full animate-pulse"
+            :style="{ height: `${6 + (n % 3) * 4}px`, animationDelay: `${n * 0.1}s` }" />
+        </div>
+        <span class="text-xs text-rose-300 font-mono flex-1">{{ recordingTime }}</span>
+        <button @click="cancelRecording" class="text-[11px] text-gray-500 hover:text-gray-300 transition-colors">Cancel</button>
+        <button @click="stopRecording" class="text-[11px] px-2.5 py-1 bg-rose-500/20 border border-rose-500/30 rounded-lg text-rose-300 hover:bg-rose-500/30 transition-colors">Send</button>
       </div>
     </Transition>
 
@@ -316,6 +381,83 @@
           </svg>
         </button>
 
+        <!-- Voice record button -->
+        <button
+          @click.stop="toggleRecording"
+          class="w-8 h-8 rounded-xl flex items-center justify-center transition-colors flex-shrink-0"
+          :class="isRecording
+            ? 'text-rose-400 bg-rose-500/15 animate-pulse'
+            : 'text-gray-500 hover:text-rose-400 hover:bg-rose-500/10'"
+          :title="isRecording ? 'Stop recording' : 'Voice message'"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+          </svg>
+        </button>
+
+        <!-- Templates button -->
+        <div class="relative">
+          <button
+            @click.stop="toggleTemplatePicker"
+            class="w-8 h-8 rounded-xl flex items-center justify-center transition-colors flex-shrink-0"
+            :class="showTemplatePicker ? 'text-indigo-400 bg-indigo-500/10' : 'text-gray-500 hover:text-indigo-400 hover:bg-indigo-500/10'"
+            title="Message templates"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 10h16M4 14h10" />
+            </svg>
+          </button>
+
+          <!-- Template picker dropdown -->
+          <Teleport to="body">
+            <div v-if="showTemplatePicker" class="fixed inset-0" style="z-index:99998;" @click.stop="showTemplatePicker = false" />
+            <div
+              v-if="showTemplatePicker"
+              class="fixed bg-slate-800 border border-slate-700/60 rounded-2xl shadow-2xl shadow-black/60 w-72"
+              style="z-index:99999;"
+              :style="templatePickerStyle"
+              @click.stop
+            >
+              <div class="p-2 border-b border-slate-700/40 flex items-center gap-2">
+                <input
+                  v-model="templateSearch"
+                  type="text"
+                  placeholder="Search templates…"
+                  class="flex-1 bg-slate-900/60 border border-slate-700/40 rounded-lg px-2.5 py-1 text-xs text-gray-300 placeholder-gray-600 focus:outline-none focus:border-indigo-500/50"
+                />
+                <button
+                  @click="addTemplateFromInput"
+                  :disabled="!text.trim()"
+                  class="text-[10px] px-2 py-1 rounded-lg transition-colors flex-shrink-0"
+                  :class="text.trim() ? 'bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 border border-indigo-500/30' : 'text-gray-700 cursor-not-allowed'"
+                  title="Save current text as template"
+                >Save</button>
+              </div>
+              <div class="max-h-52 overflow-y-auto py-1">
+                <p v-if="filteredTemplates.length === 0" class="text-[11px] text-gray-600 text-center py-4">
+                  {{ templateSearch ? 'No matches' : 'No templates yet — type a message and click Save' }}
+                </p>
+                <div
+                  v-for="(t, i) in filteredTemplates"
+                  :key="i"
+                  class="group flex items-start gap-2 px-3 py-2 hover:bg-slate-700/50 cursor-pointer transition-colors"
+                  @click="insertTemplate(t)"
+                >
+                  <p class="flex-1 text-xs text-gray-300 line-clamp-2">{{ t }}</p>
+                  <button
+                    @click.stop="deleteTemplate(i)"
+                    class="flex-shrink-0 text-gray-700 hover:text-rose-400 transition-colors opacity-0 group-hover:opacity-100 mt-0.5"
+                  >
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </Teleport>
+        </div>
+
         <!-- Formatting help button -->
         <div class="relative">
           <button
@@ -370,11 +512,26 @@
         <!-- Hint -->
         <span class="hidden sm:block text-[10px] text-gray-700 pr-1 select-none">Enter to send</span>
 
+        <!-- Schedule button -->
+        <button
+          @click="openSchedulePicker"
+          :disabled="(!text.trim() && selectedFiles.length === 0) || loading"
+          class="w-7 h-8 rounded-l-xl flex items-center justify-center transition-all flex-shrink-0 border-r"
+          :class="(text.trim() || selectedFiles.length > 0) && !loading
+            ? 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white/80 hover:text-white border-white/20'
+            : 'text-gray-700 cursor-not-allowed bg-slate-800/40 border-slate-700/40'"
+          title="Schedule message"
+        >
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
+
         <!-- Send button -->
         <button
           @click="submit"
           :disabled="(!text.trim() && selectedFiles.length === 0) || loading"
-          class="w-8 h-8 rounded-xl flex items-center justify-center transition-all flex-shrink-0"
+          class="w-8 h-8 rounded-r-xl flex items-center justify-center transition-all flex-shrink-0"
           :class="(text.trim() || selectedFiles.length > 0) && !loading
             ? 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white hover:from-indigo-400 hover:to-violet-500 shadow-md shadow-indigo-500/30'
             : 'text-gray-700 cursor-not-allowed'"
@@ -400,6 +557,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   send: [content: string, files: File[]]
+  schedule: [content: string, files: File[], scheduledFor: number]
   typing: [isTyping: boolean]
   'cancel-reply': []
   poll: [question: string, options: string[]]
@@ -613,8 +771,202 @@ watch(() => props.initialDraft, (draft) => {
   nextTick(() => autoResize())
 })
 
+// ── Schedule picker ──────────────────────────────────────────────────────────
+const showSchedulePicker = ref(false)
+const schedulePickerStyle = ref<Record<string, string>>({})
+const customDateTime = ref('')
+
+const schedulePresets = computed(() => {
+  const now = new Date()
+  const tonight = new Date(now)
+  tonight.setHours(21, 0, 0, 0)
+  const tomorrow = new Date(now)
+  tomorrow.setDate(now.getDate() + 1)
+  tomorrow.setHours(9, 0, 0, 0)
+  const nextMon = new Date(now)
+  const day = now.getDay()
+  const daysUntilMon = day === 0 ? 1 : 8 - day
+  nextMon.setDate(now.getDate() + daysUntilMon)
+  nextMon.setHours(9, 0, 0, 0)
+  const in30 = new Date(now.getTime() + 30 * 60 * 1000)
+  const in1h  = new Date(now.getTime() + 60 * 60 * 1000)
+
+  function fmt(d: Date) {
+    const isToday = d.toDateString() === now.toDateString()
+    const isTomorrow = d.toDateString() === tomorrow.toDateString()
+    const prefix = isToday ? 'Today' : isTomorrow ? 'Tomorrow' : d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+    return `${prefix}, ${d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`
+  }
+  const presets: { label: string; ts: number }[] = [
+    { label: `In 30 min — ${fmt(in30)}`, ts: in30.getTime() },
+    { label: `In 1 hour — ${fmt(in1h)}`, ts: in1h.getTime() },
+  ]
+  if (tonight.getTime() > now.getTime() + 60000) {
+    presets.push({ label: `Tonight — ${fmt(tonight)}`, ts: tonight.getTime() })
+  }
+  presets.push({ label: `Tomorrow — ${fmt(tomorrow)}`, ts: tomorrow.getTime() })
+  presets.push({ label: `Next Monday — ${fmt(nextMon)}`, ts: nextMon.getTime() })
+  return presets
+})
+
+function openSchedulePicker(e: MouseEvent) {
+  if (showSchedulePicker.value) { showSchedulePicker.value = false; return }
+  const btn = e.currentTarget as HTMLElement
+  const rect = btn.getBoundingClientRect()
+  schedulePickerStyle.value = {
+    bottom: `${window.innerHeight - rect.top + 6}px`,
+    right: `${window.innerWidth - rect.right}px`,
+  }
+  customDateTime.value = ''
+  showSchedulePicker.value = true
+}
+
+function submitScheduled(ts: number) {
+  const content = text.value.trim()
+  if (!content && selectedFiles.value.length === 0) return
+  const files = [...selectedFiles.value]
+  text.value = ''
+  clearFiles()
+  nextTick(() => { if (textareaRef.value) textareaRef.value.style.height = 'auto' })
+  showSchedulePicker.value = false
+  emit('schedule', content, files, ts)
+}
+
+function scheduleCustom() {
+  if (!customDateTime.value) return
+  const ts = new Date(customDateTime.value).getTime()
+  if (isNaN(ts) || ts <= Date.now()) return
+  submitScheduled(ts)
+}
+
+const minDateTime = computed(() => {
+  const d = new Date(Date.now() + 60000)
+  return d.toISOString().slice(0, 16)
+})
+
+// ── Voice Recording ──────────────────────────────────────────────────────────
+const isRecording = ref(false)
+const recordingTime = ref('0:00')
+let mediaRecorder: MediaRecorder | null = null
+let audioChunks: Blob[] = []
+let recordingTimer: ReturnType<typeof setInterval> | null = null
+let recordingSeconds = 0
+
+async function toggleRecording() {
+  if (isRecording.value) { stopRecording(); return }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    audioChunks = []
+    mediaRecorder = new MediaRecorder(stream)
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data) }
+    mediaRecorder.onstop = () => {
+      stream.getTracks().forEach((t) => t.stop())
+      if (audioChunks.length === 0) return
+      const blob = new Blob(audioChunks, { type: 'audio/webm' })
+      const file = new File([blob], `voice-${Date.now()}.webm`, { type: 'audio/webm' })
+      const slots = MAX_FILES - selectedFiles.value.length
+      if (slots > 0) {
+        selectedFiles.value.push(file)
+        previewUrls.value.push('')
+      }
+    }
+    mediaRecorder.start()
+    isRecording.value = true
+    recordingSeconds = 0
+    recordingTime.value = '0:00'
+    recordingTimer = setInterval(() => {
+      recordingSeconds++
+      const m = Math.floor(recordingSeconds / 60)
+      const s = recordingSeconds % 60
+      recordingTime.value = `${m}:${s.toString().padStart(2, '0')}`
+    }, 1000)
+  } catch {
+    showError('Microphone access denied.')
+  }
+}
+
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop()
+  if (recordingTimer) { clearInterval(recordingTimer); recordingTimer = null }
+  isRecording.value = false
+}
+
+function cancelRecording() {
+  audioChunks = [] // clear so onstop doesn't add the file
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop()
+  if (recordingTimer) { clearInterval(recordingTimer); recordingTimer = null }
+  isRecording.value = false
+}
+
+// ── Message Templates ─────────────────────────────────────────────────────────
+const showTemplatePicker = ref(false)
+const templatePickerStyle = ref<Record<string, string>>({})
+const templateSearch = ref('')
+const templates = ref<string[]>([])
+
+function loadTemplates() {
+  try { templates.value = JSON.parse(localStorage.getItem('chat-templates') ?? '[]') } catch { templates.value = [] }
+}
+function saveTemplates() {
+  localStorage.setItem('chat-templates', JSON.stringify(templates.value))
+}
+
+const filteredTemplates = computed(() => {
+  if (!templateSearch.value.trim()) return templates.value
+  const q = templateSearch.value.toLowerCase()
+  return templates.value.filter((t) => t.toLowerCase().includes(q))
+})
+
+function toggleTemplatePicker(e: MouseEvent) {
+  if (showTemplatePicker.value) { showTemplatePicker.value = false; return }
+  const btn = e.currentTarget as HTMLElement
+  const rect = btn.getBoundingClientRect()
+  templatePickerStyle.value = {
+    bottom: `${window.innerHeight - rect.top + 6}px`,
+    left: `${Math.max(8, rect.left - 100)}px`,
+  }
+  templateSearch.value = ''
+  showTemplatePicker.value = true
+}
+
+function addTemplateFromInput() {
+  const t = text.value.trim()
+  if (!t || templates.value.includes(t)) return
+  templates.value = [t, ...templates.value]
+  saveTemplates()
+  showTemplatePicker.value = false
+}
+
+function insertTemplate(t: string) {
+  text.value = t
+  showTemplatePicker.value = false
+  nextTick(() => { textareaRef.value?.focus(); autoResize() })
+}
+
+function deleteTemplate(i: number) {
+  const t = filteredTemplates.value[i]
+  if (!t) return
+  const realIdx = templates.value.indexOf(t)
+  if (realIdx !== -1) { templates.value.splice(realIdx, 1); saveTemplates() }
+}
+
+onMounted(() => loadTemplates())
+
 defineExpose({
   focus: () => textareaRef.value?.focus(),
   getDraft: () => text.value,
+  addFiles(droppedFiles: File[]) {
+    const tooBig = droppedFiles.filter((f) => f.size > MAX_FILE_SIZE)
+    const fits = droppedFiles.filter((f) => f.size <= MAX_FILE_SIZE)
+    if (tooBig.length > 0) showError(`Files exceed 20 MB: ${tooBig.map((f) => f.name).join(', ')}`)
+    const slots = MAX_FILES - selectedFiles.value.length
+    if (slots <= 0) { showError(`Maximum ${MAX_FILES} files per message.`); return }
+    const accepted = fits.slice(0, slots)
+    if (fits.length > slots) showError(`Only ${slots} more file${slots > 1 ? 's' : ''} can be added.`)
+    for (const file of accepted) {
+      selectedFiles.value.push(file)
+      previewUrls.value.push(file.type.startsWith('image/') ? URL.createObjectURL(file) : '')
+    }
+  },
 })
 </script>

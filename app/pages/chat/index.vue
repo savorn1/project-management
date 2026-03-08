@@ -7,6 +7,7 @@
         :archived-conversations="archivedConversations as Conversation[]"
         :active-id="activeConversationId"
         @select="handleSelect"
+        @unarchive="(id) => archiveConversation(id, false)"
         @new="showModal = true"
       />
 
@@ -57,7 +58,27 @@
     <div class="flex-1 flex h-full overflow-hidden">
 
     <!-- Main chat column -->
-    <div class="relative flex-1 flex flex-col h-full overflow-hidden min-w-0">
+    <div
+      class="relative flex-1 flex flex-col h-full overflow-hidden min-w-0"
+      @dragenter.prevent="onDragEnter"
+      @dragover.prevent
+      @dragleave="onDragLeave"
+      @drop.prevent="onDropFiles"
+    >
+
+      <!-- Drag & Drop overlay -->
+      <div
+        v-if="isDraggingFile && activeConversation"
+        class="absolute inset-0 z-50 flex items-center justify-center bg-slate-950/90 border-2 border-dashed border-indigo-400/50 pointer-events-none"
+      >
+        <div class="text-center">
+          <svg class="w-12 h-12 text-indigo-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+          </svg>
+          <p class="text-white font-semibold text-sm">Drop files to attach</p>
+          <p class="text-indigo-300/60 text-xs mt-1">Max 5 files · 20 MB each</p>
+        </div>
+      </div>
 
       <!-- Empty state -->
       <div v-if="!activeConversation" class="flex-1 flex flex-col items-center justify-center text-center p-8">
@@ -230,6 +251,32 @@
               </Teleport>
             </div>
 
+            <!-- Media gallery toggle -->
+            <button
+              @click="showMediaGallery = !showMediaGallery"
+              class="ml-1 w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+              :class="showMediaGallery ? 'bg-indigo-500/20 text-indigo-400' : 'text-gray-600 hover:text-gray-400 hover:bg-slate-800/60'"
+              title="Media & Files"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </button>
+
+            <!-- Scheduled messages toggle -->
+            <button
+              v-if="convScheduledMsgs.length > 0"
+              @click="showScheduledPanel = !showScheduledPanel"
+              class="ml-1 w-7 h-7 rounded-lg flex items-center justify-center transition-colors relative"
+              :class="showScheduledPanel ? 'bg-violet-500/20 text-violet-400' : 'text-gray-600 hover:text-gray-400 hover:bg-slate-800/60'"
+              title="Scheduled messages"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span class="absolute -top-1 -right-1 w-3.5 h-3.5 bg-violet-500 rounded-full text-[8px] text-white flex items-center justify-center font-bold">{{ convScheduledMsgs.length }}</span>
+            </button>
+
             <!-- Members panel toggle (group only) -->
             <button
               v-if="activeConversation.type === 'group'"
@@ -323,6 +370,8 @@
                   @thread="(m) => threadMessage = m"
                   @star="handleStar"
                   @vote="handleVotePoll"
+                  @create-task="handleCreateTask"
+                  @remind="handleRemind"
                   @open-image="(img) => openLightbox(img, (msg.attachments ?? []).filter(a => a.mimeType.startsWith('image/')))"
                 />
 
@@ -403,6 +452,7 @@
           :replying-to="replyingTo ?? undefined"
           :initial-draft="draftToRestore"
           @send="onSend"
+          @schedule="handleScheduleMessage"
           @typing="onTyping"
           @cancel-reply="replyingTo = null"
           @poll="handleCreatePoll"
@@ -654,6 +704,71 @@
         @navigate="handleStarNavigate"
       />
     </Transition>
+
+    <!-- ── Media Gallery panel ──────────────────────────────────── -->
+    <Transition
+      enter-active-class="transition-all duration-200 ease-out"
+      enter-from-class="opacity-0 translate-x-4"
+      enter-to-class="opacity-100 translate-x-0"
+      leave-active-class="transition-all duration-150 ease-in"
+      leave-from-class="opacity-100 translate-x-0"
+      leave-to-class="opacity-0 translate-x-4"
+    >
+      <MediaGallery
+        v-if="activeConversation && showMediaGallery"
+        :messages="messages as ChatMessage[]"
+        @close="showMediaGallery = false"
+        @open-image="(img, imgs) => openLightbox(img, imgs)"
+      />
+    </Transition>
+
+    <!-- ── Scheduled messages panel ──────────────────────────────── -->
+    <Transition
+      enter-active-class="transition-all duration-200 ease-out"
+      enter-from-class="opacity-0 translate-x-4"
+      enter-to-class="opacity-100 translate-x-0"
+      leave-active-class="transition-all duration-150 ease-in"
+      leave-from-class="opacity-100 translate-x-0"
+      leave-to-class="opacity-0 translate-x-4"
+    >
+      <div
+        v-if="showScheduledPanel && activeConversation"
+        class="w-60 flex-shrink-0 border-l border-slate-800/60 flex flex-col h-full bg-slate-900/40"
+      >
+        <div class="px-3 py-3 border-b border-slate-800/60 flex items-center justify-between flex-shrink-0">
+          <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Scheduled</span>
+          <button @click="showScheduledPanel = false" class="text-gray-600 hover:text-gray-300 transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-2">
+          <div v-if="convScheduledMsgs.length === 0" class="flex flex-col items-center justify-center h-32 text-center px-4">
+            <p class="text-xs text-gray-600">No scheduled messages</p>
+          </div>
+          <div v-else class="flex flex-col gap-2">
+            <div
+              v-for="s in convScheduledMsgs"
+              :key="s.id"
+              class="bg-slate-800/60 border border-slate-700/40 rounded-xl p-2.5"
+            >
+              <p class="text-xs text-gray-300 line-clamp-3 mb-1.5">{{ s.content || '(no text)' }}</p>
+              <div class="flex items-center justify-between gap-1">
+                <span class="text-[10px] text-violet-400">
+                  {{ new Date(s.scheduledFor).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
+                </span>
+                <button
+                  @click="cancelScheduled(s.id)"
+                  class="text-[10px] text-gray-600 hover:text-rose-400 transition-colors"
+                >Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
     </div><!-- end message area flex wrapper -->
 
     <!-- ── Global Search ───────────────────────────────────────────── -->
@@ -779,11 +894,113 @@
         </div>
       </div>
     </Teleport>
+
+    <!-- ── Create Task from Message modal ──────────────────────── -->
+    <Teleport to="body">
+      <div v-if="createTaskMessage" class="fixed inset-0 z-[9999] flex items-center justify-center">
+        <div class="absolute inset-0 bg-black/60" @click="createTaskMessage = null" />
+        <div class="relative w-[400px] max-w-[92vw] bg-slate-900 border border-slate-700/60 rounded-2xl shadow-2xl shadow-black/40 p-5" @click.stop>
+          <div class="flex items-center justify-between mb-4">
+            <p class="text-sm font-semibold text-white">Create Task</p>
+            <button @click="createTaskMessage = null" class="text-gray-600 hover:text-gray-300 transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Source message preview -->
+          <div class="mb-3 px-3 py-2 bg-slate-800/60 border border-slate-700/40 rounded-xl">
+            <p class="text-[10px] text-gray-600 mb-0.5">From message</p>
+            <p class="text-xs text-gray-400 line-clamp-2">{{ createTaskMessage.content || '📎 Attachment' }}</p>
+          </div>
+
+          <!-- Title -->
+          <div class="mb-3">
+            <label class="text-[10px] font-semibold uppercase tracking-wider text-gray-600 mb-1 block">Task Title</label>
+            <input
+              v-model="createTaskTitle"
+              type="text"
+              maxlength="120"
+              placeholder="Task title…"
+              class="w-full bg-slate-800/60 border border-slate-700/40 rounded-xl px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500/50"
+              @keydown.enter.prevent="confirmCreateTask"
+            />
+          </div>
+
+          <!-- Project -->
+          <div class="mb-4">
+            <label class="text-[10px] font-semibold uppercase tracking-wider text-gray-600 mb-1 block">Project</label>
+            <select
+              v-model="createTaskProjectId"
+              class="w-full bg-slate-800/60 border border-slate-700/40 rounded-xl px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500/50"
+            >
+              <option value="" disabled>Select a project…</option>
+              <option v-for="p in createTaskProjects" :key="p._id" :value="p._id">{{ p.name }}</option>
+            </select>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex justify-end gap-2">
+            <button
+              @click="createTaskMessage = null"
+              class="px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-400 hover:text-gray-200 hover:bg-slate-800/60 transition-colors"
+            >Cancel</button>
+            <button
+              @click="confirmCreateTask"
+              :disabled="createTaskLoading || !createTaskTitle.trim() || !createTaskProjectId"
+              class="px-4 py-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 text-indigo-300 text-xs font-semibold transition-colors disabled:opacity-50"
+            >{{ createTaskLoading ? 'Creating…' : 'Create Task' }}</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- ── Message Reminder popup ───────────────────────────────── -->
+    <Teleport to="body">
+      <div v-if="reminderMessage" class="fixed inset-0 z-[9999] flex items-center justify-center">
+        <div class="absolute inset-0 bg-black/60" @click="reminderMessage = null" />
+        <div class="relative w-[300px] max-w-[92vw] bg-slate-900 border border-slate-700/60 rounded-2xl shadow-2xl shadow-black/40 p-5" @click.stop>
+          <div class="flex items-center justify-between mb-4">
+            <p class="text-sm font-semibold text-white">Set Reminder</p>
+            <button @click="reminderMessage = null" class="text-gray-600 hover:text-gray-300 transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Message preview -->
+          <div class="mb-4 px-3 py-2 bg-slate-800/60 border border-slate-700/40 rounded-xl">
+            <p class="text-[10px] text-gray-600 mb-0.5">Reminding you about</p>
+            <p class="text-xs text-gray-400 line-clamp-2">{{ reminderMessage.content || '📎 Attachment' }}</p>
+          </div>
+
+          <!-- Time options -->
+          <div class="flex flex-col gap-1.5">
+            <button
+              v-for="opt in getReminderOptions()"
+              :key="opt.label"
+              @click="setReminder(opt.minutes)"
+              class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700/30 transition-colors text-left"
+            >
+              <svg class="w-4 h-4 text-cyan-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <p class="text-xs font-medium text-gray-300">{{ opt.label }}</p>
+                <p class="text-[10px] text-gray-600">{{ opt.desc }}</p>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { ChatMessage, Conversation, MessageAttachment, TeamMember } from '~/types'
+import type { ChatMessage, Conversation, MessageAttachment, Project, TeamMember } from '~/types'
 
 definePageMeta({ layout: 'default' })
 
@@ -839,7 +1056,7 @@ const showMembers = ref(true)
 const loadingMessages = ref(false)
 const scrollRef = ref<HTMLElement | null>(null)
 const bottomRef = ref<HTMLElement | null>(null)
-const inputRef = ref<{ focus: () => void; getDraft: () => string } | null>(null)
+const inputRef = ref<{ focus: () => void; getDraft: () => string; addFiles: (files: File[]) => void } | null>(null)
 
 // Search
 const searchQuery = ref('')
@@ -941,7 +1158,191 @@ async function handleArchive(archive: boolean) {
   await archiveConversation(activeConversation.value._id, archive)
 }
 
+// ── Feature 1: Drag & Drop ────────────────────────────────────────────────────
+const isDraggingFile = ref(false)
+let _dragCounter = 0
+
+function onDragEnter() {
+  _dragCounter++
+  isDraggingFile.value = true
+}
+
+function onDragLeave() {
+  _dragCounter--
+  if (_dragCounter <= 0) {
+    _dragCounter = 0
+    isDraggingFile.value = false
+  }
+}
+
+function onDropFiles(e: DragEvent) {
+  isDraggingFile.value = false
+  _dragCounter = 0
+  const files = Array.from(e.dataTransfer?.files ?? [])
+  if (files.length > 0) inputRef.value?.addFiles(files)
+}
+
+// ── Feature 2: Media Gallery ──────────────────────────────────────────────────
+const showMediaGallery = ref(false)
+
+// ── Feature 4: Create Task from Message ──────────────────────────────────────
+const createTaskMessage = ref<ChatMessage | null>(null)
+const createTaskTitle = ref('')
+const createTaskProjectId = ref('')
+const createTaskProjects = ref<Project[]>([])
+const createTaskLoading = ref(false)
+
+async function handleCreateTask(msg: ChatMessage) {
+  createTaskTitle.value = (msg.content ?? '').slice(0, 80).trim()
+  createTaskLoading.value = false
+  const { projectsApi } = useApi()
+  createTaskProjects.value = await projectsApi.getAll()
+  if (createTaskProjects.value.length > 0 && !createTaskProjectId.value) {
+    createTaskProjectId.value = createTaskProjects.value[0]!._id
+  }
+  createTaskMessage.value = msg
+}
+
+async function confirmCreateTask() {
+  if (!createTaskMessage.value || !createTaskTitle.value.trim() || !createTaskProjectId.value) return
+  createTaskLoading.value = true
+  const { tasksApi } = useApi()
+  const task = await tasksApi.create(
+    { title: createTaskTitle.value.trim(), description: `From chat: ${createTaskMessage.value.content ?? ''}` },
+    createTaskProjectId.value,
+  )
+  createTaskLoading.value = false
+  if (task) {
+    createTaskMessage.value = null
+    useToast().success('Task created successfully')
+  }
+}
+
+// ── Feature 5: Message Reminder ───────────────────────────────────────────────
+const reminderMessage = ref<ChatMessage | null>(null)
+
+interface ReminderEntry { messageId: string; content: string; fireAt: number }
+
+function getReminderOptions() {
+  const now = new Date()
+  const tom9 = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 9, 0, 0)
+  const minsToTom9 = Math.max(1, Math.round((tom9.getTime() - now.getTime()) / 60000))
+  return [
+    { label: 'In 30 minutes', desc: 'Quick reminder', minutes: 30 },
+    { label: 'In 1 hour', desc: 'In a bit', minutes: 60 },
+    { label: 'In 4 hours', desc: 'Later today', minutes: 240 },
+    { label: 'Tomorrow at 9 AM', desc: 'Fresh start', minutes: minsToTom9 },
+  ]
+}
+
+function handleRemind(msg: ChatMessage) {
+  reminderMessage.value = msg
+}
+
+function scheduleReminder(r: ReminderEntry) {
+  const delay = r.fireAt - Date.now()
+  if (delay <= 0) return
+  setTimeout(() => {
+    useToast().info(`⏰ Reminder: "${(r.content ?? '').slice(0, 60)}${(r.content ?? '').length > 60 ? '…' : ''}"`)
+    try {
+      const items: ReminderEntry[] = JSON.parse(localStorage.getItem('chat-reminders') ?? '[]')
+      localStorage.setItem('chat-reminders', JSON.stringify(items.filter((i) => i.messageId !== r.messageId)))
+    } catch { /* ignore */ }
+  }, Math.min(delay, 2_147_483_647))
+}
+
+function setReminder(minutes: number) {
+  if (!reminderMessage.value) return
+  const msg = reminderMessage.value
+  const fireAt = Date.now() + minutes * 60 * 1000
+  const entry: ReminderEntry = { messageId: msg._id, content: msg.content ?? '', fireAt }
+  try {
+    const items: ReminderEntry[] = JSON.parse(localStorage.getItem('chat-reminders') ?? '[]')
+    localStorage.setItem('chat-reminders', JSON.stringify([...items.filter((i) => i.messageId !== msg._id), entry]))
+  } catch { /* ignore */ }
+  scheduleReminder(entry)
+  reminderMessage.value = null
+  const label = minutes < 60 ? `${minutes} min` : minutes < 1440 ? `${minutes / 60} hr` : 'tomorrow'
+  useToast().success(`Reminder set for ${label}`)
+}
+
+function loadReminders() {
+  try {
+    const items: ReminderEntry[] = JSON.parse(localStorage.getItem('chat-reminders') ?? '[]')
+    const now = Date.now()
+    for (const r of items) {
+      if (r.fireAt > now) scheduleReminder(r)
+    }
+    localStorage.setItem('chat-reminders', JSON.stringify(items.filter((r) => r.fireAt > now)))
+  } catch { /* ignore */ }
+}
+
+// ── Scheduled Messages ────────────────────────────────────────────────────────
+interface ScheduledMsg { id: string; convId: string; content: string; files: string[]; scheduledFor: number }
+
+const scheduledMsgs = ref<ScheduledMsg[]>([])
+const showScheduledPanel = ref(false)
+
+function loadScheduled() {
+  try {
+    scheduledMsgs.value = JSON.parse(localStorage.getItem('chat-scheduled-msgs') ?? '[]')
+    const now = Date.now()
+    // fire any that are overdue
+    for (const s of scheduledMsgs.value) {
+      if (s.scheduledFor <= now) armScheduled(s)
+    }
+  } catch { scheduledMsgs.value = [] }
+}
+
+function saveScheduled() {
+  localStorage.setItem('chat-scheduled-msgs', JSON.stringify(scheduledMsgs.value))
+}
+
+function armScheduled(s: ScheduledMsg) {
+  const delay = Math.max(0, s.scheduledFor - Date.now())
+  setTimeout(async () => {
+    if (!scheduledMsgs.value.find((x) => x.id === s.id)) return
+    try {
+      const { chatApi } = useApi()
+      await chatApi.sendMessage(s.convId, s.content, undefined, [])
+      useToast().success('Scheduled message sent.')
+    } catch {
+      useToast().error('Failed to send scheduled message.')
+    }
+    scheduledMsgs.value = scheduledMsgs.value.filter((x) => x.id !== s.id)
+    saveScheduled()
+  }, Math.min(delay, 2_147_483_647))
+}
+
+function handleScheduleMessage(content: string, _files: File[], scheduledFor: number) {
+  if (!activeConversation.value) return
+  const entry: ScheduledMsg = {
+    id: `${Date.now()}-${Math.random()}`,
+    convId: activeConversation.value._id,
+    content,
+    files: [],
+    scheduledFor,
+  }
+  scheduledMsgs.value = [...scheduledMsgs.value, entry]
+  saveScheduled()
+  armScheduled(entry)
+  const timeStr = new Date(scheduledFor).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  useToast().success(`Message scheduled for ${timeStr}`)
+}
+
+function cancelScheduled(id: string) {
+  scheduledMsgs.value = scheduledMsgs.value.filter((s) => s.id !== id)
+  saveScheduled()
+}
+
+const convScheduledMsgs = computed(() =>
+  scheduledMsgs.value.filter((s) => s.convId === activeConversation.value?._id)
+)
+
 onMounted(() => {
+  loadReminders()
+  loadScheduled()
+
   function handleCtrlK(e: KeyboardEvent) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
       e.preventDefault()
