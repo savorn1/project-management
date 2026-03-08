@@ -897,51 +897,105 @@
 
     <!-- ── Create Task from Message modal ──────────────────────── -->
     <Teleport to="body">
-      <div v-if="createTaskMessage" class="fixed inset-0 z-[9999] flex items-center justify-center">
-        <div class="absolute inset-0 bg-black/60" @click="createTaskMessage = null" />
-        <div class="relative w-[400px] max-w-[92vw] bg-slate-900 border border-slate-700/60 rounded-2xl shadow-2xl shadow-black/40 p-5" @click.stop>
+      <div v-if="createTaskMessage" class="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="createTaskMessage = null" />
+        <div class="relative w-full max-w-[440px] bg-slate-900 border border-slate-700/60 rounded-2xl shadow-2xl shadow-black/40 p-5" @click.stop>
+
+          <!-- Header -->
           <div class="flex items-center justify-between mb-4">
-            <p class="text-sm font-semibold text-white">Create Task</p>
-            <button @click="createTaskMessage = null" class="text-gray-600 hover:text-gray-300 transition-colors">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="flex items-center gap-2">
+              <div class="w-6 h-6 rounded-lg bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center">
+                <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+              </div>
+              <p class="text-sm font-semibold text-white">Create Task</p>
+            </div>
+            <button @click="createTaskMessage = null" class="w-6 h-6 rounded-lg flex items-center justify-center text-gray-600 hover:text-gray-300 hover:bg-slate-800/60 transition-colors">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
 
           <!-- Source message preview -->
-          <div class="mb-3 px-3 py-2 bg-slate-800/60 border border-slate-700/40 rounded-xl">
-            <p class="text-[10px] text-gray-600 mb-0.5">From message</p>
-            <p class="text-xs text-gray-400 line-clamp-2">{{ createTaskMessage.content || '📎 Attachment' }}</p>
+          <div class="mb-4 px-3 py-2 bg-slate-800/40 border border-slate-700/40 rounded-xl flex gap-2">
+            <div class="w-0.5 rounded-full bg-indigo-400/50 flex-shrink-0 self-stretch" />
+            <div class="min-w-0">
+              <p class="text-[10px] text-gray-600 mb-0.5">From message</p>
+              <p class="text-xs text-gray-400 line-clamp-2">{{ createTaskMessage.content || '📎 Attachment' }}</p>
+            </div>
           </div>
 
           <!-- Title -->
           <div class="mb-3">
-            <label class="text-[10px] font-semibold uppercase tracking-wider text-gray-600 mb-1 block">Task Title</label>
+            <label class="text-[10px] font-semibold uppercase tracking-wider text-gray-600 mb-1 block">Title</label>
             <input
               v-model="createTaskTitle"
               type="text"
               maxlength="120"
               placeholder="Task title…"
-              class="w-full bg-slate-800/60 border border-slate-700/40 rounded-xl px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500/50"
+              class="w-full bg-slate-800/60 border border-slate-700/40 rounded-xl px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500/50 transition-colors"
               @keydown.enter.prevent="confirmCreateTask"
             />
           </div>
 
-          <!-- Project -->
+          <!-- Description -->
+          <div class="mb-3">
+            <label class="text-[10px] font-semibold uppercase tracking-wider text-gray-600 mb-1 block">Description</label>
+            <textarea
+              v-model="createTaskDescription"
+              rows="2"
+              placeholder="Optional description…"
+              class="w-full bg-slate-800/60 border border-slate-700/40 rounded-xl px-3 py-2 text-sm text-gray-300 placeholder-gray-600 focus:outline-none focus:border-indigo-500/50 transition-colors resize-none leading-relaxed"
+            />
+          </div>
+
+          <!-- Project + Priority row -->
+          <div class="flex gap-2 mb-3">
+            <div class="flex-1 min-w-0">
+              <label class="text-[10px] font-semibold uppercase tracking-wider text-gray-600 mb-1 block">Project</label>
+              <ProjectPicker
+                v-model="createTaskProjectId"
+                :projects="createTaskProjects"
+              />
+            </div>
+            <div>
+              <label class="text-[10px] font-semibold uppercase tracking-wider text-gray-600 mb-1 block">Priority</label>
+              <div class="flex gap-1">
+                <button
+                  v-for="pri in (['low', 'medium', 'high', 'urgent'] as const)"
+                  :key="pri"
+                  type="button"
+                  @click="createTaskPriority = pri"
+                  :title="pri.charAt(0).toUpperCase() + pri.slice(1)"
+                  class="w-8 h-[34px] rounded-lg border text-[10px] font-bold uppercase transition-all"
+                  :class="{
+                    'bg-slate-700/60 border-slate-600/60 text-slate-400': createTaskPriority !== pri,
+                    'bg-slate-500/20 border-slate-400/40 text-slate-300': createTaskPriority === 'low' && pri === 'low',
+                    'bg-indigo-500/20 border-indigo-500/40 text-indigo-300': createTaskPriority === 'medium' && pri === 'medium',
+                    'bg-amber-500/20 border-amber-500/40 text-amber-300': createTaskPriority === 'high' && pri === 'high',
+                    'bg-rose-500/20 border-rose-500/40 text-rose-300': createTaskPriority === 'urgent' && pri === 'urgent',
+                  }"
+                >{{ pri[0]!.toUpperCase() }}</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Due date -->
           <div class="mb-4">
-            <label class="text-[10px] font-semibold uppercase tracking-wider text-gray-600 mb-1 block">Project</label>
-            <select
-              v-model="createTaskProjectId"
-              class="w-full bg-slate-800/60 border border-slate-700/40 rounded-xl px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500/50"
-            >
-              <option value="" disabled>Select a project…</option>
-              <option v-for="p in createTaskProjects" :key="p._id" :value="p._id">{{ p.name }}</option>
-            </select>
+            <label class="text-[10px] font-semibold uppercase tracking-wider text-gray-600 mb-1 block">Due Date</label>
+            <div class="bg-slate-800/60 border border-slate-700/40 rounded-xl px-3 py-1.5">
+              <DatePicker
+                v-model="createTaskDueDate"
+                placeholder="No due date"
+                :clearable="true"
+              />
+            </div>
           </div>
 
           <!-- Actions -->
-          <div class="flex justify-end gap-2">
+          <div class="flex justify-end gap-2 pt-1">
             <button
               @click="createTaskMessage = null"
               class="px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-400 hover:text-gray-200 hover:bg-slate-800/60 transition-colors"
@@ -949,8 +1003,11 @@
             <button
               @click="confirmCreateTask"
               :disabled="createTaskLoading || !createTaskTitle.trim() || !createTaskProjectId"
-              class="px-4 py-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 text-indigo-300 text-xs font-semibold transition-colors disabled:opacity-50"
-            >{{ createTaskLoading ? 'Creating…' : 'Create Task' }}</button>
+              class="px-4 py-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 text-indigo-300 text-xs font-semibold transition-colors disabled:opacity-40 flex items-center gap-1.5"
+            >
+              <div v-if="createTaskLoading" class="w-3 h-3 border-2 border-indigo-400/30 border-t-indigo-400 rounded-full animate-spin" />
+              {{ createTaskLoading ? 'Creating…' : 'Create Task' }}
+            </button>
           </div>
         </div>
       </div>
@@ -1188,12 +1245,18 @@ const showMediaGallery = ref(false)
 // ── Feature 4: Create Task from Message ──────────────────────────────────────
 const createTaskMessage = ref<ChatMessage | null>(null)
 const createTaskTitle = ref('')
+const createTaskDescription = ref('')
 const createTaskProjectId = ref('')
 const createTaskProjects = ref<Project[]>([])
+const createTaskPriority = ref<'low' | 'medium' | 'high' | 'urgent'>('medium')
+const createTaskDueDate = ref<string | null>(null)
 const createTaskLoading = ref(false)
 
 async function handleCreateTask(msg: ChatMessage) {
   createTaskTitle.value = (msg.content ?? '').slice(0, 80).trim()
+  createTaskDescription.value = msg.content ?? ''
+  createTaskPriority.value = 'medium'
+  createTaskDueDate.value = null
   createTaskLoading.value = false
   const { projectsApi } = useApi()
   createTaskProjects.value = await projectsApi.getAll()
@@ -1208,7 +1271,12 @@ async function confirmCreateTask() {
   createTaskLoading.value = true
   const { tasksApi } = useApi()
   const task = await tasksApi.create(
-    { title: createTaskTitle.value.trim(), description: `From chat: ${createTaskMessage.value.content ?? ''}` },
+    {
+      title: createTaskTitle.value.trim(),
+      description: createTaskDescription.value.trim(),
+      priority: createTaskPriority.value,
+      dueDate: createTaskDueDate.value,
+    },
     createTaskProjectId.value,
   )
   createTaskLoading.value = false
