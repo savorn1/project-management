@@ -30,6 +30,67 @@
       </div>
     </Transition>
 
+    <!-- Poll creation modal -->
+    <Teleport to="body">
+      <div v-if="showPollModal" class="fixed inset-0 z-[9990] flex items-center justify-center p-4" @click.self="showPollModal = false">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showPollModal = false" />
+        <div class="relative w-full max-w-sm bg-slate-900 border border-slate-700/60 rounded-2xl shadow-2xl shadow-black/60 p-5" @click.stop>
+          <p class="text-sm font-semibold text-white mb-4">Create Poll</p>
+
+          <!-- Question -->
+          <div class="mb-3">
+            <label class="text-[10px] font-semibold uppercase tracking-wider text-gray-600 mb-1 block">Question</label>
+            <input
+              v-model="pollQuestion"
+              placeholder="Ask a question…"
+              class="w-full bg-slate-800/60 border border-slate-700/40 rounded-xl px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500/50"
+              @keydown.escape="showPollModal = false"
+            />
+          </div>
+
+          <!-- Options -->
+          <div class="mb-4">
+            <label class="text-[10px] font-semibold uppercase tracking-wider text-gray-600 mb-1 block">Options</label>
+            <div class="flex flex-col gap-1.5">
+              <div v-for="(opt, i) in pollOptions" :key="i" class="flex items-center gap-2">
+                <input
+                  v-model="pollOptions[i]"
+                  :placeholder="`Option ${i + 1}`"
+                  class="flex-1 bg-slate-800/60 border border-slate-700/40 rounded-lg px-3 py-1.5 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500/40"
+                />
+                <button
+                  v-if="pollOptions.length > 2"
+                  @click="pollOptions.splice(i, 1)"
+                  class="w-5 h-5 rounded flex items-center justify-center text-gray-600 hover:text-rose-400 transition-colors flex-shrink-0"
+                >
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <button
+                v-if="pollOptions.length < 6"
+                @click="pollOptions.push('')"
+                class="text-[11px] text-indigo-400/70 hover:text-indigo-300 text-left mt-0.5 transition-colors"
+              >+ Add option</button>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-2">
+            <button @click="showPollModal = false" class="px-3 py-1.5 rounded-lg text-xs text-gray-500 hover:text-gray-300 hover:bg-slate-800 transition-colors">Cancel</button>
+            <button
+              @click="submitPoll"
+              :disabled="!pollQuestion.trim() || pollOptions.filter(o => o.trim()).length < 2"
+              class="px-4 py-1.5 rounded-lg text-xs font-medium transition-all"
+              :class="pollQuestion.trim() && pollOptions.filter(o => o.trim()).length >= 2
+                ? 'bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/30'
+                : 'text-gray-700 cursor-not-allowed'"
+            >Create Poll</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- File validation error -->
     <Transition
       enter-active-class="transition ease-out duration-150"
@@ -177,6 +238,13 @@
         </div>
       </Transition>
 
+      <!-- Formatting toolbar (visible when toggled) -->
+      <FormattingToolbar
+        v-if="showFormattingToolbar"
+        :textarea-ref="textareaRef"
+        v-model="text"
+      />
+
       <!-- Textarea -->
       <textarea
         ref="textareaRef"
@@ -228,6 +296,25 @@
           class="hidden"
           @change="onFileChange"
         />
+
+        <!-- Formatting toolbar toggle -->
+        <button
+          @click.stop="showFormattingToolbar = !showFormattingToolbar"
+          class="w-8 h-8 rounded-xl flex items-center justify-center transition-colors flex-shrink-0 text-[11px] font-bold"
+          :class="showFormattingToolbar ? 'text-indigo-400 bg-indigo-500/10' : 'text-gray-500 hover:text-indigo-400 hover:bg-indigo-500/10'"
+          title="Formatting toolbar"
+        >B</button>
+
+        <!-- Poll button -->
+        <button
+          @click.stop="showPollModal = true"
+          class="w-8 h-8 rounded-xl flex items-center justify-center transition-colors flex-shrink-0 text-gray-500 hover:text-indigo-400 hover:bg-indigo-500/10"
+          title="Create poll"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+        </button>
 
         <!-- Formatting help button -->
         <div class="relative">
@@ -315,6 +402,7 @@ const emit = defineEmits<{
   send: [content: string, files: File[]]
   typing: [isTyping: boolean]
   'cancel-reply': []
+  poll: [question: string, options: string[]]
 }>()
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20 MB
@@ -446,6 +534,23 @@ async function submit() {
   emit('send', content, files)
   loading.value = false
 }
+
+// ── Poll modal ───────────────────────────────────────────────────────────────
+const showPollModal = ref(false)
+const pollQuestion = ref('')
+const pollOptions = ref(['', ''])
+
+function submitPoll() {
+  const opts = pollOptions.value.filter((o: string) => o.trim())
+  if (!pollQuestion.value.trim() || opts.length < 2) return
+  emit('poll', pollQuestion.value.trim(), opts)
+  showPollModal.value = false
+  pollQuestion.value = ''
+  pollOptions.value = ['', '']
+}
+
+// ── Formatting toolbar ───────────────────────────────────────────────────────
+const showFormattingToolbar = ref(false)
 
 // ── Formatting help ──────────────────────────────────────────────────────────
 const showFormatHelp = ref(false)

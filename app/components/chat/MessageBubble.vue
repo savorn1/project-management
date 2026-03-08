@@ -66,9 +66,19 @@
         </div>
 
         <template v-else>
+          <!-- Poll -->
+          <PollMessage
+            v-if="message.type === 'poll' && message.poll"
+            :poll="message.poll"
+            :current-user-id="currentUserId"
+            :mine="mine"
+            :is-deleted="message.isDeleted"
+            @vote="(idx) => emit('vote', message._id, idx)"
+          />
+
           <!-- Text bubble -->
           <div
-            v-if="message.content"
+            v-if="message.content && message.type !== 'poll'"
             class="px-3.5 py-2 rounded-2xl text-xs leading-relaxed"
             :class="mine
               ? 'bg-gradient-to-br from-indigo-600 to-violet-600 text-white rounded-tr-sm'
@@ -124,9 +134,35 @@
             <svg v-else-if="readCount === 0" class="w-2.5 h-2.5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
             </svg>
-            <!-- Read by N -->
-            <span v-if="readCount > 0" class="text-[9px] text-indigo-300/50">Seen by {{ readCount }}</span>
+            <!-- Read by N (clickable for detail) -->
+            <button
+              v-if="readCount > 0"
+              ref="readByBtnRef"
+              @click.stop="showReadBy = !showReadBy"
+              class="text-[9px] text-indigo-300/50 hover:text-indigo-200/80 transition-colors underline-offset-2 hover:underline"
+            >Seen by {{ readCount }}</button>
           </div>
+
+          <!-- Read-by popover -->
+          <Teleport to="body">
+            <div
+              v-if="showReadBy && readByList.length"
+              class="fixed z-[9999] min-w-[160px] bg-slate-800 border border-slate-700/60 rounded-xl shadow-2xl shadow-black/40 py-1.5 px-0.5"
+              :style="readByPopoverStyle"
+              @click.stop
+            >
+              <p class="text-[9px] font-semibold uppercase tracking-wider text-gray-600 px-3 pb-1">Read by</p>
+              <div
+                v-for="r in readByList"
+                :key="r.userId"
+                class="flex items-center justify-between gap-3 px-3 py-1"
+              >
+                <span class="text-[11px] text-gray-300">{{ r.name }}</span>
+                <span class="text-[9px] text-gray-600 flex-shrink-0">{{ formatTime(r.readAt) }}</span>
+              </div>
+            </div>
+            <div v-if="showReadBy" class="fixed inset-0 z-[9998]" @click="showReadBy = false" />
+          </Teleport>
 
           <!-- Reaction bar -->
           <div
@@ -153,6 +189,15 @@
 
       <!-- Time + actions row -->
       <div class="flex items-center gap-1.5 mt-1 px-0.5" :class="mine ? 'flex-row-reverse' : 'flex-row'">
+        <!-- Disappearing timer icon -->
+        <svg
+          v-if="message.expiresAt"
+          class="w-2.5 h-2.5 text-amber-500/60 flex-shrink-0"
+          :title="`Disappears ${formatTime(message.expiresAt!)}`"
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
         <span
           class="text-[10px] text-gray-600"
           :title="fullDateTime"
@@ -217,6 +262,7 @@
           <!-- React -->
           <div class="relative">
             <button
+              ref="reactionBtnRef"
               @click.stop="showReactionPicker = !showReactionPicker"
               class="w-6 h-6 rounded-lg flex items-center justify-center text-gray-600 hover:text-yellow-400 hover:bg-yellow-500/10 transition-colors"
               title="React"
@@ -225,20 +271,15 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </button>
-            <!-- Quick emoji picker -->
+            <!-- Full emoji picker -->
             <Teleport to="body">
               <div
                 v-if="showReactionPicker"
-                class="fixed z-[9999] flex gap-1 px-2 py-1.5 bg-slate-800 border border-slate-700/60 rounded-2xl shadow-2xl shadow-black/40"
+                class="fixed z-[9999]"
                 :style="reactionPickerStyle"
                 @click.stop
               >
-                <button
-                  v-for="emoji in quickEmojis"
-                  :key="emoji"
-                  @click="pickReaction(emoji)"
-                  class="w-7 h-7 flex items-center justify-center text-base rounded-lg hover:bg-slate-700/60 transition-colors"
-                >{{ emoji }}</button>
+                <EmojiPicker @pick="pickReaction" />
               </div>
               <div v-if="showReactionPicker" class="fixed inset-0 z-[9998]" @click="showReactionPicker = false" />
             </Teleport>
@@ -315,6 +356,7 @@ const props = defineProps<{
   currentUserId?: string
   highlighted?: boolean
   isStarred?: boolean
+  memberMap?: Map<string, string>
 }>()
 
 const emit = defineEmits<{
@@ -328,6 +370,7 @@ const emit = defineEmits<{
   forward: [message: ChatMessage]
   thread: [message: ChatMessage]
   star: [messageId: string]
+  vote: [messageId: string, optionIndex: number]
 }>()
 
 const { formatTime } = useChat()
@@ -420,6 +463,7 @@ const renderedContent = computed(() => {
   )
   text = text.replace(/\*\*([^*]+)\*\*/g, '<strong style="font-weight:700;">$1</strong>')
   text = text.replace(/\*([^*\n]+)\*/g, '<em style="font-style:italic;">$1</em>')
+  text = text.replace(/~~([^~]+)~~/g, '<s style="opacity:0.7;">$1</s>')
   text = text
     .replace(/@\[everyone\]/g, () => mentionChip('everyone', true))
     .replace(/@\[([^\]]+)\]\([^)]+\)/g, (_, name: string) => mentionChip(name, false))
@@ -427,6 +471,33 @@ const renderedContent = computed(() => {
   text = text.replace(/\n/g, '<br>')
   text = text.replace(/\x00BLOCK(\d+)\x00/g, (_, idx: string) => codeBlocks[Number(idx)] ?? '')
   return text
+})
+
+// ── Read-by detail ────────────────────────────────────────────────────────────
+
+const showReadBy = ref(false)
+const readByBtnRef = ref<HTMLElement | null>(null)
+const readByPopoverStyle = ref('')
+
+const readByList = computed(() =>
+  (props.message.readBy ?? [])
+    .filter(r => r.userId !== props.currentUserId)
+    .map(r => ({
+      userId: r.userId,
+      name: props.memberMap?.get(r.userId) ?? r.userId.slice(-4),
+      readAt: r.readAt,
+    }))
+    .sort((a, b) => new Date(a.readAt).getTime() - new Date(b.readAt).getTime())
+)
+
+watch(showReadBy, (val) => {
+  if (!val || !readByBtnRef.value) return
+  nextTick(() => {
+    const rect = readByBtnRef.value!.getBoundingClientRect()
+    const top = rect.top - 8
+    const left = Math.min(rect.left, window.innerWidth - 200)
+    readByPopoverStyle.value = `top:${top}px;left:${left}px;transform:translateY(-100%)`
+  })
 })
 
 // ── Copy ─────────────────────────────────────────────────────────────────────
@@ -445,19 +516,22 @@ async function copyContent() {
 
 // ── Reaction picker ───────────────────────────────────────────────────────────
 
-const quickEmojis = ['👍','❤️','😂','😮','😢','🔥','👏','🙏']
 const showReactionPicker = ref(false)
 const reactionPickerStyle = ref('')
+const reactionBtnRef = ref<HTMLElement | null>(null)
 
 watch(showReactionPicker, (val) => {
   if (!val) return
   nextTick(() => {
-    // Position picker near the action buttons using mouse position fallback
-    const btn = document.activeElement as HTMLElement | null
+    const btn = reactionBtnRef.value
     if (!btn) return
     const rect = btn.getBoundingClientRect()
-    const top = rect.top - 48
-    const left = Math.min(rect.left, window.innerWidth - 260)
+    const pickerW = 300
+    const pickerH = 360
+    const left = Math.min(Math.max(rect.left - pickerW / 2, 8), window.innerWidth - pickerW - 8)
+    const top = rect.top - pickerH - 8 < 8
+      ? rect.bottom + 8
+      : rect.top - pickerH - 8
     reactionPickerStyle.value = `top:${top}px;left:${left}px`
   })
 })

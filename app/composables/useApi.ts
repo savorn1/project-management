@@ -994,6 +994,41 @@ export function useApi() {
     async getLinkPreview(url: string): Promise<import('~/types').LinkPreview | null> {
       return await request<import('~/types').LinkPreview>(`/chat/link-preview?url=${encodeURIComponent(url)}`)
     },
+
+    async searchMessages(q: string, limit = 30): Promise<import('~/types').StarredMessage[]> {
+      const response = await request<import('~/types').StarredMessage[]>(
+        `/chat/messages/search?q=${encodeURIComponent(q)}&limit=${limit}`
+      )
+      return response ?? []
+    },
+
+    async setDisappearingMessages(conversationId: string, enabled: boolean, ttl: number): Promise<void> {
+      await request(`/chat/conversations/${conversationId}/disappearing`, {
+        method: 'PATCH', body: JSON.stringify({ enabled, ttl }),
+      })
+    },
+
+    async getArchivedConversations(): Promise<import('~/types').Conversation[]> {
+      return await request<import('~/types').Conversation[]>('/chat/conversations/archived') ?? []
+    },
+
+    async archiveConversation(conversationId: string, archive: boolean): Promise<void> {
+      await request(`/chat/conversations/${conversationId}/archive`, {
+        method: 'PATCH', body: JSON.stringify({ archive }),
+      })
+    },
+
+    async createPoll(conversationId: string, question: string, options: string[]): Promise<import('~/types').ChatMessage | null> {
+      return await request<import('~/types').ChatMessage>(`/chat/conversations/${conversationId}/poll`, {
+        method: 'POST', body: JSON.stringify({ question, options }),
+      })
+    },
+
+    async votePoll(messageId: string, optionIndex: number): Promise<import('~/types').ChatMessage | null> {
+      return await request<import('~/types').ChatMessage>(`/chat/messages/${messageId}/poll/vote`, {
+        method: 'POST', body: JSON.stringify({ optionIndex }),
+      })
+    },
   }
 
   // Health check

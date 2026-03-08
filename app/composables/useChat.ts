@@ -14,6 +14,14 @@ const unreadSeparatorId = ref<string | null>(null)
 // Starred message IDs for the active conversation
 const starredIds = ref<Set<string>>(new Set())
 
+// Custom user statuses — userId → { emoji, text }
+const customStatusMap = ref<Map<string, { emoji: string; text: string }>>(new Map())
+
+// Offline message queue — holds text-only messages sent while navigator.onLine === false
+interface QueuedMessage { conversationId: string; content: string; replyTo?: string }
+const offlineQueue = ref<QueuedMessage[]>([])
+const networkOnline = ref(typeof navigator !== 'undefined' ? navigator.onLine : true)
+
 // Pagination state
 const messagePage = ref(1)
 const messageTotal = ref(0)
@@ -287,9 +295,32 @@ export function useChat() {
 
   // ── Messages ──────────────────────────────────────────────────────────────
 
+  async function flushQueue() {
+    if (!networkOnline.value || offlineQueue.value.length === 0) return
+    const pending = [...offlineQueue.value]
+    offlineQueue.value = []
+    for (const item of pending) {
+      const saved = activeConversationId.value
+      activeConversationId.value = item.conversationId
+      await sendMessage(item.content, [], item.replyTo)
+      activeConversationId.value = saved
+    }
+  }
+
   async function sendMessage(content: string, files: File[] = [], replyTo?: string): Promise<boolean> {
     if (!activeConversationId.value) return false
     if (!content.trim() && files.length === 0) return false
+
+    // Queue text-only messages when offline
+    if (!networkOnline.value && files.length === 0 && content.trim()) {
+      offlineQueue.value = [
+        ...offlineQueue.value,
+        { conversationId: activeConversationId.value, content: content.trim(), replyTo },
+      ]
+      toast.warning('You are offline — message queued and will send when reconnected.')
+      return true
+    }
+
     sendTyping(false)
 
     const convId = activeConversationId.value
@@ -403,6 +434,55 @@ export function useChat() {
   async function muteConversation(conversationId: string, mute: boolean): Promise<void> {
     await chatApi.muteConversation(conversationId, mute)
     patchConversation(conversationId, { muted: mute })
+  }
+
+  async function setDisappearingMessages(conversationId: string, enabled: boolean, ttl: number) {
+    await chatApi.setDisappearingMessages(conversationId, enabled, ttl)
+    // optimistic — socket will also fire and confirm
+    conversations.value = conversations.value.map((c) =>
+      c._id === conversationId ? { ...c, disappearingMessages: { enabled, ttl } } : c,
+    ) as Conversation[]
+  }
+
+  const archivedConversations = ref<Conversation[]>([])
+
+  async function loadArchivedConversations() {
+    archivedConversations.value = await chatApi.getArchivedConversations() as unknown as Conversation[]
+  }
+
+  async function archiveConversation(conversationId: string, archive: boolean) {
+    await chatApi.archiveConversation(conversationId, archive)
+    if (archive) {
+      // Remove from active list
+      const conv = conversations.value.find((c) => c._id === conversationId)
+      conversations.value = conversations.value.filter((c) => c._id !== conversationId)
+      if (conv) archivedConversations.value = [{ ...conv, archived: true }, ...archivedConversations.value]
+      if (activeConversationId.value === conversationId) activeConversationId.value = null
+    } else {
+      // Move back to active list
+      const conv = archivedConversations.value.find((c) => c._id === conversationId)
+      archivedConversations.value = archivedConversations.value.filter((c) => c._id !== conversationId)
+      if (conv) conversations.value = [{ ...conv, archived: false }, ...conversations.value]
+    }
+  }
+
+  async function votePoll(messageId: string, optionIndex: number) {
+    const updated = await chatApi.votePoll(messageId, optionIndex)
+    if (updated?.poll) {
+      messages.value = messages.value.map((m) =>
+        m._id === messageId ? { ...m, poll: updated.poll } : m,
+      ) as ChatMessage[]
+    }
+  }
+
+  function setMyStatus(emoji: string, text: string) {
+    socketEmit('user:setStatus', { emoji, text })
+    // Optimistic local update
+    if (user.value?.id) {
+      const next = new Map(customStatusMap.value)
+      next.set(user.value.id, { emoji, text })
+      customStatusMap.value = next
+    }
   }
 
   async function starMessage(messageId: string): Promise<void> {
@@ -649,6 +729,35 @@ export function useChat() {
       }
       onlineUsers.value = next
     })
+
+    on('user:customStatus', ({ userId, emoji, text }) => {
+      const next = new Map(customStatusMap.value)
+      next.set(userId, { emoji, text })
+      customStatusMap.value = next
+    })
+
+    on('chat:conversation:disappearing', ({ conversationId, enabled, ttl }) => {
+      conversations.value = conversations.value.map((c) =>
+        c._id === conversationId ? { ...c, disappearingMessages: { enabled, ttl } } : c,
+      ) as Conversation[]
+    })
+
+    on('chat:poll:updated', ({ messageId, poll }) => {
+      messages.value = messages.value.map((m) =>
+        m._id === messageId ? { ...m, poll } : m,
+      ) as ChatMessage[]
+    })
+
+    // Track browser network state for offline queue
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', () => {
+        networkOnline.value = true
+        flushQueue()
+      })
+      window.addEventListener('offline', () => {
+        networkOnline.value = false
+      })
+    }
   }
 
   // ── Public API ────────────────────────────────────────────────────────────
@@ -666,6 +775,9 @@ export function useChat() {
     messageLoadingMore: readonly(messageLoadingMore),
     unreadSeparatorId: readonly(unreadSeparatorId),
     starredIds: readonly(starredIds),
+    networkOnline: readonly(networkOnline),
+    offlineQueue: readonly(offlineQueue),
+    customStatusMap: readonly(customStatusMap),
 
     // Conversation actions
     loadConversations,
@@ -691,6 +803,12 @@ export function useChat() {
     muteConversation,
     starMessage,
     unstarMessage,
+    setMyStatus,
+    setDisappearingMessages,
+    archiveConversation,
+    loadArchivedConversations,
+    archivedConversations: readonly(archivedConversations),
+    votePoll,
 
     // Real-time
     startListening,

@@ -136,6 +136,45 @@
           </svg>
         </button>
       </div>
+
+      <!-- Archived section -->
+      <div v-if="(archivedConversations ?? []).length > 0" class="border-t border-slate-800/30">
+        <button
+          @click="showArchived = !showArchived"
+          class="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-gray-600 hover:text-gray-400 transition-colors"
+        >
+          <svg class="w-3 h-3 transition-transform" :class="showArchived ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+          Archived ({{ (archivedConversations ?? []).length }})
+        </button>
+        <div v-if="showArchived">
+          <div
+            v-for="item in (archivedConversations ?? [])"
+            :key="item._id"
+            class="relative group/conv border-b border-slate-800/30 last:border-0"
+          >
+            <button
+              @click="$emit('select', item._id)"
+              class="w-full px-3 py-2.5 flex items-center gap-2.5 hover:bg-slate-800/40 transition-colors text-left opacity-70"
+              :class="activeId === item._id ? 'bg-indigo-500/10 border-l-2 border-l-indigo-500 opacity-100' : ''"
+            >
+              <div
+                class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+                :class="item.type === 'group' ? 'bg-gradient-to-br from-violet-500 to-indigo-600' : 'bg-gradient-to-br from-emerald-500 to-teal-600'"
+              >{{ conversationInitials(item) }}</div>
+              <div class="flex-1 min-w-0">
+                <p class="text-xs font-medium text-gray-400 truncate">{{ conversationName(item) }}</p>
+                <p class="text-[11px] text-gray-600 truncate">{{ lastMessagePreview(item) }}</p>
+              </div>
+              <!-- Archive icon -->
+              <svg class="w-3 h-3 text-gray-700 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -145,6 +184,7 @@ import type { Conversation } from '~/types';
 
 const props = defineProps<{
   conversations: Conversation[]
+  archivedConversations?: Conversation[]
   activeId: string | null
 }>()
 
@@ -168,6 +208,7 @@ function otherParticipantId(conv: Conversation): string | null {
 
 const search = ref('')
 const activeTab = ref<'all' | 'group' | 'private'>('all')
+const showArchived = ref(false)
 
 const tabs = computed(() => {
   const unreadFor = (type?: 'group' | 'private') =>

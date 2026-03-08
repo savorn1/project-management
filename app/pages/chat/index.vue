@@ -4,10 +4,53 @@
     <div class="w-72 flex-shrink-0 bg-slate-900/60 border-r border-slate-800/60 flex flex-col h-full">
       <ConversationList
         :conversations="conversations as Conversation[]"
+        :archived-conversations="archivedConversations as Conversation[]"
         :active-id="activeConversationId"
         @select="handleSelect"
         @new="showModal = true"
       />
+
+      <!-- My status footer — always accessible -->
+      <div class="flex-shrink-0 border-t border-slate-800/60 px-3 py-2.5">
+        <div class="relative">
+          <button
+            ref="statusBtnRef"
+            @click.stop="showStatusPicker = !showStatusPicker"
+            class="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl hover:bg-slate-800/60 transition-colors text-left"
+          >
+            <div class="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+              {{ (user?.name ?? '?').charAt(0).toUpperCase() }}
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-medium text-gray-300 truncate">{{ user?.name ?? 'Me' }}</p>
+              <p v-if="myStatus?.text" class="text-[10px] text-gray-500 truncate">
+                {{ myStatus.emoji }} {{ myStatus.text }}
+              </p>
+              <p v-else class="text-[10px] text-gray-700">Set a status…</p>
+            </div>
+            <svg class="w-3.5 h-3.5 text-gray-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+          </button>
+
+          <Teleport to="body">
+            <div
+              v-if="showStatusPicker"
+              class="fixed z-[9999]"
+              :style="statusPickerStyle"
+              @click.stop
+            >
+              <UserStatusPicker
+                :current-emoji="myStatus?.emoji"
+                :current-text="myStatus?.text"
+                @save="handleSetStatus"
+                @close="showStatusPicker = false"
+              />
+            </div>
+            <div v-if="showStatusPicker" class="fixed inset-0 z-[9998]" @click="showStatusPicker = false" />
+          </Teleport>
+        </div>
+      </div>
     </div>
 
     <!-- ── Message area ────────────────────────────────────────────── -->
@@ -94,6 +137,17 @@
               </span>
             </button>
 
+            <!-- Global search -->
+            <button
+              @click="showGlobalSearch = true"
+              class="ml-1 w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-gray-400 hover:bg-slate-800/60 transition-colors"
+              title="Search messages (Ctrl+K)"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </button>
+
             <!-- Starred messages toggle -->
             <button
               @click="showStarred = !showStarred"
@@ -105,6 +159,62 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
               </svg>
             </button>
+
+            <!-- Archive conversation -->
+            <button
+              @click="handleArchive(!activeConversation.archived)"
+              class="ml-1 w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+              :class="activeConversation.archived ? 'bg-amber-500/20 text-amber-400' : 'text-gray-600 hover:text-gray-400 hover:bg-slate-800/60'"
+              :title="activeConversation.archived ? 'Unarchive conversation' : 'Archive conversation'"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+              </svg>
+            </button>
+
+            <!-- Disappearing messages toggle -->
+            <div class="relative ml-1">
+              <button
+                @click.stop="showDisappearingMenu = !showDisappearingMenu"
+                class="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+                :class="activeConversation.disappearingMessages?.enabled
+                  ? 'bg-amber-500/20 text-amber-400'
+                  : 'text-gray-600 hover:text-gray-400 hover:bg-slate-800/60'"
+                title="Disappearing messages"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
+              <Teleport to="body">
+                <div
+                  v-if="showDisappearingMenu"
+                  class="fixed z-[9990] w-44 bg-slate-900 border border-slate-700/60 rounded-xl shadow-2xl shadow-black/40 py-1 overflow-hidden"
+                  style="top:56px;right:16px"
+                  @click.stop
+                >
+                  <p class="text-[9px] font-semibold uppercase tracking-wider text-gray-600 px-3 py-1.5">Auto-delete messages</p>
+                  <button
+                    v-for="opt in disappearingOptions"
+                    :key="opt.label"
+                    @click="setDisappearing(opt.enabled, opt.ttl)"
+                    class="w-full flex items-center justify-between px-3 py-1.5 text-xs transition-colors"
+                    :class="(!opt.enabled && !activeConversation.disappearingMessages?.enabled) ||
+                      (opt.enabled && activeConversation.disappearingMessages?.enabled && activeConversation.disappearingMessages?.ttl === opt.ttl)
+                      ? 'text-indigo-300 bg-indigo-500/10'
+                      : 'text-gray-400 hover:bg-slate-800/60'"
+                  >
+                    {{ opt.label }}
+                    <svg v-if="(!opt.enabled && !activeConversation.disappearingMessages?.enabled) ||
+                      (opt.enabled && activeConversation.disappearingMessages?.enabled && activeConversation.disappearingMessages?.ttl === opt.ttl)"
+                      class="w-3 h-3 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </button>
+                </div>
+                <div v-if="showDisappearingMenu" class="fixed inset-0 z-[9989]" @click="showDisappearingMenu = false" />
+              </Teleport>
+            </div>
 
             <!-- Members panel toggle (group only) -->
             <button
@@ -186,6 +296,7 @@
                   :current-user-id="currentUserId"
                   :highlighted="msg._id === highlightedId"
                   :is-starred="starredIds.has(msg._id)"
+                  :member-map="memberMap"
                   :reply-to-message="msg.replyTo ? messageMap.get(msg.replyTo) && { _id: msg.replyTo, content: messageMap.get(msg.replyTo)!.content, senderName: senderName(messageMap.get(msg.replyTo)!.senderId) } : undefined"
                   @delete="deleteMessage"
                   @reply="startReply"
@@ -196,6 +307,7 @@
                   @forward="(m) => forwardMessage = m"
                   @thread="(m) => threadMessage = m"
                   @star="handleStar"
+                  @vote="handleVotePoll"
                   @open-image="(img) => openLightbox(img, (msg.attachments ?? []).filter(a => a.mimeType.startsWith('image/')))"
                 />
 
@@ -278,6 +390,7 @@
           @send="onSend"
           @typing="onTyping"
           @cancel-reply="replyingTo = null"
+          @poll="handleCreatePoll"
         />
       </template>
     </div><!-- end main chat column -->
@@ -389,6 +502,12 @@
                 {{ memberMap.get(participantId) ?? participantId.slice(-4) }}
                 <span v-if="participantId === currentUserId" class="text-[10px] text-gray-600 font-normal">(you)</span>
               </p>
+              <!-- Custom status -->
+              <p
+                v-if="customStatusMap.get(participantId)?.text"
+                class="text-[10px] text-gray-500 truncate max-w-[120px]"
+              >{{ customStatusMap.get(participantId)?.emoji }} {{ customStatusMap.get(participantId)?.text }}</p>
+
               <div class="flex items-center gap-1 flex-wrap">
                 <!-- Online status -->
                 <span
@@ -522,6 +641,17 @@
     </Transition>
     </div><!-- end message area flex wrapper -->
 
+    <!-- ── Global Search ───────────────────────────────────────────── -->
+    <Teleport to="body">
+      <GlobalSearch
+        v-if="showGlobalSearch"
+        :member-map="memberMap"
+        :conversation-name-map="conversationNameMap"
+        @close="showGlobalSearch = false"
+        @navigate="handleStarNavigate"
+      />
+    </Teleport>
+
     <!-- ── Pinned messages dropdown ────────────────────────────────── -->
     <Teleport to="body">
       <Transition
@@ -625,6 +755,13 @@ const {
   unblockMember: chatUnblock,
   starMessage,
   unstarMessage,
+  customStatusMap,
+  setMyStatus,
+  votePoll,
+  setDisappearingMessages,
+  archiveConversation,
+  loadArchivedConversations,
+  archivedConversations,
   startListening,
   conversationName,
   conversationInitials,
@@ -684,6 +821,72 @@ const threadMessage = ref<ChatMessage | null>(null)
 
 // Starred panel
 const showStarred = ref(false)
+
+// Global search
+const showGlobalSearch = ref(false)
+
+// User status picker
+const showStatusPicker = ref(false)
+const statusBtnRef = ref<HTMLElement | null>(null)
+const statusPickerStyle = ref('')
+const myStatus = computed(() =>
+  currentUserId.value ? customStatusMap.value.get(currentUserId.value) : undefined
+)
+
+watch(showStatusPicker, (val) => {
+  if (!val || !statusBtnRef.value) return
+  nextTick(() => {
+    const rect = statusBtnRef.value!.getBoundingClientRect()
+    // Open upward from the sidebar footer button
+    statusPickerStyle.value = `bottom:${window.innerHeight - rect.top + 6}px;left:${rect.left}px`
+  })
+})
+
+function handleSetStatus(emoji: string, text: string) {
+  setMyStatus(emoji, text)
+}
+
+async function handleVotePoll(messageId: string, optionIndex: number) {
+  await votePoll(messageId, optionIndex)
+}
+
+async function handleCreatePoll(question: string, options: string[]) {
+  if (!activeConversation.value) return
+  const { chatApi } = useApi()
+  await chatApi.createPoll(activeConversation.value._id, question, options)
+}
+
+// Disappearing messages — TTL dropdown state
+const showDisappearingMenu = ref(false)
+const disappearingOptions = [
+  { label: 'Off', ttl: 0, enabled: false },
+  { label: '1 hour', ttl: 3600, enabled: true },
+  { label: '24 hours', ttl: 86400, enabled: true },
+  { label: '7 days', ttl: 604800, enabled: true },
+]
+
+async function setDisappearing(enabled: boolean, ttl: number) {
+  if (!activeConversation.value) return
+  await setDisappearingMessages(activeConversation.value._id, enabled, ttl)
+  showDisappearingMenu.value = false
+}
+
+// Archive / unarchive current conversation
+async function handleArchive(archive: boolean) {
+  if (!activeConversation.value) return
+  await archiveConversation(activeConversation.value._id, archive)
+}
+
+onMounted(() => {
+  function handleCtrlK(e: KeyboardEvent) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault()
+      showGlobalSearch.value = !showGlobalSearch.value
+    }
+  }
+  window.addEventListener('keydown', handleCtrlK)
+  onUnmounted(() => window.removeEventListener('keydown', handleCtrlK))
+})
 
 const currentUserId = computed(() => user.value?.id ?? '')
 
@@ -983,6 +1186,7 @@ onMounted(async () => {
   teamMembers.value = team
   memberMap.value = new Map(team.map((m) => [m._id, m.name]))
   await loadConversations(team)
+  await loadArchivedConversations()
   startListening()
 })
 </script>

@@ -354,7 +354,17 @@ export interface PaymentQrDetail {
 // ─── Chat ─────────────────────────────────────────────────────────────────────
 
 export type ConversationType = 'private' | 'group'
-export type MessageType = 'text' | 'image' | 'file' | 'system'
+export type MessageType = 'text' | 'image' | 'file' | 'system' | 'poll'
+
+export interface PollOption {
+  text: string
+  votes: string[]
+}
+
+export interface Poll {
+  question: string
+  options: PollOption[]
+}
 
 export interface LastMessageSnapshot {
   messageId: string
@@ -386,6 +396,10 @@ export interface Conversation {
   muted?: boolean
   /** ID of last message the current user has read (returned by API, used for unread separator) */
   lastReadMessageId?: string | null
+  /** Whether the current user has archived this conversation */
+  archived?: boolean
+  /** Disappearing messages setting */
+  disappearingMessages?: { enabled: boolean; ttl: number }
 }
 
 export interface MessageAttachment {
@@ -427,6 +441,10 @@ export interface ChatMessage {
   editedAt?: string
   createdAt: string
   updatedAt: string
+  /** Set when conversation has disappearing messages; ISO string */
+  expiresAt?: string
+  /** Poll payload — present when type === 'poll' */
+  poll?: Poll
   /** Frontend-only: optimistic send state */
   _status?: 'sending' | 'sent'
 }

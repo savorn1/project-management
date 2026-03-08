@@ -42,8 +42,15 @@ export interface ServerToClientEvents {
     conversationId: string
   }) => void
 
+  // Disappearing messages
+  'chat:conversation:disappearing': (data: { conversationId: string; enabled: boolean; ttl: number }) => void
+
+  // Poll updates
+  'chat:poll:updated': (data: { messageId: string; poll: { question: string; options: Array<{ text: string; votes: string[] }> } }) => void
+
   // Presence
   'user:status': (data: { userId: string; online: boolean }) => void
+  'user:customStatus': (data: { userId: string; emoji: string; text: string }) => void
 
   // Tasks
   'task:moved': (data: TaskEventPayload) => void
@@ -81,4 +88,5 @@ export interface ClientToServerEvents {
   joinConversationRoom: (data: { conversationId: string }) => void
   leaveConversationRoom: (data: { conversationId: string }) => void
   'chat:typing': (data: { conversationId: string; isTyping: boolean }) => void
+  'user:setStatus': (data: { emoji: string; text: string }) => void
 }
