@@ -117,18 +117,23 @@
         </div>
         <div class="border-t border-slate-700/40 pt-2">
           <p class="text-[10px] text-gray-600 mb-1 px-1">Custom date & time</p>
+          <DatePicker
+            v-model="customDate"
+            placeholder="Pick a date"
+            :clearable="false"
+            class="mb-1.5 px-1"
+          />
           <div class="flex gap-1.5">
             <input
-              v-model="customDateTime"
-              type="datetime-local"
-              :min="minDateTime"
+              v-model="customTime"
+              type="time"
               class="flex-1 bg-slate-900/60 border border-slate-700/40 rounded-lg px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-indigo-500/50"
             />
             <button
               @click="scheduleCustom"
-              :disabled="!customDateTime"
+              :disabled="!customDate || !customTime"
               class="px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
-              :class="customDateTime ? 'bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/30' : 'text-gray-700 cursor-not-allowed'"
+              :class="customDate && customTime ? 'bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/30' : 'text-gray-700 cursor-not-allowed'"
             >Set</button>
           </div>
         </div>
@@ -774,7 +779,8 @@ watch(() => props.initialDraft, (draft) => {
 // ── Schedule picker ──────────────────────────────────────────────────────────
 const showSchedulePicker = ref(false)
 const schedulePickerStyle = ref<Record<string, string>>({})
-const customDateTime = ref('')
+const customDate = ref<string | null>(null)
+const customTime = ref('09:00')
 
 const schedulePresets = computed(() => {
   const now = new Date()
@@ -817,7 +823,8 @@ function openSchedulePicker(e: MouseEvent) {
     bottom: `${window.innerHeight - rect.top + 6}px`,
     right: `${window.innerWidth - rect.right}px`,
   }
-  customDateTime.value = ''
+  customDate.value = null
+  customTime.value = '09:00'
   showSchedulePicker.value = true
 }
 
@@ -833,16 +840,11 @@ function submitScheduled(ts: number) {
 }
 
 function scheduleCustom() {
-  if (!customDateTime.value) return
-  const ts = new Date(customDateTime.value).getTime()
+  if (!customDate.value || !customTime.value) return
+  const ts = new Date(`${customDate.value}T${customTime.value}`).getTime()
   if (isNaN(ts) || ts <= Date.now()) return
   submitScheduled(ts)
 }
-
-const minDateTime = computed(() => {
-  const d = new Date(Date.now() + 60000)
-  return d.toISOString().slice(0, 16)
-})
 
 // ── Voice Recording ──────────────────────────────────────────────────────────
 const isRecording = ref(false)

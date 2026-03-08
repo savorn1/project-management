@@ -4,6 +4,7 @@ export default defineNuxtConfig({
   ssr: false,
   devtools: { enabled: true },
   devServer: {
+    host: '0.0.0.0',
     port: Number(process.env.NUXT_PORT) || 3002,
   },
   css: ['~/assets/css/themes.css'],

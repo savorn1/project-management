@@ -30,14 +30,14 @@
         <!-- Invisible backdrop to catch outside clicks -->
         <div
           v-if="isOpen"
-          class="fixed inset-0 z-[9998]"
+          class="fixed inset-0 z-[100000]"
           @click.stop="isOpen = false"
         ></div>
 
         <!-- Calendar panel -->
         <div
           v-if="isOpen"
-          class="fixed z-[9999] p-4 bg-slate-800 border border-slate-700/50 rounded-2xl shadow-2xl shadow-black/40 w-[280px]"
+          class="fixed z-[100001] p-4 bg-slate-800 border border-slate-700/50 rounded-2xl shadow-2xl shadow-black/40 w-[280px]"
           :style="calendarStyle"
           @click.stop
         >
