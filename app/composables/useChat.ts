@@ -508,6 +508,17 @@ export function useChat() {
     ) as Conversation[]
   }
 
+  async function updateGroupAvatar(conversationId: string, avatar: string): Promise<boolean> {
+    const updated = await chatApi.updateGroup(conversationId, { avatar })
+    if (updated) patchConversation(conversationId, { avatar: updated.avatar })
+    return !!updated
+  }
+
+  async function setSlowMode(conversationId: string, enabled: boolean, delay: number): Promise<void> {
+    await chatApi.setSlowMode(conversationId, enabled, delay)
+    patchConversation(conversationId, { slowMode: { enabled, delay } })
+  }
+
   const archivedConversations = ref<Conversation[]>([])
 
   async function loadArchivedConversations() {
@@ -923,6 +934,8 @@ export function useChat() {
     unstarMessage,
     setMyStatus,
     setDisappearingMessages,
+    updateGroupAvatar,
+    setSlowMode,
     archiveConversation,
     loadArchivedConversations,
     archivedConversations: readonly(archivedConversations),

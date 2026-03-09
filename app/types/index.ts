@@ -400,6 +400,10 @@ export interface Conversation {
   archived?: boolean
   /** Disappearing messages setting */
   disappearingMessages?: { enabled: boolean; ttl: number }
+  /** Slow mode — cooldown seconds between messages per member (group admin setting) */
+  slowMode?: { enabled: boolean; delay: number }
+  /** Invite link token for group (admin-generated) */
+  inviteToken?: string
 }
 
 export interface MessageAttachment {

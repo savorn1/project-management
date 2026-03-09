@@ -535,13 +535,15 @@
         <!-- Send button -->
         <button
           @click="submit"
-          :disabled="(!text.trim() && selectedFiles.length === 0) || loading"
-          class="w-8 h-8 rounded-r-xl flex items-center justify-center transition-all flex-shrink-0"
-          :class="(text.trim() || selectedFiles.length > 0) && !loading
+          :disabled="(!text.trim() && selectedFiles.length === 0) || loading || slowCooldown > 0"
+          class="h-8 rounded-r-xl flex items-center justify-center transition-all flex-shrink-0 px-2 min-w-[2rem]"
+          :class="(text.trim() || selectedFiles.length > 0) && !loading && slowCooldown === 0
             ? 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white hover:from-indigo-400 hover:to-violet-500 shadow-md shadow-indigo-500/30'
             : 'text-gray-700 cursor-not-allowed'"
+          :title="slowCooldown > 0 ? `Slow mode: wait ${slowCooldown}s` : 'Send'"
         >
-          <svg v-if="!loading" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+          <span v-if="slowCooldown > 0" class="text-[10px] font-bold tabular-nums">{{ slowCooldown }}s</span>
+          <svg v-else-if="!loading" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
             <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
           </svg>
           <div v-else class="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -558,6 +560,7 @@ const props = defineProps<{
   members: TeamMember[]
   replyingTo?: { _id: string; content: string; senderName: string }
   initialDraft?: string
+  slowMode?: { enabled: boolean; delay: number }
 }>()
 
 const emit = defineEmits<{
@@ -574,6 +577,25 @@ const MAX_FILES = 5
 const text = ref('')
 const loading = ref(false)
 const isFocused = ref(false)
+const slowCooldown = ref(0)
+let slowCooldownTimer: ReturnType<typeof setInterval> | null = null
+
+function startSlowCooldown() {
+  if (!props.slowMode?.enabled || !props.slowMode.delay) return
+  slowCooldown.value = props.slowMode.delay
+  if (slowCooldownTimer) clearInterval(slowCooldownTimer)
+  slowCooldownTimer = setInterval(() => {
+    if (--slowCooldown.value <= 0) {
+      clearInterval(slowCooldownTimer!)
+      slowCooldownTimer = null
+      slowCooldown.value = 0
+    }
+  }, 1000)
+}
+
+onUnmounted(() => {
+  if (slowCooldownTimer) clearInterval(slowCooldownTimer)
+})
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const selectedFiles = ref<File[]>([])
@@ -696,6 +718,7 @@ async function submit() {
 
   emit('send', content, files)
   loading.value = false
+  startSlowCooldown()
 }
 
 // ── Poll modal ───────────────────────────────────────────────────────────────

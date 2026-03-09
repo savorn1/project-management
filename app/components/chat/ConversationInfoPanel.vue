@@ -24,12 +24,44 @@
 
       <!-- Conversation identity -->
       <div class="flex flex-col items-center px-4 py-5 border-b border-slate-800/40">
-        <div
-          class="w-14 h-14 rounded-full flex items-center justify-center text-lg font-bold text-white mb-2.5 shadow-lg"
-          :class="conversation.type === 'group'
-            ? 'bg-gradient-to-br from-violet-500 to-indigo-600'
-            : 'bg-gradient-to-br from-emerald-500 to-teal-600'"
-        >{{ initials }}</div>
+        <!-- Avatar (clickable for group admins) -->
+        <div class="relative mb-2.5 group/avatar">
+          <img
+            v-if="conversation.avatar"
+            :src="conversation.avatar"
+            class="w-14 h-14 rounded-full object-cover shadow-lg"
+          />
+          <div
+            v-else
+            class="w-14 h-14 rounded-full flex items-center justify-center text-lg font-bold text-white shadow-lg"
+            :class="conversation.type === 'group'
+              ? 'bg-gradient-to-br from-violet-500 to-indigo-600'
+              : 'bg-gradient-to-br from-emerald-500 to-teal-600'"
+          >{{ initials }}</div>
+
+          <!-- Upload overlay (group admins only) -->
+          <button
+            v-if="conversation.type === 'group' && isAdmin"
+            @click="avatarInputRef?.click()"
+            :disabled="avatarLoading"
+            class="absolute inset-0 rounded-full flex items-center justify-center bg-black/50 opacity-0 group-hover/avatar:opacity-100 transition-opacity cursor-pointer"
+            title="Change group avatar"
+          >
+            <div v-if="avatarLoading" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            <svg v-else class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
+          <input
+            ref="avatarInputRef"
+            type="file"
+            accept="image/*"
+            class="hidden"
+            @change="onAvatarSelected"
+          />
+        </div>
+
         <p class="text-sm font-semibold text-white text-center">{{ name }}</p>
         <span
           class="mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider"
@@ -127,6 +159,45 @@
         </button>
       </div>
 
+      <!-- Invite Link (group admins only) -->
+      <div v-if="conversation.type === 'group' && isAdmin" class="px-4 py-3 border-b border-slate-800/40">
+        <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-600 mb-2">Invite Link</p>
+        <div v-if="inviteLink" class="flex items-center gap-1.5 bg-slate-800/60 border border-slate-700/40 rounded-xl px-3 py-2 mb-1.5">
+          <span class="flex-1 text-[11px] text-gray-400 truncate select-all">{{ inviteLink }}</span>
+          <button
+            @click="copyInviteLink"
+            class="flex-shrink-0 text-[10px] font-semibold transition-colors px-1.5 py-0.5 rounded-md"
+            :class="inviteCopied ? 'text-emerald-400 bg-emerald-500/10' : 'text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10'"
+          >{{ inviteCopied ? 'Copied!' : 'Copy' }}</button>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button
+            v-if="!inviteLink"
+            @click="loadInviteLink"
+            :disabled="inviteLinkLoading"
+            class="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 hover:text-indigo-300 transition-colors border border-indigo-500/20"
+          >
+            <div v-if="inviteLinkLoading" class="w-3 h-3 border border-indigo-400/40 border-t-indigo-400 rounded-full animate-spin" />
+            <svg v-else class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+            Generate invite link
+          </button>
+          <button
+            v-if="inviteLink"
+            @click="resetInviteLink"
+            :disabled="inviteLinkLoading"
+            class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-medium text-gray-600 hover:text-rose-400 hover:bg-rose-500/10 transition-colors border border-slate-700/40"
+            title="Reset invite link (old link will stop working)"
+          >
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Reset
+          </button>
+        </div>
+      </div>
+
       <!-- Quick actions -->
       <div class="px-4 py-3 border-b border-slate-800/40">
         <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-600 mb-2">Actions</p>
@@ -148,6 +219,50 @@
             </div>
             <span class="text-xs text-gray-300">{{ muted ? 'Unmute notifications' : 'Mute notifications' }}</span>
           </button>
+
+          <!-- Slow Mode (group admins only) -->
+          <div v-if="conversation.type === 'group' && isAdmin">
+            <button
+              @click="toggleSlowMode"
+              class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-slate-800/50 transition-colors text-left"
+            >
+              <div
+                class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors"
+                :class="slowModeEnabled ? 'bg-violet-500/10' : 'bg-slate-700/50'"
+              >
+                <svg class="w-3.5 h-3.5" :class="slowModeEnabled ? 'text-violet-400' : 'text-gray-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <span class="text-xs text-gray-300">Slow mode</span>
+                <span v-if="slowModeEnabled" class="ml-1.5 text-[10px] font-semibold text-violet-400">{{ slowModeLabel }}</span>
+              </div>
+              <!-- Toggle pill -->
+              <div
+                class="w-8 h-4 rounded-full transition-colors flex-shrink-0 flex items-center px-0.5"
+                :class="slowModeEnabled ? 'bg-violet-500' : 'bg-slate-700'"
+              >
+                <div
+                  class="w-3 h-3 rounded-full bg-white shadow transition-transform"
+                  :class="slowModeEnabled ? 'translate-x-4' : 'translate-x-0'"
+                />
+              </div>
+            </button>
+
+            <!-- Delay picker (shown when enabled) -->
+            <div v-if="slowModeEnabled" class="ml-10 mb-1 flex gap-1 flex-wrap">
+              <button
+                v-for="d in slowModeOptions"
+                :key="d.value"
+                @click="changeSlowModeDelay(d.value)"
+                class="px-2 py-0.5 rounded-lg text-[10px] font-semibold transition-colors border"
+                :class="slowModeDelay === d.value
+                  ? 'bg-violet-500/20 border-violet-500/40 text-violet-300'
+                  : 'bg-transparent border-slate-700/40 text-gray-600 hover:text-gray-300 hover:border-slate-600'"
+              >{{ d.label }}</button>
+            </div>
+          </div>
 
           <!-- Leave group (groups only) -->
           <button
@@ -190,12 +305,18 @@ defineEmits<{
   leave: []
 }>()
 
-const { conversationName, conversationInitials, isOnline, getLastSeen } = useChat()
+const { conversationName, conversationInitials, isOnline, getLastSeen, updateGroupAvatar, setSlowMode } = useChat()
+const { chatApi } = useApi()
+const toast = useToast()
 
 const name = computed(() => conversationName(props.conversation))
 const initials = computed(() => conversationInitials(props.conversation))
 
 const pinnedCount = computed(() => props.conversation.pinnedMessages?.length ?? 0)
+
+const isAdmin = computed(
+  () => props.conversation.admins?.includes(props.currentUserId) || props.conversation.createdBy === props.currentUserId,
+)
 
 // Show up to 5 members, current user last
 const previewMembers = computed(() => {
@@ -217,5 +338,99 @@ function memberInitial(id: string): string {
   const parts = n.trim().split(/\s+/)
   if (parts.length >= 2) return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase()
   return n.charAt(0).toUpperCase()
+}
+
+// ── Feature 12: Custom Group Avatar ──────────────────────────────────────────
+
+const avatarInputRef = ref<HTMLInputElement | null>(null)
+const avatarLoading = ref(false)
+
+async function onAvatarSelected(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  if (file.size > 5 * 1024 * 1024) {
+    toast.error('Avatar image must be under 5 MB')
+    return
+  }
+  avatarLoading.value = true
+  const reader = new FileReader()
+  reader.onload = async () => {
+    const dataUrl = reader.result as string
+    await updateGroupAvatar(props.conversation._id, dataUrl)
+    avatarLoading.value = false
+    // Reset input so the same file can be re-selected
+    if (avatarInputRef.value) avatarInputRef.value.value = ''
+  }
+  reader.onerror = () => {
+    toast.error('Failed to read image file')
+    avatarLoading.value = false
+  }
+  reader.readAsDataURL(file)
+}
+
+// ── Feature 13: Invite Link ───────────────────────────────────────────────────
+
+const inviteLink = ref('')
+const inviteCopied = ref(false)
+const inviteLinkLoading = ref(false)
+let copiedTimer: ReturnType<typeof setTimeout> | null = null
+
+function buildInviteUrl(token: string): string {
+  return `${window.location.origin}/chat/join/${token}`
+}
+
+async function loadInviteLink() {
+  inviteLinkLoading.value = true
+  const result = await chatApi.getInviteLink(props.conversation._id)
+  inviteLinkLoading.value = false
+  if (result) inviteLink.value = buildInviteUrl(result.token)
+}
+
+async function resetInviteLink() {
+  inviteLinkLoading.value = true
+  const result = await chatApi.resetInviteLink(props.conversation._id)
+  inviteLinkLoading.value = false
+  if (result) {
+    inviteLink.value = buildInviteUrl(result.token)
+    toast.success('Invite link reset — the old link is now invalid')
+  }
+}
+
+function copyInviteLink() {
+  if (!inviteLink.value) return
+  navigator.clipboard.writeText(inviteLink.value).then(() => {
+    inviteCopied.value = true
+    if (copiedTimer) clearTimeout(copiedTimer)
+    copiedTimer = setTimeout(() => { inviteCopied.value = false }, 2000)
+  })
+}
+
+onUnmounted(() => {
+  if (copiedTimer) clearTimeout(copiedTimer)
+})
+
+// ── Feature 14: Slow Mode ────────────────────────────────────────────────────
+
+const slowModeOptions = [
+  { label: '10s', value: 10 },
+  { label: '30s', value: 30 },
+  { label: '1m', value: 60 },
+  { label: '5m', value: 300 },
+]
+
+const slowModeEnabled = computed(() => props.conversation.slowMode?.enabled ?? false)
+const slowModeDelay = computed(() => props.conversation.slowMode?.delay ?? 30)
+const slowModeLabel = computed(() => {
+  const d = slowModeDelay.value
+  if (d < 60) return `${d}s`
+  return `${Math.round(d / 60)}m`
+})
+
+async function toggleSlowMode() {
+  await setSlowMode(props.conversation._id, !slowModeEnabled.value, slowModeDelay.value)
+}
+
+async function changeSlowModeDelay(delay: number) {
+  await setSlowMode(props.conversation._id, true, delay)
 }
 </script>

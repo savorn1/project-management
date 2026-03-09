@@ -1048,6 +1048,22 @@ export function useApi() {
         method: 'POST', body: JSON.stringify({ optionIndex }),
       })
     },
+
+    async getInviteLink(conversationId: string): Promise<{ token: string } | null> {
+      return await request<{ token: string }>(`/chat/conversations/${conversationId}/invite-link`)
+    },
+
+    async resetInviteLink(conversationId: string): Promise<{ token: string } | null> {
+      return await request<{ token: string }>(`/chat/conversations/${conversationId}/invite-link/reset`, {
+        method: 'POST',
+      })
+    },
+
+    async setSlowMode(conversationId: string, enabled: boolean, delay: number): Promise<void> {
+      await request(`/chat/conversations/${conversationId}/slow-mode`, {
+        method: 'PATCH', body: JSON.stringify({ enabled, delay }),
+      })
+    },
   }
 
   // Health check

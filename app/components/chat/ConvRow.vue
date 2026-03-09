@@ -15,7 +15,14 @@
     >
       <!-- Avatar -->
       <div class="relative flex-shrink-0">
+        <img
+          v-if="item.avatar"
+          :src="item.avatar"
+          class="w-9 h-9 rounded-full object-cover ring-2 transition-all duration-150"
+          :class="hasUnread ? 'ring-indigo-400/70' : 'ring-transparent'"
+        />
         <div
+          v-else
           class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white ring-2 transition-all duration-150"
           :class="[
             item.type === 'group' ? 'bg-gradient-to-br from-violet-500 to-indigo-600' : 'bg-gradient-to-br from-emerald-500 to-teal-600',

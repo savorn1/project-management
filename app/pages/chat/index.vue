@@ -102,7 +102,13 @@
       <template v-else>
         <!-- Header -->
         <div class="flex items-center gap-3 px-5 py-3.5 border-b border-slate-800/60 flex-shrink-0">
+          <img
+            v-if="activeConversation.avatar"
+            :src="activeConversation.avatar"
+            class="w-9 h-9 rounded-full object-cover flex-shrink-0"
+          />
           <div
+            v-else
             class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
             :class="activeConversation.type === 'group'
               ? 'bg-gradient-to-br from-violet-500 to-indigo-600'
@@ -485,6 +491,7 @@
           :members="conversationMembers"
           :replying-to="replyingTo ?? undefined"
           :initial-draft="draftToRestore"
+          :slow-mode="activeConversation.slowMode"
           @send="onSend"
           @schedule="handleScheduleMessage"
           @typing="onTyping"
