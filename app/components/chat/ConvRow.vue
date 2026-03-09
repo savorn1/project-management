@@ -1,19 +1,35 @@
 <template>
-  <div class="relative group/conv border-b border-slate-800/30 last:border-0">
+  <div class="relative group/conv">
+    <!-- Active left accent bar -->
+    <div
+      v-if="activeId === item._id"
+      class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-8 bg-indigo-400 rounded-r-full"
+    />
     <button
       @click="$emit('select')"
-      class="w-full px-3 py-2.5 flex items-center gap-2.5 hover:bg-slate-800/40 transition-colors text-left"
-      :class="activeId === item._id ? 'bg-indigo-500/10 border-l-2 border-l-indigo-500' : ''"
+      class="w-full px-3 py-2.5 flex items-center gap-3 transition-all duration-150 text-left rounded-xl mx-1"
+      :class="activeId === item._id
+        ? 'bg-indigo-500/12 text-white'
+        : 'hover:bg-slate-800/50'"
+      style="width: calc(100% - 8px);"
     >
       <!-- Avatar -->
       <div class="relative flex-shrink-0">
         <div
-          class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white"
-          :class="item.type === 'group' ? 'bg-gradient-to-br from-violet-500 to-indigo-600' : 'bg-gradient-to-br from-emerald-500 to-teal-600'"
+          class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white ring-2 transition-all duration-150"
+          :class="[
+            item.type === 'group' ? 'bg-gradient-to-br from-violet-500 to-indigo-600' : 'bg-gradient-to-br from-emerald-500 to-teal-600',
+            hasUnread ? 'ring-indigo-400/70' : 'ring-transparent',
+          ]"
         >{{ initials }}</div>
+        <!-- Online presence dot (private chats only) -->
+        <span
+          v-if="otherParticipantId && isOnline(otherParticipantId)"
+          class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-slate-900"
+        />
         <span
           v-if="isPinned"
-          class="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-amber-500 rounded-full flex items-center justify-center"
+          class="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-amber-500 rounded-full flex items-center justify-center shadow-sm"
           title="Pinned"
         >
           <svg class="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 24 24">
@@ -25,8 +41,14 @@
       <!-- Content -->
       <div class="flex-1 min-w-0">
         <div class="flex items-center justify-between gap-1">
-          <p class="text-xs font-semibold text-gray-200 truncate">{{ name }}</p>
-          <span class="text-[10px] text-gray-600 flex-shrink-0">{{ timeAgo }}</span>
+          <p
+            class="text-[13px] truncate transition-colors"
+            :class="hasUnread ? 'font-bold text-white' : 'font-semibold text-gray-200'"
+          >{{ name }}</p>
+          <span
+            class="text-[10px] flex-shrink-0 transition-colors"
+            :class="hasUnread ? 'text-indigo-400 font-medium' : 'text-gray-600'"
+          >{{ timeAgo }}</span>
         </div>
         <!-- Label dots -->
         <div v-if="labels.length > 0" class="flex items-center gap-1 mb-0.5">
@@ -43,19 +65,22 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
           </svg>
-          <p class="text-[11px] text-gray-500 truncate">{{ preview }}</p>
+          <p
+            class="text-[11px] truncate transition-colors"
+            :class="hasUnread ? 'text-gray-300' : 'text-gray-500'"
+          >{{ preview }}</p>
         </div>
       </div>
 
       <!-- Unread badge -->
       <span
-        v-if="(item._unread ?? 0) > 0"
-        class="flex-shrink-0 min-w-[18px] h-4.5 px-1.5 rounded-full bg-indigo-500 text-white text-[10px] font-bold flex items-center justify-center"
+        v-if="hasUnread"
+        class="flex-shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-indigo-500 text-white text-[10px] font-bold flex items-center justify-center shadow-sm shadow-indigo-500/40"
       >{{ item._unread }}</span>
     </button>
 
     <!-- Hover actions -->
-    <div class="absolute right-2 top-1/2 -translate-y-1/2 hidden group-hover/conv:flex items-center gap-0.5 bg-slate-900/90 rounded-lg border border-slate-700/40 p-0.5">
+    <div class="absolute right-3 top-1/2 -translate-y-1/2 hidden group-hover/conv:flex items-center gap-0.5 bg-slate-800/90 backdrop-blur-sm rounded-lg border border-slate-700/40 p-0.5 shadow-lg">
       <!-- Pin -->
       <button
         @click.stop="$emit('toggle-pin')"
@@ -149,11 +174,19 @@ const emit = defineEmits<{
   'remove-label': [key: LabelKey]
 }>()
 
-const { conversationName, conversationInitials, lastMessagePreview } = useChat()
+const { conversationName, conversationInitials, lastMessagePreview, isOnline } = useChat()
+const { user } = useAuth()
+const currentUserId = computed(() => user.value?.id ?? '')
+
+const otherParticipantId = computed(() => {
+  if (props.item.type !== 'private') return null
+  return props.item.participants.find(p => p !== currentUserId.value) ?? null
+})
 
 const name = computed(() => conversationName(props.item))
 const initials = computed(() => conversationInitials(props.item))
 const preview = computed(() => lastMessagePreview(props.item))
+const hasUnread = computed(() => (props.item._unread ?? 0) > 0)
 
 const timeAgo = computed(() => {
   const ts = props.item.lastMessage?.createdAt ?? props.item.updatedAt

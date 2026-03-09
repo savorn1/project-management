@@ -34,19 +34,21 @@ const messageWindowMode = ref<'paged' | 'around'>('paged')
 
 let socketListenersRegistered = false
 
+// Module-level set so deduplication works across all useChat() call sites
+const joinedConversationRooms = new Set<string>()
+
 export function useChat() {
   const { chatApi } = useApi()
   const { user } = useAuth()
   const { on, emit: socketEmit, joinRoom } = useSocket()
   const toast = useToast()
 
-  // Conversation member rooms — used for scalable message fanout
-  const joinedConversationRooms = new Set<string>()
-
+  // Join the conversation member room so the socket receives chat:message:new broadcasts.
+  // Uses joinRoom() (tracked in pendingRooms) so rooms are automatically re-joined on reconnect.
   function joinConversationMemberRoom(conversationId: string) {
     if (!conversationId || joinedConversationRooms.has(conversationId)) return
     joinedConversationRooms.add(conversationId)
-    socketEmit('joinConversationMemberRoom', { conversationId })
+    joinRoom(`conversation:${conversationId}`)
   }
 
   // ── Computed ──────────────────────────────────────────────────────────────
@@ -316,6 +318,7 @@ export function useChat() {
     if (!created) return null
     if (!conversations.value.find((c) => c._id === created._id))
       conversations.value = [{ ...created, name: participantName }, ...conversations.value]
+    joinConversationMemberRoom(created._id)
     return created._id
   }
 
@@ -324,6 +327,7 @@ export function useChat() {
     if (!created) return null
     if (!conversations.value.find((c) => c._id === created._id))
       conversations.value = [created, ...conversations.value]
+    joinConversationMemberRoom(created._id)
     return created._id
   }
 

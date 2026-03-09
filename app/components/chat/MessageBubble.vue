@@ -5,14 +5,27 @@
     :class="[mine ? 'flex-row-reverse' : 'flex-row', highlighted && 'msg-highlight']"
   >
     <!-- Avatar (other person only) -->
-    <div
-      v-if="!mine"
-      class="w-7 h-7 rounded-full bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center text-[10px] font-bold text-gray-300 flex-shrink-0 self-end"
-    >
-      {{ senderInitials }}
+    <div v-if="!mine" class="relative flex-shrink-0 self-end">
+      <div
+        class="w-7 h-7 rounded-full bg-gradient-to-br flex items-center justify-center text-[10px] font-bold text-white shadow-md"
+        :class="senderGradient"
+      >
+        {{ senderInitials }}
+      </div>
+      <span
+        v-if="isOnline(message.senderId)"
+        class="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-400 border-2 border-slate-900"
+      />
     </div>
 
     <div class="max-w-[70%] flex flex-col" :class="mine ? 'items-end' : 'items-start'">
+
+      <!-- Sender name (other people only) -->
+      <span
+        v-if="!mine && senderName"
+        class="text-[11px] font-semibold mb-1 px-1 leading-none"
+        :class="senderNameColor"
+      >{{ senderName }}</span>
 
       <!-- Reply preview (quoted message) -->
       <div
@@ -206,10 +219,10 @@
               v-for="group in groupedReactions"
               :key="group.emoji"
               @click="$emit('react', message._id, group.emoji)"
-              class="flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[11px] transition-colors"
+              class="flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] transition-all duration-150 hover:scale-110 active:scale-95"
               :class="group.reacted
-                ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300'
-                : 'bg-slate-800/60 border-slate-700/40 text-gray-400 hover:bg-slate-700/50'"
+                ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300 shadow-sm shadow-indigo-500/20'
+                : 'bg-slate-800/60 border-slate-700/40 text-gray-400 hover:bg-slate-700/50 hover:border-slate-600/60'"
               :title="group.emoji"
             >
               <span>{{ group.emoji }}</span>
@@ -238,9 +251,19 @@
         <!-- Hover actions: ··· | emoji | forward -->
         <div
           v-if="!message.isDeleted && !isEditMode"
-          class="flex items-center gap-1 opacity-0 group-hover/bubble:opacity-100 transition-opacity bg-slate-800/90 border border-slate-700/50 rounded-xl px-1.5 py-1 shadow-lg"
+          class="flex items-center gap-1 opacity-0 group-hover/bubble:opacity-100 transition-all duration-150 bg-slate-800/80 backdrop-blur-sm border border-slate-700/50 rounded-xl px-1.5 py-1 shadow-lg shadow-black/30"
           :class="mine ? 'flex-row-reverse' : 'flex-row'"
         >
+          <!-- Quick emoji reactions -->
+          <button
+            v-for="emoji in QUICK_EMOJIS"
+            :key="emoji"
+            @click.stop="$emit('react', message._id, emoji)"
+            class="w-7 h-7 rounded-lg flex items-center justify-center text-base hover:scale-125 active:scale-95 transition-transform hover:bg-slate-700/50"
+            :title="emoji"
+          >{{ emoji }}</button>
+          <div class="w-px h-4 bg-slate-700/50 mx-0.5 flex-shrink-0" />
+
           <!-- ··· More menu -->
           <div class="relative">
             <button
@@ -416,15 +439,53 @@ const emit = defineEmits<{
   remind: [message: ChatMessage]
 }>()
 
-const { formatTime } = useChat()
+const { formatTime, isOnline } = useChat()
 
 // ── Computed helpers ──────────────────────────────────────────────────────────
+
+const QUICK_EMOJIS = ['👍', '❤️', '😂', '😮', '😢']
+
+const SENDER_GRADIENTS = [
+  'from-violet-500 to-purple-600',
+  'from-rose-500 to-pink-600',
+  'from-amber-500 to-orange-600',
+  'from-emerald-500 to-teal-600',
+  'from-sky-500 to-blue-600',
+  'from-fuchsia-500 to-pink-600',
+  'from-cyan-500 to-sky-600',
+  'from-lime-500 to-green-600',
+]
 
 const senderInitials = computed(() => {
   const name = props.senderName ?? 'U'
   const parts = name.trim().split(/\s+/)
   if (parts.length >= 2) return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase()
   return name.charAt(0).toUpperCase()
+})
+
+const SENDER_NAME_COLORS = [
+  'text-violet-400',
+  'text-rose-400',
+  'text-amber-400',
+  'text-emerald-400',
+  'text-sky-400',
+  'text-fuchsia-400',
+  'text-cyan-400',
+  'text-lime-400',
+]
+
+const senderGradient = computed(() => {
+  const name = props.senderName ?? 'U'
+  let hash = 0
+  for (const ch of name) hash = ((hash << 5) - hash) + ch.charCodeAt(0)
+  return SENDER_GRADIENTS[Math.abs(hash) % SENDER_GRADIENTS.length]!
+})
+
+const senderNameColor = computed(() => {
+  const name = props.senderName ?? 'U'
+  let hash = 0
+  for (const ch of name) hash = ((hash << 5) - hash) + ch.charCodeAt(0)
+  return SENDER_NAME_COLORS[Math.abs(hash) % SENDER_NAME_COLORS.length]!
 })
 
 const imageAttachments = computed<MessageAttachment[]>(() =>

@@ -277,6 +277,18 @@
               <span class="absolute -top-1 -right-1 w-3.5 h-3.5 bg-violet-500 rounded-full text-[8px] text-white flex items-center justify-center font-bold">{{ convScheduledMsgs.length }}</span>
             </button>
 
+            <!-- Conversation info panel toggle -->
+            <button
+              @click="showConvInfo = !showConvInfo"
+              class="ml-1 w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+              :class="showConvInfo ? 'bg-indigo-500/20 text-indigo-400' : 'text-gray-600 hover:text-gray-400 hover:bg-slate-800/60'"
+              title="Conversation info"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+
             <!-- Members panel toggle (group only) -->
             <button
               v-if="activeConversation.type === 'group'"
@@ -684,6 +696,30 @@
         :conversation-id="activeConversation._id"
         :member-map="memberMap"
         @close="threadMessage = null"
+      />
+    </Transition>
+
+    <!-- ── Conversation Info panel ──────────────────────────────── -->
+    <Transition
+      enter-active-class="transition-all duration-200 ease-out"
+      enter-from-class="opacity-0 translate-x-4"
+      enter-to-class="opacity-100 translate-x-0"
+      leave-active-class="transition-all duration-150 ease-in"
+      leave-from-class="opacity-100 translate-x-0"
+      leave-to-class="opacity-0 translate-x-4"
+    >
+      <ConversationInfoPanel
+        v-if="activeConversation && showConvInfo"
+        :conversation="activeConversation"
+        :current-user-id="currentUserId"
+        :member-map="memberMap"
+        :muted="activeConversation.muted ?? false"
+        @close="showConvInfo = false"
+        @open-members="showMembers = true; showConvInfo = false"
+        @open-media="showMediaGallery = true; showConvInfo = false"
+        @open-pinned="showPinned = true; showConvInfo = false"
+        @toggle-mute="muteConversation(activeConversation._id, !activeConversation.muted)"
+        @leave="leaveGroup()"
       />
     </Transition>
 
@@ -1155,6 +1191,9 @@ const threadMessage = ref<ChatMessage | null>(null)
 // Starred panel
 const showStarred = ref(false)
 
+// Conversation info panel
+const showConvInfo = ref(false)
+
 // Global search
 const showGlobalSearch = ref(false)
 
@@ -1550,6 +1589,7 @@ async function handleSelect(id: string) {
     else localStorage.removeItem(`chat-draft:${activeConversationId.value}`)
   }
 
+  showConvInfo.value = false
   selectingConvId = id
   loadingMessages.value = true
   await selectConversation(id)
