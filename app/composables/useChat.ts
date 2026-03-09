@@ -338,30 +338,26 @@ export function useChat() {
     const pending = [...offlineQueue.value]
     offlineQueue.value = []
     for (const item of pending) {
-      const saved = activeConversationId.value
-      activeConversationId.value = item.conversationId
-      await sendMessage(item.content, [], item.replyTo)
-      activeConversationId.value = saved
+      await sendMessage(item.content, [], item.replyTo, item.conversationId)
     }
   }
 
-  async function sendMessage(content: string, files: File[] = [], replyTo?: string): Promise<boolean> {
-    if (!activeConversationId.value) return false
+  async function sendMessage(content: string, files: File[] = [], replyTo?: string, conversationId?: string): Promise<boolean> {
+    const convId = conversationId ?? activeConversationId.value
+    if (!convId) return false
     if (!content.trim() && files.length === 0) return false
 
     // Queue text-only messages when offline
     if (!networkOnline.value && files.length === 0 && content.trim()) {
       offlineQueue.value = [
         ...offlineQueue.value,
-        { conversationId: activeConversationId.value, content: content.trim(), replyTo },
+        { conversationId: convId, content: content.trim(), replyTo },
       ]
       toast.warning('You are offline — message queued and will send when reconnected.')
       return true
     }
 
     sendTyping(false)
-
-    const convId = activeConversationId.value
     const tempId = `temp_${Date.now()}`
     const tempMsg: ChatMessage = {
       _id: tempId,
