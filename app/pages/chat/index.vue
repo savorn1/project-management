@@ -6,6 +6,7 @@
         :conversations="conversations as Conversation[]"
         :archived-conversations="archivedConversations as Conversation[]"
         :active-id="activeConversationId"
+        :draft-conv-ids="draftConvIds"
         @select="handleSelect"
         @unarchive="(id) => archiveConversation(id, false)"
         @new="showModal = true"
@@ -425,6 +426,27 @@
           <!-- Scroll anchor -->
           <div ref="bottomRef" />
         </div>
+
+        <!-- Jump to Unread pill -->
+        <Transition
+          enter-active-class="transition ease-out duration-150"
+          enter-from-class="opacity-0 -translate-x-1/2 scale-90"
+          enter-to-class="opacity-100 -translate-x-1/2 scale-100"
+          leave-active-class="transition ease-in duration-100"
+          leave-from-class="opacity-100 -translate-x-1/2 scale-100"
+          leave-to-class="opacity-0 -translate-x-1/2 scale-90"
+        >
+          <button
+            v-if="unreadSeparatorId && !isAtBottom"
+            @click="scrollToUnread"
+            class="absolute bottom-36 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-500 hover:bg-indigo-400 text-white text-xs font-semibold shadow-lg shadow-indigo-500/40 transition-colors whitespace-nowrap"
+          >
+            <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" />
+            </svg>
+            {{ activeConversation?._unread ?? 0 }} unread
+          </button>
+        </Transition>
 
         <!-- Scroll-to-bottom FAB -->
         <Transition
@@ -1126,6 +1148,7 @@ const {
   unstarMessage,
   customStatusMap,
   setMyStatus,
+  muteConversation,
   votePoll,
   setDisappearingMessages,
   archiveConversation,
@@ -1172,6 +1195,21 @@ const showPinned = ref(false)
 
 // Draft message persistence
 const draftToRestore = ref('')
+
+// Draft badge tracking — which conversations have a saved draft in localStorage
+const draftConvIds = ref<Set<string>>(new Set())
+
+function refreshDraftConvIds() {
+  const ids = new Set<string>()
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i)
+    if (key?.startsWith('chat-draft:')) {
+      const convId = key.slice('chat-draft:'.length)
+      if (convId) ids.add(convId)
+    }
+  }
+  draftConvIds.value = ids
+}
 
 // Typing label for multiple users
 const typingLabel = computed(() => {
@@ -1587,6 +1625,7 @@ async function handleSelect(id: string) {
     const draft = inputRef.value.getDraft()
     if (draft.trim()) localStorage.setItem(`chat-draft:${activeConversationId.value}`, draft)
     else localStorage.removeItem(`chat-draft:${activeConversationId.value}`)
+    refreshDraftConvIds()
   }
 
   showConvInfo.value = false
@@ -1604,6 +1643,10 @@ async function handleSelect(id: string) {
 }
 
 async function onSend(content: string, files: File[] = []) {
+  if (activeConversationId.value) {
+    localStorage.removeItem(`chat-draft:${activeConversationId.value}`)
+    refreshDraftConvIds()
+  }
   await chatSend(content, files, replyingTo.value?._id)
   replyingTo.value = null
   scrollToBottom()
@@ -1745,6 +1788,14 @@ function scrollToBottom() {
   nextTick(() => bottomRef.value?.scrollIntoView({ behavior: 'smooth' }))
 }
 
+function scrollToUnread() {
+  if (!unreadSeparatorId.value) { scrollToBottom(); return }
+  nextTick(() => {
+    const el = scrollRef.value?.querySelector(`[data-msg-id="${unreadSeparatorId.value}"]`)
+    el ? el.scrollIntoView({ behavior: 'smooth', block: 'start' }) : scrollToBottom()
+  })
+}
+
 // Only scroll to bottom when the last message changes (new message arrived),
 // not when old messages are prepended at the top.
 watch(
@@ -1784,6 +1835,7 @@ watch(scrollRef, (el, prev) => {
 onUnmounted(() => scrollRef.value?.removeEventListener('scroll', onScroll))
 
 onMounted(async () => {
+  refreshDraftConvIds()
   const team = await teamApi.getAll()
   teamMembers.value = team
   memberMap.value = new Map(team.map((m) => [m._id, m.name]))

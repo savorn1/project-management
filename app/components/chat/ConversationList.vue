@@ -3,15 +3,29 @@
     <!-- Header -->
     <div class="p-4 border-b border-slate-800/60 flex items-center justify-between flex-shrink-0">
       <h2 class="text-sm font-semibold text-white">Messages</h2>
-      <button
-        @click="$emit('new')"
-        class="w-7 h-7 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 flex items-center justify-center text-indigo-400 hover:text-indigo-300 transition-all"
-        title="New conversation"
-      >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
-      </button>
+      <div class="flex items-center gap-1">
+        <!-- Mark all as read (only shown when there are unread conversations) -->
+        <button
+          v-if="totalUnreadCount > 0"
+          @click="handleMarkAllRead"
+          class="w-7 h-7 rounded-lg flex items-center justify-center text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all"
+          title="Mark all as read"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 12l4 4L18 6M1 12l4 4L15 6" />
+          </svg>
+        </button>
+        <!-- New conversation -->
+        <button
+          @click="$emit('new')"
+          class="w-7 h-7 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 flex items-center justify-center text-indigo-400 hover:text-indigo-300 transition-all"
+          title="New conversation"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+        </button>
+      </div>
     </div>
 
     <!-- Tabs -->
@@ -96,11 +110,14 @@
             :is-pinned="true"
             :labels="convLabels.get(item._id) ?? []"
             :label-defs="LABELS"
+            :is-typing="typingConvIds.has(item._id)"
+            :has-draft="(draftConvIds ?? new Set()).has(item._id)"
             @select="$emit('select', item._id)"
             @toggle-pin="togglePin(item._id)"
             @toggle-mute="toggleMute(item)"
             @add-label="(k) => addLabel(item._id, k)"
             @remove-label="(k) => removeLabel(item._id, k)"
+            @mark-unread="markConversationUnread(item._id)"
           />
         </div>
         <div v-if="unpinnedList.length > 0" class="h-px bg-slate-800/40 mx-3 my-1" />
@@ -114,11 +131,14 @@
           :is-pinned="false"
           :labels="convLabels.get(item._id) ?? []"
           :label-defs="LABELS"
+          :is-typing="typingConvIds.has(item._id)"
+          :has-draft="(draftConvIds ?? new Set()).has(item._id)"
           @select="$emit('select', item._id)"
           @toggle-pin="togglePin(item._id)"
           @toggle-mute="toggleMute(item)"
           @add-label="(k) => addLabel(item._id, k)"
           @remove-label="(k) => removeLabel(item._id, k)"
+          @mark-unread="markConversationUnread(item._id)"
         />
       </div>
 
@@ -192,11 +212,20 @@ const props = defineProps<{
   conversations: Conversation[]
   archivedConversations?: Conversation[]
   activeId: string | null
+  draftConvIds?: Set<string>
 }>()
 
 defineEmits<{ select: [id: string]; new: []; unarchive: [id: string] }>()
 
-const { conversationName, conversationInitials, lastMessagePreview, isUnread, muteConversation } = useChat()
+const { conversationName, conversationInitials, lastMessagePreview, isUnread, muteConversation, typingConvIds, markConversationUnread, markAllConversationsRead } = useChat()
+
+const totalUnreadCount = computed(() =>
+  props.conversations.reduce((sum, c) => sum + (c._unread ?? 0), 0),
+)
+
+async function handleMarkAllRead() {
+  await markAllConversationsRead()
+}
 
 // ── Pin state ─────────────────────────────────────────────────────────────────
 const pinnedIds = ref<Set<string>>(new Set())

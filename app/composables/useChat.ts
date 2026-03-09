@@ -71,6 +71,16 @@ export function useChat() {
     return result
   })
 
+  /** Set of conversationIds where at least one other user is currently typing */
+  const typingConvIds = computed<Set<string>>(() => {
+    const result = new Set<string>()
+    for (const key of typingMap.value.keys()) {
+      const idx = key.indexOf(':')
+      if (idx > 0) result.add(key.slice(0, idx))
+    }
+    return result
+  })
+
   // ── Internal helpers ──────────────────────────────────────────────────────
 
   /** Merge a partial patch into a single conversation by id */
@@ -470,6 +480,26 @@ export function useChat() {
     patchConversation(conversationId, { muted: mute })
   }
 
+  /** Manually flag a conversation as unread (sets _unread to at least 1) */
+  function markConversationUnread(conversationId: string): void {
+    const conv = conversations.value.find((c) => c._id === conversationId)
+    if (!conv) return
+    patchConversation(conversationId, { _unread: Math.max(1, conv._unread ?? 0) })
+    recalcUnread()
+  }
+
+  /** Clear unread counts for all conversations (calls markAsRead for each with unread) */
+  async function markAllConversationsRead(): Promise<void> {
+    const toMark = conversations.value.filter((c) => (c._unread ?? 0) > 0)
+    for (const conv of toMark) {
+      if (conv.lastMessage?.messageId) {
+        chatApi.markAsRead(conv._id, conv.lastMessage.messageId).catch(() => {})
+      }
+      patchConversation(conv._id, { _unread: 0 })
+    }
+    totalUnread.value = 0
+  }
+
   async function setDisappearingMessages(conversationId: string, enabled: boolean, ttl: number) {
     await chatApi.setDisappearingMessages(conversationId, enabled, ttl)
     // optimistic — socket will also fire and confirm
@@ -855,6 +885,7 @@ export function useChat() {
     totalUnread: readonly(totalUnread),
     onlineUsers: readonly(onlineUsers),
     typingUsers,
+    typingConvIds,
     messageHasMore: readonly(messageHasMore),
     messageLoadingMore: readonly(messageLoadingMore),
     unreadSeparatorId: readonly(unreadSeparatorId),
@@ -886,6 +917,8 @@ export function useChat() {
     blockMember,
     unblockMember,
     muteConversation,
+    markConversationUnread,
+    markAllConversationsRead,
     starMessage,
     unstarMessage,
     setMyStatus,

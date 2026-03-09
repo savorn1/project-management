@@ -60,15 +60,21 @@
             :title="labelName(lk)"
           />
         </div>
-        <div class="flex items-center gap-1">
+        <div class="flex items-center gap-1 min-w-0">
           <svg v-if="item.muted" class="w-2.5 h-2.5 text-gray-700 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
           </svg>
-          <p
-            class="text-[11px] truncate transition-colors"
-            :class="hasUnread ? 'text-gray-300' : 'text-gray-500'"
-          >{{ preview }}</p>
+          <!-- Typing indicator replaces preview -->
+          <span v-if="isTyping" class="text-[11px] italic text-emerald-400 truncate">typing…</span>
+          <template v-else>
+            <!-- Draft badge -->
+            <span v-if="hasDraft" class="text-[11px] font-semibold text-amber-400 flex-shrink-0">Draft:</span>
+            <p
+              class="text-[11px] truncate transition-colors"
+              :class="hasUnread ? 'text-gray-300' : 'text-gray-500'"
+            >{{ preview }}</p>
+          </template>
         </div>
       </div>
 
@@ -149,6 +155,17 @@
           <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15zM17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
         </svg>
       </button>
+
+      <!-- Mark as unread -->
+      <button
+        @click.stop="$emit('mark-unread')"
+        class="w-6 h-6 rounded flex items-center justify-center text-gray-600 hover:text-gray-300 transition-colors"
+        title="Mark as unread"
+      >
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        </svg>
+      </button>
     </div>
   </div>
 </template>
@@ -164,6 +181,8 @@ const props = defineProps<{
   isPinned: boolean
   labels: LabelKey[]
   labelDefs: typeof LABELS
+  isTyping?: boolean
+  hasDraft?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -172,6 +191,7 @@ const emit = defineEmits<{
   'toggle-mute': []
   'add-label': [key: LabelKey]
   'remove-label': [key: LabelKey]
+  'mark-unread': []
 }>()
 
 const { conversationName, conversationInitials, lastMessagePreview, isOnline } = useChat()
