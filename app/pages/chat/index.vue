@@ -1849,5 +1849,12 @@ onMounted(async () => {
   await loadConversations(team)
   await loadArchivedConversations()
   startListening()
+
+  // Auto-select a conversation passed via ?conv= query param (e.g. after joining via invite link)
+  const route = useRoute()
+  const convId = route.query.conversation as string | undefined
+  if (convId) {
+    await handleSelect(convId)
+  }
 })
 </script>

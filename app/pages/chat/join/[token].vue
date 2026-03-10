@@ -18,7 +18,7 @@
         <p class="text-sm text-gray-400">{{ error }}</p>
         <button
           class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors"
-          @click="navigateTo('/chat')"
+          @click="navigateTo(`/chat${conversation ? `?conversation=${conversation._id}` : ''}`)"
         >
           Go to Chat
         </button>
@@ -31,7 +31,7 @@
         </p>
         <button
           class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors"
-          @click="navigateTo('/chat')"
+          @click="navigateTo(`/chat${conversation ? `?conversation=${conversation._id}` : ''}`)"
         >
           Open Chat
         </button>
@@ -44,7 +44,7 @@
         </p>
         <button
           class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors"
-          @click="navigateTo('/chat')"
+          @click="navigateTo(`/chat${conversation ? `?conversation=${conversation._id}` : ''}`)"
         >
           Open Chat
         </button>
