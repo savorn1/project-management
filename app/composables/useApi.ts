@@ -1059,6 +1059,10 @@ export function useApi() {
       })
     },
 
+    async joinViaInvite(token: string): Promise<{ alreadyMember: boolean; conversation: Conversation } | null> {
+      return await request<{ alreadyMember: boolean; conversation: Conversation }>(`/chat/conversations/join/${token}`, { method: 'POST' })
+    },
+
     async setSlowMode(conversationId: string, enabled: boolean, delay: number): Promise<void> {
       await request(`/chat/conversations/${conversationId}/slow-mode`, {
         method: 'PATCH', body: JSON.stringify({ enabled, delay }),

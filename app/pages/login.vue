@@ -214,6 +214,7 @@ definePageMeta({
 })
 
 const router = useRouter()
+const route = useRoute()
 const { login, isLoading, authError } = useAuth()
 
 const form = reactive({
@@ -227,7 +228,8 @@ const rememberMe = ref(false)
 const handleLogin = async () => {
   const success = await login(form)
   if (success) {
-    router.push('/')
+    const redirect = route.query.redirect as string | undefined
+    router.push(redirect || '/')
   }
 }
 </script>
