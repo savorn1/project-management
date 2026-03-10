@@ -79,6 +79,18 @@
         </div>
 
         <template v-else>
+          <!-- Forwarded indicator -->
+          <div
+            v-if="message.forwardedFrom"
+            class="flex items-center gap-1 text-[10px] mb-1"
+            :class="mine ? 'text-indigo-300/70 justify-end' : 'text-sky-400/80'"
+          >
+            <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 9l3 3m0 0l-3 3m3-3H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Forwarded from <span class="font-medium">{{ message.forwardedFrom.senderName }}</span></span>
+          </div>
+
           <!-- Poll -->
           <PollMessage
             v-if="message.type === 'poll' && message.poll"
@@ -113,7 +125,7 @@
                 class="block rounded-xl overflow-hidden border border-slate-700/40 hover:opacity-90 transition-opacity cursor-zoom-in"
                 :style="imageAttachments.length === 1 ? 'max-width:240px' : 'width:112px;height:112px'"
               >
-                <img :src="img.url" :alt="img.originalName" class="object-cover w-full h-full"
+                <img :src="img.url" :alt="img.originalName" loading="lazy" class="object-cover w-full h-full"
                   :style="imageAttachments.length === 1 ? 'max-height:200px' : ''" />
               </button>
             </div>
@@ -243,15 +255,18 @@
         >
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <span
-          class="text-xs text-gray-600"
-          :title="fullDateTime"
-        >{{ formatTime(message.createdAt) }}{{ message.editedAt ? ' (edited)' : '' }}</span>
+        <span class="text-xs text-gray-600" :title="fullDateTime">{{ formatTime(message.createdAt) }}</span>
+        <button
+          v-if="message.editedAt"
+          @click.stop="emit('show-edit-history', message)"
+          class="text-xs text-gray-600 hover:text-gray-400 transition-colors underline-offset-2 hover:underline"
+          title="View edit history"
+        >(edited)</button>
 
         <!-- Hover actions: ··· | emoji | forward -->
         <div
           v-if="!message.isDeleted && !isEditMode"
-          class="flex items-center gap-1 opacity-0 group-hover/bubble:opacity-100 transition-all duration-150 bg-slate-800/80 backdrop-blur-sm border border-slate-700/50 rounded-xl px-1.5 py-1 shadow-lg shadow-black/30"
+          class="flex items-center gap-1 opacity-0 group-hover/bubble:opacity-100 focus-within:opacity-100 transition-all duration-150 bg-slate-800/80 backdrop-blur-sm border border-slate-700/50 rounded-xl px-1.5 py-1 shadow-lg shadow-black/30"
           :class="mine ? 'flex-row-reverse' : 'flex-row'"
         >
           <!-- Quick emoji reactions -->
@@ -314,7 +329,7 @@
                   <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                   </svg>
-                  {{ copied ? 'Copied!' : 'Copy' }}
+                  Copy
                 </button>
                 <button v-if="!message.isDeleted" @click="doAction('thread')"
                   class="w-full flex items-center gap-3 px-4 py-3 text-base text-gray-200 hover:bg-slate-700/60 transition-colors text-left">
@@ -437,6 +452,7 @@ const emit = defineEmits<{
   vote: [messageId: string, optionIndex: number]
   'create-task': [message: ChatMessage]
   remind: [message: ChatMessage]
+  'show-edit-history': [message: ChatMessage]
 }>()
 
 const { formatTime, isOnline } = useChat()
@@ -474,18 +490,20 @@ const SENDER_NAME_COLORS = [
   'text-lime-400',
 ]
 
-const senderGradient = computed(() => {
-  const name = props.senderName ?? 'U'
+function hashName(name: string): number {
   let hash = 0
   for (const ch of name) hash = ((hash << 5) - hash) + ch.charCodeAt(0)
-  return SENDER_GRADIENTS[Math.abs(hash) % SENDER_GRADIENTS.length]!
+  return Math.abs(hash)
+}
+
+const senderGradient = computed(() => {
+  const name = props.senderName ?? 'U'
+  return SENDER_GRADIENTS[hashName(name) % SENDER_GRADIENTS.length]!
 })
 
 const senderNameColor = computed(() => {
   const name = props.senderName ?? 'U'
-  let hash = 0
-  for (const ch of name) hash = ((hash << 5) - hash) + ch.charCodeAt(0)
-  return SENDER_NAME_COLORS[Math.abs(hash) % SENDER_NAME_COLORS.length]!
+  return SENDER_NAME_COLORS[hashName(name) % SENDER_NAME_COLORS.length]!
 })
 
 const imageAttachments = computed<MessageAttachment[]>(() =>
@@ -540,7 +558,7 @@ const receiptState = computed<'sending' | 'sent' | 'delivered' | 'read'>(() => {
   // READ rule:
   // - private: readCount > 0
   // - group: readCount >= (participantsCount - 1)
-  if (participantsCount && participantsCount > 2) {
+  if (isGroup) {
     const others = Math.max(participantsCount - 1, 0)
     if (others > 0 && readCount.value >= others) return 'read'
   } else {
@@ -651,16 +669,8 @@ watch(showReadBy, (val) => {
 
 // ── Copy ─────────────────────────────────────────────────────────────────────
 
-const copied = ref(false)
-
 async function copyContent() {
-  try {
-    await navigator.clipboard.writeText(props.message.content)
-    copied.value = true
-    setTimeout(() => { copied.value = false }, 2000)
-  } catch {
-    // clipboard not available
-  }
+  await navigator.clipboard.writeText(props.message.content)
 }
 
 // ── Reaction picker ───────────────────────────────────────────────────────────
@@ -711,13 +721,15 @@ function toggleMoreMenu() {
   })
 }
 
-function doAction(action: string) {
+type MenuAction = 'reply' | 'pin' | 'star' | 'copy' | 'thread' | 'remind' | 'create-task' | 'edit' | 'delete' | 'report'
+
+function doAction(action: MenuAction) {
   showMoreMenu.value = false
   switch (action) {
     case 'reply':       emit('reply', props.message); break
     case 'pin':         emit('pin', props.message._id); break
     case 'star':        emit('star', props.message._id); break
-    case 'copy':        copyContent(); break
+    case 'copy':        copyContent().then(() => useToast().success('Copied!')); break
     case 'thread':      emit('thread', props.message); break
     case 'remind':      emit('remind', props.message); break
     case 'create-task': emit('create-task', props.message); break

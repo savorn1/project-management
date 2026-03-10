@@ -150,7 +150,11 @@ export function useChat() {
       return '📎 File already sent'
     }
     if (!content) return 'Message deleted'
-    return content.length > 40 ? content.slice(0, 40) + '…' : content
+    // Strip mention syntax: @[everyone] → @everyone, @[name](id) → @name
+    const plain = content
+      .replace(/@\[everyone\]/g, '@everyone')
+      .replace(/@\[([^\]]+)\]\([^)]+\)/g, '@$1')
+    return plain.length > 40 ? plain.slice(0, 40) + '…' : plain
   }
 
   function recalcUnread() {
@@ -624,6 +628,10 @@ export function useChat() {
     starredIds.value = next
   }
 
+  async function loadMentions(limit = 50) {
+    return chatApi.getMentions(limit)
+  }
+
   async function leaveGroup(conversationId: string): Promise<boolean> {
     const ok = await chatApi.leaveGroup(conversationId)
     if (ok !== null) dropConversation(conversationId)
@@ -719,9 +727,9 @@ export function useChat() {
     }
   }
 
-  function onMessageEdited({ messageId, content, editedAt }: { messageId: string; content: string; editedAt: string }) {
+  function onMessageEdited({ messageId, content, editedAt, editHistory }: { messageId: string; content: string; editedAt: string; editHistory?: { content: string; editedAt: string }[] }) {
     messages.value = messages.value.map((m) =>
-      m._id === messageId ? { ...m, content, editedAt } : m,
+      m._id === messageId ? { ...m, content, editedAt, editHistory } : m,
     )
   }
 
@@ -991,6 +999,7 @@ export function useChat() {
     markAllConversationsRead,
     starMessage,
     unstarMessage,
+    loadMentions,
     setMyStatus,
     setDisappearingMessages,
     updateGroupAvatar,

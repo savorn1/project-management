@@ -435,6 +435,17 @@ export interface PinnedMessage {
   content?: string
 }
 
+export interface MessageEditHistoryEntry {
+  content: string
+  editedAt: string
+}
+
+export interface ForwardedFrom {
+  messageId: string
+  conversationId: string
+  senderName: string
+}
+
 export interface ChatMessage {
   _id: string
   conversationId: string
@@ -455,6 +466,12 @@ export interface ChatMessage {
   expiresAt?: string
   /** Poll payload — present when type === 'poll' */
   poll?: Poll
+  /** Edit history — previous versions of the message content */
+  editHistory?: MessageEditHistoryEntry[]
+  /** Forwarded-from metadata — set when this message is a forward */
+  forwardedFrom?: ForwardedFrom
+  /** Mentioned user IDs */
+  mentions?: string[]
   /** Frontend-only: optimistic send state */
   _status?: 'sending' | 'sent'
 }
@@ -468,6 +485,11 @@ export interface LinkPreview {
 }
 
 export interface StarredMessage {
+  message: ChatMessage
+  conversationId: string
+}
+
+export interface MentionResult {
   message: ChatMessage
   conversationId: string
 }

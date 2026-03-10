@@ -20,6 +20,7 @@ import type {
   QrHistoryRecord,
   SampleOrderResult,
   Sprint,
+  MentionResult,
   StarredMessage,
   Task,
   TaskActivity,
@@ -1070,6 +1071,16 @@ export function useApi() {
       await request(`/chat/conversations/${conversationId}/slow-mode`, {
         method: 'PATCH', body: JSON.stringify({ enabled, delay }),
       })
+    },
+
+    async forwardMessage(messageId: string, targetConversationId: string): Promise<ChatMessage | null> {
+      return await request<ChatMessage>(`/chat/messages/${messageId}/forward`, {
+        method: 'POST', body: JSON.stringify({ targetConversationId }),
+      })
+    },
+
+    async getMentions(limit = 50): Promise<MentionResult[]> {
+      return (await request<MentionResult[]>(`/chat/mentions?limit=${limit}`)) ?? []
     },
   }
 

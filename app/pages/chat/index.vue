@@ -190,9 +190,21 @@
               </svg>
             </button>
 
+            <!-- Mentions inbox toggle -->
+            <button
+              @click="showMentions = !showMentions; showStarred = false"
+              class="ml-1 w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+              :class="showMentions ? 'bg-sky-500/20 text-sky-400' : 'text-gray-600 hover:text-gray-400 hover:bg-slate-800/60'"
+              title="Mentions"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+              </svg>
+            </button>
+
             <!-- Starred messages toggle -->
             <button
-              @click="showStarred = !showStarred"
+              @click="showStarred = !showStarred; showMentions = false"
               class="ml-1 w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
               :class="showStarred ? 'bg-amber-500/20 text-amber-400' : 'text-gray-600 hover:text-gray-400 hover:bg-slate-800/60'"
               title="Starred messages"
@@ -391,6 +403,7 @@
                   @vote="handleVotePoll"
                   @create-task="handleCreateTask"
                   @remind="handleRemind"
+                  @show-edit-history="(m) => editHistoryMessage = m"
                   @open-image="(img) => openLightbox(img, (msg.attachments ?? []).filter(a => a.mimeType.startsWith('image/')))"
                 />
 
@@ -770,6 +783,24 @@
       />
     </Transition>
 
+    <!-- ── Mentions inbox ─────────────────────────────────────────── -->
+    <Transition
+      enter-active-class="transition-all duration-200 ease-out"
+      enter-from-class="opacity-0 translate-x-4"
+      enter-to-class="opacity-100 translate-x-0"
+      leave-active-class="transition-all duration-150 ease-in"
+      leave-from-class="opacity-100 translate-x-0"
+      leave-to-class="opacity-0 translate-x-4"
+    >
+      <MentionsInbox
+        v-if="showMentions"
+        :member-map="memberMap"
+        :conversation-name-map="conversationNameMap"
+        @close="showMentions = false"
+        @navigate="handleStarNavigate"
+      />
+    </Transition>
+
     <!-- ── Media Gallery panel ──────────────────────────────────── -->
     <Transition
       enter-active-class="transition-all duration-200 ease-out"
@@ -905,9 +936,17 @@
     <ForwardModal
       v-if="forwardMessage"
       :conversations="conversations as Conversation[]"
+      :message-id="forwardMessage._id"
       :content="forwardMessage.content"
       @close="forwardMessage = null"
       @forwarded="forwardMessage = null"
+    />
+
+    <!-- ── Edit History Modal ──────────────────────────────────────── -->
+    <EditHistoryModal
+      v-if="editHistoryMessage"
+      :message="editHistoryMessage"
+      @close="editHistoryMessage = null"
     />
 
     <!-- ── New Conversation Modal ───────────────────────────────────── -->
@@ -1240,11 +1279,17 @@ const typingLabel = computed(() => {
 // Forward modal
 const forwardMessage = ref<ChatMessage | null>(null)
 
+// Edit history modal
+const editHistoryMessage = ref<ChatMessage | null>(null)
+
 // Thread panel
 const threadMessage = ref<ChatMessage | null>(null)
 
 // Starred panel
 const showStarred = ref(false)
+
+// Mentions inbox
+const showMentions = ref(false)
 
 // Conversation info panel
 const showConvInfo = ref(false)

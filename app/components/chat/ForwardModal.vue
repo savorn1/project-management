@@ -63,12 +63,13 @@ import type { Conversation } from '~/types'
 
 const props = defineProps<{
   conversations: Conversation[]
+  messageId: string
   content: string
 }>()
 
 const emit = defineEmits<{ close: []; forwarded: [conversationId: string] }>()
 
-const { conversationName, conversationInitials, sendMessage } = useChat()
+const { conversationName, conversationInitials } = useChat()
 
 const search = ref('')
 const sending = ref(false)
@@ -89,9 +90,8 @@ const filtered = computed(() => {
 async function select(conversationId: string) {
   if (sending.value || sentTo.value.has(conversationId)) return
   sending.value = true
-  // Temporarily switch active conversation to send, then restore — or call API directly
   const { chatApi } = useApi()
-  await chatApi.sendMessage(conversationId, props.content)
+  await chatApi.forwardMessage(props.messageId, conversationId)
   const next = new Set(sentTo.value)
   next.add(conversationId)
   sentTo.value = next
