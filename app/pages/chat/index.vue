@@ -1147,6 +1147,13 @@ const {
   unpinMessage: chatUnpin,
   loadMoreMessages,
   loadMessagesAround,
+  loadOlderMessages,
+  loadNewerMessages,
+  messageWindowMode,
+  hasOlderMessages,
+  hasNewerMessages,
+  messageLoadingOlder,
+  messageLoadingNewer,
   leaveGroup: chatLeave,
   removeMember: chatRemove,
   blockMember: chatBlock,
@@ -1192,6 +1199,9 @@ const isAtBottom = ref(true)
 
 // Highlighted message (scroll-to-original animation)
 const highlightedId = ref<string | null>(null)
+
+// Prevents auto-scroll-to-bottom from firing during pin/search navigation
+const suppressAutoScroll = ref(false)
 
 // Lightbox
 const lightboxImage = ref<MessageAttachment | null>(null)
@@ -1698,15 +1708,14 @@ async function handleStarNavigate(conversationId: string, messageId: string) {
   if (activeConversationId.value !== conversationId) {
     await handleSelect(conversationId)
   }
-  await nextTick()
-  // If message isn't currently rendered (older than current page), load a context window around it.
   const exists = messages.value.some((m) => m._id === messageId)
   if (!exists) {
+    suppressAutoScroll.value = true
     const ok = await loadMessagesAround(conversationId, messageId, 60)
-    if (ok) {
-      await nextTick()
-    }
+    suppressAutoScroll.value = false
+    if (!ok) return
   }
+  await nextTick()
   scrollToMessage(messageId)
 }
 
@@ -1729,7 +1738,8 @@ function openLightbox(attachment: MessageAttachment, allImages: MessageAttachmen
   lightboxImage.value = attachment
 }
 
-function scrollToMessage(messageId: string) {
+function scrollToMessage(rawMessageId: string | { toString(): string }) {
+  const messageId = rawMessageId.toString()
   const el = scrollRef.value?.querySelector(`[data-msg-id="${messageId}"]`)
   if (!el) return
   el.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -1739,14 +1749,17 @@ function scrollToMessage(messageId: string) {
   setTimeout(() => { if (highlightedId.value === messageId) highlightedId.value = null }, 2200)
 }
 
-async function navigateToPinnedMessage(messageId: string) {
+async function navigateToPinnedMessage(rawMessageId: string | { toString(): string }) {
+  const messageId = rawMessageId.toString()
   showPinned.value = false
-  const alreadyLoaded = messages.value.some((m) => m._id === messageId)
+  const alreadyLoaded = messages.value.some((m) => m._id.toString() === messageId)
   if (!alreadyLoaded) {
+    suppressAutoScroll.value = true
     const ok = await loadMessagesAround(activeConversationId.value!, messageId, 60)
+    suppressAutoScroll.value = false
     if (!ok) return
-    await nextTick()
   }
+  await nextTick()
   scrollToMessage(messageId)
 }
 
@@ -1819,17 +1832,30 @@ function scrollToUnread() {
 watch(
   () => messages.value[messages.value.length - 1]?._id,
   (newId, oldId) => {
-    if (newId && newId !== oldId && !messageLoadingMore.value) scrollToBottom()
+    if (newId && newId !== oldId && !messageLoadingMore.value && !suppressAutoScroll.value) scrollToBottom()
   },
 )
 watch(typingUsers, (users) => { if (users.length > 0) scrollToBottom() })
 
-// ── Infinite scroll (load older messages on scroll-to-top) ────────────────
+// ── Infinite scroll ───────────────────────────────────────────────────────
 
 async function handleLoadMore() {
-  if (!messageHasMore.value || messageLoadingMore.value) return
   const el = scrollRef.value
   if (!el) return
+
+  if (messageWindowMode.value === 'around') {
+    // In "around" mode: scroll up loads older messages via cursor
+    if (!hasOlderMessages.value || messageLoadingOlder.value) return
+    const prevScrollHeight = el.scrollHeight
+    suppressAutoScroll.value = true
+    await loadOlderMessages()
+    suppressAutoScroll.value = false
+    await nextTick()
+    el.scrollTop = el.scrollHeight - prevScrollHeight
+    return
+  }
+
+  if (!messageHasMore.value || messageLoadingMore.value) return
   const prevScrollHeight = el.scrollHeight
   await loadMoreMessages()
   await nextTick()
@@ -1837,11 +1863,20 @@ async function handleLoadMore() {
   el.scrollTop = el.scrollHeight - prevScrollHeight
 }
 
+async function handleLoadNewer() {
+  if (messageWindowMode.value !== 'around') return
+  if (!hasNewerMessages.value || messageLoadingNewer.value) return
+  suppressAutoScroll.value = true
+  await loadNewerMessages()
+  suppressAutoScroll.value = false
+}
+
 function onScroll() {
   const el = scrollRef.value
   if (!el) return
   isAtBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight < 60
   if (el.scrollTop <= 80) handleLoadMore()
+  if (isAtBottom.value) handleLoadNewer()
 }
 
 // Attach/detach the scroll listener whenever the container mounts/unmounts

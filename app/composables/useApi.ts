@@ -837,10 +837,13 @@ export function useApi() {
       conversationId: string,
       page = 1,
       limit = 50,
+      before?: string,
+      after?: string,
     ): Promise<{ data: ChatMessage[]; total: number }> {
-      const response = await request<{ data: ChatMessage[]; total: number }>(
-        `/chat/conversations/${conversationId}/messages?page=${page}&limit=${limit}`,
-      )
+      let url = `/chat/conversations/${conversationId}/messages?page=${page}&limit=${limit}`
+      if (before) url += `&before=${encodeURIComponent(before)}`
+      if (after) url += `&after=${encodeURIComponent(after)}`
+      const response = await request<{ data: ChatMessage[]; total: number }>(url)
       return response ?? { data: [], total: 0 }
     },
 
@@ -849,8 +852,8 @@ export function useApi() {
       conversationId: string,
       messageId: string,
       limit = 50,
-    ): Promise<{ data: ChatMessage[]; total: number; anchorId: string } | null> {
-      return await request<{ data: ChatMessage[]; total: number; anchorId: string }>(
+    ): Promise<{ data: ChatMessage[]; total: number; hasOlder: boolean; hasNewer: boolean } | null> {
+      return await request<{ data: ChatMessage[]; total: number; hasOlder: boolean; hasNewer: boolean }>(
         `/chat/conversations/${conversationId}/messages/around/${messageId}?limit=${limit}`,
       )
     },

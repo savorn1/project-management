@@ -32,6 +32,12 @@ const messageLoadingMore = ref(false)
 // (Pagination expects page-based “newest first” API, whereas “around” is a context window.)
 const messageWindowMode = ref<'paged' | 'around'>('paged')
 
+// Bidirectional cursors for “around” mode
+const hasOlderMessages = ref(false)
+const hasNewerMessages = ref(false)
+const messageLoadingOlder = ref(false)
+const messageLoadingNewer = ref(false)
+
 let socketListenersRegistered = false
 
 // Module-level set so deduplication works across all useChat() call sites
@@ -301,7 +307,53 @@ export function useChat() {
     messageHasMore.value = false
     messageLoadingMore.value = false
     messageWindowMode.value = 'around'
+    hasOlderMessages.value = res.hasOlder
+    hasNewerMessages.value = res.hasNewer
     return true
+  }
+
+  /** Prepend older messages when scrolling up in "around" mode. */
+  async function loadOlderMessages(): Promise<void> {
+    if (!activeConversationId.value || !hasOlderMessages.value || messageLoadingOlder.value) return
+    const oldest = messages.value[0]
+    if (!oldest?.createdAt) return
+    messageLoadingOlder.value = true
+    try {
+      const res = await chatApi.getMessages(activeConversationId.value, 1, 30, String(oldest.createdAt))
+      if (res.data.length > 0) {
+        messages.value = [...res.data, ...messages.value]
+        hasOlderMessages.value = res.data.length >= 30
+      } else {
+        hasOlderMessages.value = false
+      }
+    } finally {
+      messageLoadingOlder.value = false
+    }
+  }
+
+  /** Append newer messages when scrolling down in "around" mode. */
+  async function loadNewerMessages(): Promise<void> {
+    if (!activeConversationId.value || !hasNewerMessages.value || messageLoadingNewer.value) return
+    const newest = messages.value[messages.value.length - 1]
+    if (!newest?.createdAt) return
+    messageLoadingNewer.value = true
+    try {
+      const res = await chatApi.getMessages(activeConversationId.value, 1, 30, undefined, String(newest.createdAt))
+      if (res.data.length > 0) {
+        messages.value = [...messages.value, ...res.data]
+        hasNewerMessages.value = res.data.length >= 30
+      } else {
+        hasNewerMessages.value = false
+      }
+      // Caught up to the latest messages — resume normal paged mode
+      if (!hasNewerMessages.value) {
+        messageWindowMode.value = 'paged'
+        messagePage.value = 1
+        messageHasMore.value = messages.value.length < messageTotal.value
+      }
+    } finally {
+      messageLoadingNewer.value = false
+    }
   }
 
   async function loadMoreMessages(): Promise<void> {
@@ -899,6 +951,11 @@ export function useChat() {
     typingConvIds,
     messageHasMore: readonly(messageHasMore),
     messageLoadingMore: readonly(messageLoadingMore),
+    messageWindowMode: readonly(messageWindowMode),
+    hasOlderMessages: readonly(hasOlderMessages),
+    hasNewerMessages: readonly(hasNewerMessages),
+    messageLoadingOlder: readonly(messageLoadingOlder),
+    messageLoadingNewer: readonly(messageLoadingNewer),
     unreadSeparatorId: readonly(unreadSeparatorId),
     starredIds: readonly(starredIds),
     networkOnline: readonly(networkOnline),
@@ -921,6 +978,8 @@ export function useChat() {
     sendTyping,
     loadMoreMessages,
     loadMessagesAround,
+    loadOlderMessages,
+    loadNewerMessages,
 
     // Member actions
     leaveGroup,
