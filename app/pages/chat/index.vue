@@ -879,7 +879,7 @@
                 <p class="text-[10px] text-gray-600 mb-0.5">{{ senderName(pin.pinnedBy) }}</p>
                 <p
                   class="text-xs text-gray-300 truncate cursor-pointer hover:text-indigo-300 transition-colors"
-                  @click="scrollToMessage(pin.messageId); showPinned = false"
+                  @click="navigateToPinnedMessage(pin.messageId)"
                 >{{ pin.content || '📎 Attachment' }}</p>
               </div>
               <button
@@ -1737,6 +1737,17 @@ function scrollToMessage(messageId: string) {
   highlightedId.value = null
   nextTick(() => { highlightedId.value = messageId })
   setTimeout(() => { if (highlightedId.value === messageId) highlightedId.value = null }, 2200)
+}
+
+async function navigateToPinnedMessage(messageId: string) {
+  showPinned.value = false
+  const alreadyLoaded = messages.value.some((m) => m._id === messageId)
+  if (!alreadyLoaded) {
+    const ok = await loadMessagesAround(activeConversationId.value!, messageId, 60)
+    if (!ok) return
+    await nextTick()
+  }
+  scrollToMessage(messageId)
 }
 
 function onTyping(isTyping: boolean) {
