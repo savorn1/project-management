@@ -142,6 +142,9 @@ export function useChat() {
     content: string,
     attachmentsCount = 0,
   ): string {
+
+    if (!content) return 'Message deleted'
+
     if (type === 'image') {
       if (attachmentsCount > 1) return `📷 ${attachmentsCount} Photos`
       return '📷 Photo'
@@ -150,15 +153,20 @@ export function useChat() {
       if (attachmentsCount > 1) return `📎 ${attachmentsCount} files already sent`
       return '📎 File already sent'
     }
-    if (!content) return 'Message deleted'
     // Strip mention syntax: @[everyone] → @everyone, @[name](id) → @name
+    // Strip markdown: ```block``` → block, `code` → code, **bold** → bold, *italic* → italic
     const plain = content
       .replace(/@\[everyone\]/g, '@everyone')
       .replace(/@\[([^\]]+)\]\([^)]+\)/g, '@$1')
+      .replace(/```[\s\S]*?```/g, (m) => m.slice(3, -3).trim())
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+
     return plain.length > 40 ? plain.slice(0, 40) + '…' : plain
   }
 
-  function recalcUnread() {
+  function recalculateUnreadCount() {
     totalUnread.value = conversations.value.reduce((sum, c) => sum + (c._unread ?? 0), 0)
   }
 
@@ -237,7 +245,7 @@ export function useChat() {
     }
 
     sortConversations()
-    recalcUnread()
+    recalculateUnreadCount()
 
     // Join conversation member rooms for scalable broadcasts
     // (If the socket isn't connected yet, socket.io will buffer the emits.)
@@ -290,7 +298,7 @@ export function useChat() {
     if (selected?.lastMessage) {
       chatApi.markAsRead(id, selected.lastMessage.messageId).catch(() => { })
       patchConversation(id, { _unread: 0 })
-      recalcUnread()
+      recalculateUnreadCount()
     }
   }
 
@@ -542,7 +550,7 @@ export function useChat() {
     const conv = conversations.value.find((c) => c._id === conversationId)
     if (!conv) return
     patchConversation(conversationId, { _unread: Math.max(1, conv._unread ?? 0) })
-    recalcUnread()
+    recalculateUnreadCount()
   }
 
   /** Clear unread counts for all conversations (calls markAsRead for each with unread) */
@@ -550,7 +558,7 @@ export function useChat() {
     const toMark = conversations.value.filter((c) => (c._unread ?? 0) > 0)
     for (const conv of toMark) {
       if (conv.lastMessage?.messageId) {
-        chatApi.markAsRead(conv._id, conv.lastMessage.messageId).catch(() => {})
+        chatApi.markAsRead(conv._id, conv.lastMessage.messageId).catch(() => { })
       }
       patchConversation(conv._id, { _unread: 0 })
     }
