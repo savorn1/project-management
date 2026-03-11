@@ -5,24 +5,26 @@
     :class="[mine ? 'flex-row-reverse' : 'flex-row', highlighted && 'msg-highlight']"
   >
     <!-- Avatar (other person only) -->
-    <div v-if="!mine" class="relative flex-shrink-0 self-end">
-      <div
-        class="w-7 h-7 rounded-full bg-gradient-to-br flex items-center justify-center text-[10px] font-bold text-white shadow-md"
-        :class="senderGradient"
-      >
-        {{ senderInitials }}
-      </div>
-      <span
-        v-if="isOnline(message.senderId)"
-        class="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-400 border-2 border-slate-900"
-      />
+    <div v-if="!mine" class="relative flex-shrink-0 self-end w-7">
+      <template v-if="!isGrouped">
+        <div
+          class="w-7 h-7 rounded-full bg-gradient-to-br flex items-center justify-center text-[10px] font-bold text-white shadow-md"
+          :class="senderGradient"
+        >
+          {{ senderInitials }}
+        </div>
+        <span
+          v-if="isOnline(message.senderId)"
+          class="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-400 border-2 border-slate-900"
+        />
+      </template>
     </div>
 
     <div class="max-w-[70%] flex flex-col" :class="mine ? 'items-end' : 'items-start'">
 
-      <!-- Sender name (other people only) -->
+      <!-- Sender name (other people only, not grouped) -->
       <span
-        v-if="!mine && senderName"
+        v-if="!mine && senderName && !isGrouped"
         class="text-[11px] font-semibold mb-1 px-1 leading-none"
         :class="senderNameColor"
       >{{ senderName }}</span>
@@ -231,16 +233,29 @@
               v-for="group in groupedReactions"
               :key="group.emoji"
               @click="$emit('react', message._id, group.emoji)"
+              @mouseenter="openReactionDetail($event, group.emoji)"
+              @mouseleave="closeReactionDetail"
               class="flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] transition-all duration-150 hover:scale-110 active:scale-95"
               :class="group.reacted
                 ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300 shadow-sm shadow-indigo-500/20'
                 : 'bg-slate-800/60 border-slate-700/40 text-gray-400 hover:bg-slate-700/50 hover:border-slate-600/60'"
-              :title="group.emoji"
             >
               <span>{{ group.emoji }}</span>
               <span class="font-medium">{{ group.count }}</span>
             </button>
           </div>
+
+          <!-- Reaction detail tooltip -->
+          <Teleport to="body">
+            <div
+              v-if="showReactionDetail && reactionDetailUsers.length"
+              class="fixed z-[9999] bg-slate-800 border border-slate-700/60 rounded-xl shadow-xl shadow-black/40 px-3 py-2 min-w-[100px] max-w-[180px] pointer-events-none"
+              :style="reactionDetailStyle"
+            >
+              <p class="text-base text-center leading-none mb-1.5">{{ reactionDetailEmoji }}</p>
+              <p v-for="name in reactionDetailUsers" :key="name" class="text-[11px] text-gray-300 truncate leading-snug">{{ name }}</p>
+            </div>
+          </Teleport>
         </template>
       </template>
 
@@ -433,6 +448,7 @@ const props = defineProps<{
   currentUserId?: string
   highlighted?: boolean
   isStarred?: boolean
+  isGrouped?: boolean
   memberMap?: Map<string, string>
   /** Used for group read/delivered rules (ALL others). */
   participantsCount?: number
@@ -519,15 +535,45 @@ const fileAttachments = computed<MessageAttachment[]>(() =>
 )
 
 const groupedReactions = computed(() => {
-  const map = new Map<string, { emoji: string; count: number; reacted: boolean }>()
+  const map = new Map<string, { emoji: string; count: number; reacted: boolean; userIds: string[] }>()
   for (const r of (props.message.reactions ?? [])) {
-    const entry = map.get(r.emoji) ?? { emoji: r.emoji, count: 0, reacted: false }
+    const entry = map.get(r.emoji) ?? { emoji: r.emoji, count: 0, reacted: false, userIds: [] }
     entry.count++
+    entry.userIds.push(r.userId)
     if (r.userId === props.currentUserId) entry.reacted = true
     map.set(r.emoji, entry)
   }
   return [...map.values()]
 })
+
+// ── Reaction detail tooltip ───────────────────────────────────────────────────
+
+const showReactionDetail = ref(false)
+const reactionDetailEmoji = ref('')
+const reactionDetailStyle = ref('')
+let _reactionDetailTimer: ReturnType<typeof setTimeout> | null = null
+
+const reactionDetailUsers = computed(() => {
+  const group = groupedReactions.value.find(g => g.emoji === reactionDetailEmoji.value)
+  if (!group) return []
+  return group.userIds.map(id =>
+    id === props.currentUserId ? 'You' : (props.memberMap?.get(id) ?? id.slice(-4))
+  )
+})
+
+function openReactionDetail(event: MouseEvent, emoji: string) {
+  if (_reactionDetailTimer) { clearTimeout(_reactionDetailTimer); _reactionDetailTimer = null }
+  const btn = event.currentTarget as HTMLElement
+  const rect = btn.getBoundingClientRect()
+  reactionDetailEmoji.value = emoji
+  const left = Math.min(Math.max(rect.left - 40, 8), window.innerWidth - 200)
+  reactionDetailStyle.value = `left:${left}px;top:${rect.top - 8}px;transform:translateY(-100%)`
+  showReactionDetail.value = true
+}
+
+function closeReactionDetail() {
+  _reactionDetailTimer = setTimeout(() => { showReactionDetail.value = false }, 200)
+}
 
 const readCount = computed(() => {
   const count = (props.message.readBy ?? []).filter(

@@ -1,4 +1,5 @@
 import type { ChatMessage, Conversation, TeamMember } from '~/types'
+import type { ConversationUpdatedEvent } from '~/types/socketEvents'
 
 // ── Singleton state ────────────────────────────────────────────────────────────
 const conversations = ref<Conversation[]>([])
@@ -679,11 +680,13 @@ export function useChat() {
     } else {
       const preview = buildPreview(msg.type, msg.content, msg.attachments?.length)
       if (!isMuted) {
-        toast.info(`💬 ${convName}: ${preview}`)
-        // Browser notification when tab is hidden (muted conversations are silent)
+        // When the tab is hidden, use a browser OS notification (avoids a duplicate toast on return).
+        // When the tab is visible, fall back to an in-app toast.
         if (!isFromSelf && document.hidden && Notification.permission === 'granted') {
           const n = new Notification(convName, { body: preview, icon: '/favicon.ico' })
           n.onclick = () => { window.focus(); n.close() }
+        } else {
+          toast.info(`💬 ${convName}: ${preview}`)
         }
       }
       totalUnread.value++
@@ -796,7 +799,7 @@ export function useChat() {
     toast.info(`💬 You've been added to a new conversation`)
   }
 
-  function onConversationUpdated(data: { conversationId: string; name: string | null; avatar: string | null; admins: string[]; updatedAt: string }) {
+  function onConversationUpdated(data: ConversationUpdatedEvent) {
     patchConversation(data.conversationId, {
       name: data.name ?? undefined,
       avatar: data.avatar ?? undefined,

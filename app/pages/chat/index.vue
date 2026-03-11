@@ -389,6 +389,7 @@
                   :participants-count="activeConversation.participants.length"
                   :highlighted="msg._id === highlightedId"
                   :is-starred="starredIds.has(msg._id)"
+                  :is-grouped="groupedMessageIds.has(msg._id)"
                   :member-map="memberMap"
                   :reply-to-message="msg.replyTo ? messageMap.get(msg.replyTo) && { _id: msg.replyTo, content: messageMap.get(msg.replyTo)!.content, senderName: senderName(messageMap.get(msg.replyTo)!.senderId) } : undefined"
                   @delete="deleteMessage"
@@ -1650,11 +1651,12 @@ async function confirmAddMembers() {
   }
 }
 
-// Search filter
+// Search filter — always sorted by createdAt ascending
 const filteredMessages = computed(() => {
-  if (!searchQuery.value.trim()) return messages.value
-  const q = searchQuery.value.toLowerCase()
-  return messages.value.filter(m => m.content.toLowerCase().includes(q))
+  const base = searchQuery.value.trim()
+    ? messages.value.filter(m => m.content.toLowerCase().includes(searchQuery.value.toLowerCase()))
+    : messages.value
+  return [...base].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
 })
 
 // Map messageId → message for resolving replyTo
@@ -1662,6 +1664,26 @@ const messageMap = computed(() => {
   const map = new Map<string, ChatMessage>()
   for (const m of messages.value) map.set(m._id, m as ChatMessage)
   return map
+})
+
+// Which message IDs should be visually grouped with the one above
+const groupedMessageIds = computed<Set<string>>(() => {
+  const ids = new Set<string>()
+  const msgs = filteredMessages.value
+  for (let i = 1; i < msgs.length; i++) {
+    const curr = msgs[i]!
+    const prev = msgs[i - 1]!
+    if (
+      curr.senderId === prev.senderId &&
+      !curr.isDeleted && !prev.isDeleted &&
+      !curr.replyTo &&
+      new Date(curr.createdAt).toDateString() === new Date(prev.createdAt).toDateString() &&
+      new Date(curr.createdAt).getTime() - new Date(prev.createdAt).getTime() < 5 * 60_000
+    ) {
+      ids.add(curr._id)
+    }
+  }
+  return ids
 })
 
 // Group messages by calendar date

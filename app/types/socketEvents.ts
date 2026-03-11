@@ -1,4 +1,13 @@
-import type { AppNotification, ChatMessage, Conversation, FundPool, MessageReaction, PaymentConfirmedEvent, PinnedMessage, Project } from '~/types'
+import type {
+  AppNotification,
+  ChatMessage,
+  Conversation,
+  FundPool,
+  MessageReaction,
+  PaymentConfirmedEvent,
+  PinnedMessage,
+  Project
+} from '~/types'
 
 // ── Task event payload ─────────────────────────────────────────────────────────
 
@@ -10,6 +19,16 @@ export interface TaskEventPayload {
   userId: string
   clientId?: string
   timestamp: string
+}
+
+// ── Chat event payload DTOs ────────────────────────────────────────────────────
+
+export interface ConversationUpdatedEvent {
+  conversationId: string
+  name: string | null
+  avatar: string | null
+  admins: string[]
+  updatedAt: string
 }
 
 // ── Server → Client events ─────────────────────────────────────────────────────
@@ -27,7 +46,7 @@ export interface ServerToClientEvents {
 
   // Chat — conversations
   'chat:conversation:new': (data: Conversation) => void
-  'chat:conversation:updated': (data: { conversationId: string; name: string | null; avatar: string | null; admins: string[]; updatedAt: string }) => void
+  'chat:conversation:updated': (data: ConversationUpdatedEvent) => void
 
   // Chat — members
   'chat:member:added': (data: { conversationId: string; userIds: string[] }) => void
@@ -89,7 +108,7 @@ export interface ClientToServerEvents {
   leaveRoom: (data: { room: string }) => void
   joinConversationRoom: (data: { conversationId: string }) => void
 
-  /** Join conversation member room (used for message delivery fanout) */
+  /** Join conversation member room (currently unused — reserved for future broadcast refactor) */
   joinConversationMemberRoom: (data: { conversationId: string }) => void
   leaveConversationMemberRoom: (data: { conversationId: string }) => void
   leaveConversationRoom: (data: { conversationId: string }) => void
