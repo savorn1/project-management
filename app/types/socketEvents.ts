@@ -67,7 +67,7 @@ export interface ServerToClientEvents {
   'chat:conversation:disappearing': (data: { conversationId: string; enabled: boolean; ttl: number }) => void
 
   // Poll updates
-  'chat:poll:updated': (data: { messageId: string; poll: { question: string; options: Array<{ text: string; votes: string[] }> } }) => void
+  'chat:poll:updated': (data: { messageId: string; poll: { question: string; allowMultiple: boolean; options: Array<{ text: string; votes: string[] }> } }) => void
 
   // Presence
   'user:status': (data: { userId: string; online: boolean }) => void

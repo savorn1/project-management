@@ -100,7 +100,8 @@
             :current-user-id="currentUserId"
             :mine="mine"
             :is-deleted="message.isDeleted"
-            @vote="(idx) => emit('vote', message._id, idx)"
+            :member-map="memberMap"
+            @vote="(idx) => emit('vote', message._id, [idx])"
           />
 
           <!-- Text bubble -->
@@ -465,7 +466,7 @@ const emit = defineEmits<{
   forward: [message: ChatMessage]
   thread: [message: ChatMessage]
   star: [messageId: string]
-  vote: [messageId: string, optionIndex: number]
+  vote: [messageId: string, optionIndexes: number[]]
   'create-task': [message: ChatMessage]
   remind: [message: ChatMessage]
   'show-edit-history': [message: ChatMessage]

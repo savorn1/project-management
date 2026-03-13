@@ -363,6 +363,7 @@ export interface PollOption {
 
 export interface Poll {
   question: string
+  allowMultiple: boolean
   options: PollOption[]
 }
 
@@ -503,6 +504,7 @@ export interface DashboardStats {
   teamMembers: number
   tasksThisWeek: number
 }
+
 
 
 

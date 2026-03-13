@@ -43,7 +43,7 @@
             <input
               v-model="pollQuestion"
               placeholder="Ask a question…"
-              class="w-full bg-slate-800/60 border border-slate-700/40 rounded-xl px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500/50"
+              class="w-full bg-slate-800/60 border border-slate-700/40 rounded-xl px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500/50 transition-colors"
               @keydown.escape="showPollModal = false"
             />
           </div>
@@ -74,6 +74,22 @@
                 class="text-[11px] text-indigo-400/70 hover:text-indigo-300 text-left mt-0.5 transition-colors"
               >+ Add option</button>
             </div>
+          </div>
+
+          <!-- Allow multiple toggle -->
+          <div class="mb-4 flex items-center justify-between">
+            <span class="text-[11px] text-gray-500">Allow multiple answers</span>
+            <button
+              type="button"
+              @click="pollAllowMultiple = !pollAllowMultiple"
+              class="relative w-8 h-4 rounded-full transition-colors focus:outline-none flex-shrink-0"
+              :class="pollAllowMultiple ? 'bg-indigo-500' : 'bg-slate-700'"
+            >
+              <span
+                class="absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white transition-transform"
+                :class="pollAllowMultiple ? 'translate-x-4' : 'translate-x-0'"
+              />
+            </button>
           </div>
 
           <div class="flex justify-end gap-2">
@@ -568,7 +584,7 @@ const emit = defineEmits<{
   schedule: [content: string, files: File[], scheduledFor: number]
   typing: [isTyping: boolean]
   'cancel-reply': []
-  poll: [question: string, options: string[]]
+  poll: [question: string, options: string[], allowMultiple: boolean]
 }>()
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20 MB
@@ -725,14 +741,16 @@ async function submit() {
 const showPollModal = ref(false)
 const pollQuestion = ref('')
 const pollOptions = ref(['', ''])
+const pollAllowMultiple = ref(false)
 
 function submitPoll() {
   const opts = pollOptions.value.filter((o: string) => o.trim())
   if (!pollQuestion.value.trim() || opts.length < 2) return
-  emit('poll', pollQuestion.value.trim(), opts)
+  emit('poll', pollQuestion.value.trim(), opts, pollAllowMultiple.value)
   showPollModal.value = false
   pollQuestion.value = ''
   pollOptions.value = ['', '']
+  pollAllowMultiple.value = false
 }
 
 // ── Formatting toolbar ───────────────────────────────────────────────────────

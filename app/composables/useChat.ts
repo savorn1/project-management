@@ -606,8 +606,8 @@ export function useChat() {
     }
   }
 
-  async function votePoll(messageId: string, optionIndex: number) {
-    const updated = await chatApi.votePoll(messageId, optionIndex)
+  async function votePoll(messageId: string, optionIndexes: number[]) {
+    const updated = await chatApi.votePoll(messageId, optionIndexes)
     if (updated?.poll) {
       messages.value = messages.value.map((m) =>
         m._id === messageId ? { ...m, poll: updated.poll } : m,

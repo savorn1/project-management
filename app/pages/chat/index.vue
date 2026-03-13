@@ -1324,14 +1324,14 @@ function handleSetStatus(emoji: string, text: string) {
   setMyStatus(emoji, text)
 }
 
-async function handleVotePoll(messageId: string, optionIndex: number) {
-  await votePoll(messageId, optionIndex)
+async function handleVotePoll(messageId: string, optionIndexes: number[]) {
+  await votePoll(messageId, optionIndexes)
 }
 
-async function handleCreatePoll(question: string, options: string[]) {
+async function handleCreatePoll(question: string, options: string[], allowMultiple: boolean) {
   if (!activeConversation.value) return
   const { chatApi } = useApi()
-  await chatApi.createPoll(activeConversation.value._id, question, options)
+  await chatApi.createPoll(activeConversation.value._id, question, options, allowMultiple)
 }
 
 // Disappearing messages — TTL dropdown state

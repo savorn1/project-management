@@ -9,6 +9,7 @@ import type {
   FundPoolInput,
   Label,
   LinkPreview,
+  MentionResult,
   Milestone,
   Order,
   PaymentQrDetail,
@@ -20,7 +21,6 @@ import type {
   QrHistoryRecord,
   SampleOrderResult,
   Sprint,
-  MentionResult,
   StarredMessage,
   Task,
   TaskActivity,
@@ -1041,15 +1041,15 @@ export function useApi() {
       })
     },
 
-    async createPoll(conversationId: string, question: string, options: string[]): Promise<ChatMessage | null> {
+    async createPoll(conversationId: string, question: string, options: string[], allowMultiple = false): Promise<ChatMessage | null> {
       return await request<ChatMessage>(`/chat/conversations/${conversationId}/poll`, {
-        method: 'POST', body: JSON.stringify({ question, options }),
+        method: 'POST', body: JSON.stringify({ question, options, allowMultiple }),
       })
     },
 
-    async votePoll(messageId: string, optionIndex: number): Promise<ChatMessage | null> {
+    async votePoll(messageId: string, optionIndexes: number[]): Promise<ChatMessage | null> {
       return await request<ChatMessage>(`/chat/messages/${messageId}/poll/vote`, {
-        method: 'POST', body: JSON.stringify({ optionIndex }),
+        method: 'POST', body: JSON.stringify({ optionIndexes }),
       })
     },
 
