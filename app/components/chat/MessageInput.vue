@@ -30,6 +30,12 @@
       </div>
     </Transition>
 
+    <!-- Saved replies modal -->
+    <SavedRepliesModal
+      v-model="showSavedRepliesModal"
+      @pick="insertSavedReply"
+    />
+
     <!-- Poll creation modal -->
     <Teleport to="body">
       <div v-if="showPollModal" class="fixed inset-0 z-[9990] flex items-center justify-center p-4" @click.self="showPollModal = false">
@@ -631,6 +637,8 @@
 <script setup lang="ts">
 import type { TeamMember } from '~/types';
 
+const { savedReplies, loadSavedReplies } = useChat()
+
 const props = defineProps<{
   members: TeamMember[]
   replyingTo?: { _id: string; content: string; senderName: string }
@@ -838,6 +846,8 @@ interface SlashCommand {
   action: () => void
 }
 
+const showSavedRepliesModal = ref(false)
+
 const SLASH_COMMANDS: SlashCommand[] = [
   {
     icon: '📊',
@@ -850,6 +860,12 @@ const SLASH_COMMANDS: SlashCommand[] = [
     name: '/schedule',
     description: 'Schedule a message',
     action: () => { showSchedulePicker.value = true },
+  },
+  {
+    icon: '💬',
+    name: '/replies',
+    description: 'Browse saved replies',
+    action: () => { showSavedRepliesModal.value = true },
   },
   {
     icon: '🖼',
@@ -880,9 +896,26 @@ const SLASH_COMMANDS: SlashCommand[] = [
 const showSlashMenu = ref(false)
 const slashSelectedIdx = ref(0)
 
+/** Saved replies surfaced as dynamic slash commands */
+const savedReplyCommands = computed<SlashCommand[]>(() =>
+  savedReplies.value.map((r) => ({
+    icon: '💬',
+    name: `/${r.shortcut}`,
+    description: r.title,
+    action: () => { insertSavedReply(r.content) },
+  }))
+)
+
+function insertSavedReply(content: string) {
+  text.value = content
+  showSavedRepliesModal.value = false
+  nextTick(() => { textareaRef.value?.focus(); autoResize() })
+}
+
 const filteredSlashCommands = computed(() => {
   const q = text.value.startsWith('/') ? text.value.slice(1).toLowerCase() : ''
-  return SLASH_COMMANDS.filter(c => c.name.slice(1).startsWith(q))
+  const allCmds = [...SLASH_COMMANDS, ...savedReplyCommands.value]
+  return allCmds.filter(c => c.name.slice(1).startsWith(q))
 })
 
 watch(filteredSlashCommands, (cmds) => {
@@ -1153,7 +1186,10 @@ function deleteTemplate(i: number) {
   if (realIdx !== -1) { templates.value.splice(realIdx, 1); saveTemplates() }
 }
 
-onMounted(() => loadTemplates())
+onMounted(() => {
+  loadTemplates()
+  loadSavedReplies()
+})
 
 defineExpose({
   focus: () => textareaRef.value?.focus(),

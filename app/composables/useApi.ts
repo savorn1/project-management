@@ -10,6 +10,7 @@ import type {
   Label,
   LinkPreview,
   MentionResult,
+  MessageReminder,
   Milestone,
   Order,
   PaymentQrDetail,
@@ -20,6 +21,8 @@ import type {
   ProjectMember,
   QrHistoryRecord,
   SampleOrderResult,
+  SavedReply,
+  ScheduledMessage,
   Sprint,
   StarredMessage,
   Task,
@@ -1081,6 +1084,70 @@ export function useApi() {
 
     async getMentions(limit = 50): Promise<MentionResult[]> {
       return (await request<MentionResult[]>(`/chat/mentions?limit=${limit}`)) ?? []
+    },
+
+    // ── Scheduled Messages ────────────────────────────────────────────────
+    async scheduleMessage(
+      conversationId: string,
+      data: { content: string; scheduledFor: string; type?: string; replyTo?: string },
+    ): Promise<ScheduledMessage | null> {
+      return request<ScheduledMessage>(`/chat/conversations/${conversationId}/messages/schedule`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      })
+    },
+
+    async getScheduledMessages(): Promise<ScheduledMessage[]> {
+      return (await request<ScheduledMessage[]>('/chat/scheduled')) ?? []
+    },
+
+    async cancelScheduledMessage(id: string): Promise<void> {
+      await request(`/chat/scheduled/${id}`, { method: 'DELETE' })
+    },
+
+    // ── Message Reminders ─────────────────────────────────────────────────
+    async setReminder(
+      messageId: string,
+      data: { remindAt: string; note?: string },
+    ): Promise<MessageReminder | null> {
+      return request<MessageReminder>(`/chat/messages/${messageId}/remind`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      })
+    },
+
+    async getReminders(): Promise<MessageReminder[]> {
+      return (await request<MessageReminder[]>('/chat/reminders')) ?? []
+    },
+
+    async cancelReminder(id: string): Promise<void> {
+      await request(`/chat/reminders/${id}`, { method: 'DELETE' })
+    },
+
+    // ── Saved Replies ─────────────────────────────────────────────────────
+    async getSavedReplies(): Promise<SavedReply[]> {
+      return (await request<SavedReply[]>('/chat/saved-replies')) ?? []
+    },
+
+    async createSavedReply(data: { title: string; shortcut: string; content: string }): Promise<SavedReply | null> {
+      return request<SavedReply>('/chat/saved-replies', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      })
+    },
+
+    async updateSavedReply(
+      id: string,
+      data: { title?: string; shortcut?: string; content?: string },
+    ): Promise<SavedReply | null> {
+      return request<SavedReply>(`/chat/saved-replies/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      })
+    },
+
+    async deleteSavedReply(id: string): Promise<void> {
+      await request(`/chat/saved-replies/${id}`, { method: 'DELETE' })
     },
   }
 

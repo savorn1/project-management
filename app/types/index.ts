@@ -185,7 +185,7 @@ export interface TaskComment {
 }
 
 // Notification
-export type NotificationType = 'mentioned' | 'assigned' | 'task_completed' | 'chat_group_created' | 'chat_member_added'
+export type NotificationType = 'mentioned' | 'assigned' | 'task_completed' | 'chat_group_created' | 'chat_member_added' | 'chat_message_reminder' | 'chat_scheduled_sent'
 
 export interface AppNotification {
   _id: string
@@ -493,6 +493,44 @@ export interface StarredMessage {
 export interface MentionResult {
   message: ChatMessage
   conversationId: string
+}
+
+export type ScheduledMessageStatus = 'pending' | 'sent' | 'cancelled' | 'failed'
+
+export interface ScheduledMessage {
+  _id: string
+  conversationId: string
+  senderId: string
+  content: string
+  type: MessageType
+  replyTo?: string
+  scheduledFor: string
+  status: ScheduledMessageStatus
+  createdAt: string
+}
+
+export type MessageReminderStatus = 'pending' | 'sent' | 'cancelled'
+
+export interface MessageReminder {
+  _id: string
+  userId: string
+  messageId: string
+  conversationId: string
+  remindAt: string
+  note?: string
+  messageContent?: string
+  status: MessageReminderStatus
+  createdAt: string
+}
+
+export interface SavedReply {
+  _id: string
+  userId: string
+  title: string
+  shortcut: string
+  content: string
+  createdAt: string
+  updatedAt: string
 }
 
 // Dashboard Stats

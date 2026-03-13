@@ -1,4 +1,4 @@
-import type { ChatMessage, Conversation, TeamMember } from '~/types'
+import type { ChatMessage, Conversation, MessageReminder, SavedReply, ScheduledMessage, TeamMember } from '~/types'
 import type { ConversationUpdatedEvent } from '~/types/socketEvents'
 
 // ── Singleton state ────────────────────────────────────────────────────────────
@@ -38,6 +38,11 @@ const hasOlderMessages = ref(false)
 const hasNewerMessages = ref(false)
 const messageLoadingOlder = ref(false)
 const messageLoadingNewer = ref(false)
+
+// ── Scheduled messages, reminders, saved replies ───────────────────────────────
+const scheduledMessages = ref<ScheduledMessage[]>([])
+const reminders = ref<MessageReminder[]>([])
+const savedReplies = ref<SavedReply[]>([])
 
 let socketListenersRegistered = false
 
@@ -1022,6 +1027,59 @@ export function useChat() {
 
     // Real-time
     startListening,
+
+    // Scheduled messages
+    scheduledMessages: readonly(scheduledMessages),
+    async loadScheduledMessages() {
+      scheduledMessages.value = await chatApi.getScheduledMessages()
+    },
+    async scheduleMessage(conversationId: string, data: { content: string; scheduledFor: string; type?: string; replyTo?: string }) {
+      const msg = await chatApi.scheduleMessage(conversationId, data)
+      if (msg) scheduledMessages.value.push(msg)
+      return msg
+    },
+    async cancelScheduledMessage(id: string) {
+      await chatApi.cancelScheduledMessage(id)
+      scheduledMessages.value = scheduledMessages.value.filter(m => m._id !== id)
+    },
+
+    // Message reminders
+    reminders: readonly(reminders),
+    async loadReminders() {
+      reminders.value = await chatApi.getReminders()
+    },
+    async setReminder(messageId: string, data: { remindAt: string; note?: string }) {
+      const reminder = await chatApi.setReminder(messageId, data)
+      if (reminder) reminders.value.push(reminder)
+      return reminder
+    },
+    async cancelReminder(id: string) {
+      await chatApi.cancelReminder(id)
+      reminders.value = reminders.value.filter(r => r._id !== id)
+    },
+
+    // Saved replies
+    savedReplies: readonly(savedReplies),
+    async loadSavedReplies() {
+      savedReplies.value = await chatApi.getSavedReplies()
+    },
+    async createSavedReply(data: { title: string; shortcut: string; content: string }) {
+      const reply = await chatApi.createSavedReply(data)
+      if (reply) savedReplies.value.push(reply)
+      return reply
+    },
+    async updateSavedReply(id: string, data: { title?: string; shortcut?: string; content?: string }) {
+      const updated = await chatApi.updateSavedReply(id, data)
+      if (updated) {
+        const idx = savedReplies.value.findIndex(r => r._id === id)
+        if (idx !== -1) savedReplies.value[idx] = updated
+      }
+      return updated
+    },
+    async deleteSavedReply(id: string) {
+      await chatApi.deleteSavedReply(id)
+      savedReplies.value = savedReplies.value.filter(r => r._id !== id)
+    },
 
     // Helpers
     conversationName,

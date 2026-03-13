@@ -284,16 +284,26 @@
 
             <!-- Scheduled messages toggle -->
             <button
-              v-if="convScheduledMsgs.length > 0"
-              @click="showScheduledPanel = !showScheduledPanel"
+              @click="showScheduledPanel = !showScheduledPanel; showRemindersPanel = false"
               class="ml-1 w-7 h-7 rounded-lg flex items-center justify-center transition-colors relative"
-              :class="showScheduledPanel ? 'bg-violet-500/20 text-violet-400' : 'text-gray-600 hover:text-gray-400 hover:bg-slate-800/60'"
+              :class="showScheduledPanel ? 'bg-indigo-500/20 text-indigo-400' : 'text-gray-600 hover:text-gray-400 hover:bg-slate-800/60'"
               title="Scheduled messages"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span class="absolute -top-1 -right-1 w-3.5 h-3.5 bg-violet-500 rounded-full text-[8px] text-white flex items-center justify-center font-bold">{{ convScheduledMsgs.length }}</span>
+            </button>
+
+            <!-- Reminders toggle -->
+            <button
+              @click="showRemindersPanel = !showRemindersPanel; showScheduledPanel = false"
+              class="ml-1 w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+              :class="showRemindersPanel ? 'bg-amber-500/20 text-amber-400' : 'text-gray-600 hover:text-gray-400 hover:bg-slate-800/60'"
+              title="Reminders"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
             </button>
 
             <!-- Conversation info panel toggle -->
@@ -892,40 +902,30 @@
       leave-to-class="opacity-0 translate-x-4"
     >
       <div
-        v-if="showScheduledPanel && activeConversation"
-        class="w-60 flex-shrink-0 border-l border-slate-800/60 flex flex-col h-full bg-slate-900/40"
+        v-if="showScheduledPanel"
+        class="w-64 flex-shrink-0 border-l border-slate-800/60 flex flex-col h-full bg-slate-900/40"
       >
-        <div class="px-3 py-3 border-b border-slate-800/60 flex items-center justify-between flex-shrink-0">
-          <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Scheduled</span>
-          <button @click="showScheduledPanel = false" class="text-gray-600 hover:text-gray-300 transition-colors">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <div class="flex-1 overflow-y-auto p-2">
-          <div v-if="convScheduledMsgs.length === 0" class="flex flex-col items-center justify-center h-32 text-center px-4">
-            <p class="text-xs text-gray-600">No scheduled messages</p>
-          </div>
-          <div v-else class="flex flex-col gap-2">
-            <div
-              v-for="s in convScheduledMsgs"
-              :key="s.id"
-              class="bg-slate-800/60 border border-slate-700/40 rounded-xl p-2.5"
-            >
-              <p class="text-xs text-gray-300 line-clamp-3 mb-1.5">{{ s.content || '(no text)' }}</p>
-              <div class="flex items-center justify-between gap-1">
-                <span class="text-[10px] text-violet-400">
-                  {{ new Date(s.scheduledFor).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
-                </span>
-                <button
-                  @click="cancelScheduled(s.id)"
-                  class="text-[10px] text-gray-600 hover:text-rose-400 transition-colors"
-                >Cancel</button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ScheduledMessagesPanel @close="showScheduledPanel = false" />
+      </div>
+    </Transition>
+
+    <!-- ── Reminders panel ────────────────────────────────────────── -->
+    <Transition
+      enter-active-class="transition-all duration-200 ease-out"
+      enter-from-class="opacity-0 translate-x-4"
+      enter-to-class="opacity-100 translate-x-0"
+      leave-active-class="transition-all duration-150 ease-in"
+      leave-from-class="opacity-100 translate-x-0"
+      leave-to-class="opacity-0 translate-x-4"
+    >
+      <div
+        v-if="showRemindersPanel"
+        class="w-64 flex-shrink-0 border-l border-slate-800/60 flex flex-col h-full bg-slate-900/40"
+      >
+        <RemindersPanel
+          @close="showRemindersPanel = false"
+          @jump="(convId, msgId) => { showRemindersPanel = false; handleStarNavigate({ conversationId: convId, messageId: msgId }) }"
+        />
       </div>
     </Transition>
 
@@ -1181,46 +1181,14 @@
       </div>
     </Teleport>
 
-    <!-- ── Message Reminder popup ───────────────────────────────── -->
-    <Teleport to="body">
-      <div v-if="reminderMessage" class="fixed inset-0 z-[9999] flex items-center justify-center">
-        <div class="absolute inset-0 bg-black/60" @click="reminderMessage = null" />
-        <div class="relative w-[300px] max-w-[92vw] bg-slate-900 border border-slate-700/60 rounded-2xl shadow-2xl shadow-black/40 p-5" @click.stop>
-          <div class="flex items-center justify-between mb-4">
-            <p class="text-sm font-semibold text-white">Set Reminder</p>
-            <button @click="reminderMessage = null" class="text-gray-600 hover:text-gray-300 transition-colors">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          <!-- Message preview -->
-          <div class="mb-4 px-3 py-2 bg-slate-800/60 border border-slate-700/40 rounded-xl">
-            <p class="text-[10px] text-gray-600 mb-0.5">Reminding you about</p>
-            <p class="text-xs text-gray-400 line-clamp-2">{{ reminderMessage.content || '📎 Attachment' }}</p>
-          </div>
-
-          <!-- Time options -->
-          <div class="flex flex-col gap-1.5">
-            <button
-              v-for="opt in getReminderOptions()"
-              :key="opt.label"
-              @click="setReminder(opt.minutes)"
-              class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700/30 transition-colors text-left"
-            >
-              <svg class="w-4 h-4 text-cyan-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div>
-                <p class="text-xs font-medium text-gray-300">{{ opt.label }}</p>
-                <p class="text-[10px] text-gray-600">{{ opt.desc }}</p>
-              </div>
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <!-- ── Message Reminder modal ───────────────────────────────── -->
+    <ReminderPickerModal
+      :model-value="!!reminderMessage"
+      :message-id="reminderMessage?._id ?? ''"
+      :message-content="reminderMessage?.content"
+      @update:model-value="(v) => { if (!v) reminderMessage = null }"
+      @set="handleSetReminder"
+    />
   </div>
 </template>
 
@@ -1271,6 +1239,8 @@ const {
   archiveConversation,
   loadArchivedConversations,
   archivedConversations,
+  scheduleMessage: chatScheduleMessage,
+  setReminder: chatSetReminder,
   startListening,
   conversationName,
   conversationInitials,
@@ -1515,130 +1485,38 @@ async function confirmCreateTask() {
   }
 }
 
-// ── Feature 5: Message Reminder ───────────────────────────────────────────────
+// ── Message Reminder ──────────────────────────────────────────────────────────
 const reminderMessage = ref<ChatMessage | null>(null)
-
-interface ReminderEntry { messageId: string; content: string; fireAt: number }
-
-function getReminderOptions() {
-  const now = new Date()
-  const tom9 = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 9, 0, 0)
-  const minsToTom9 = Math.max(1, Math.round((tom9.getTime() - now.getTime()) / 60000))
-  return [
-    { label: 'In 30 minutes', desc: 'Quick reminder', minutes: 30 },
-    { label: 'In 1 hour', desc: 'In a bit', minutes: 60 },
-    { label: 'In 4 hours', desc: 'Later today', minutes: 240 },
-    { label: 'Tomorrow at 9 AM', desc: 'Fresh start', minutes: minsToTom9 },
-  ]
-}
+const showRemindersPanel = ref(false)
 
 function handleRemind(msg: ChatMessage) {
   reminderMessage.value = msg
 }
 
-function scheduleReminder(r: ReminderEntry) {
-  const delay = r.fireAt - Date.now()
-  if (delay <= 0) return
-  setTimeout(() => {
-    useToast().info(`⏰ Reminder: "${(r.content ?? '').slice(0, 60)}${(r.content ?? '').length > 60 ? '…' : ''}"`)
-    try {
-      const items: ReminderEntry[] = JSON.parse(localStorage.getItem('chat-reminders') ?? '[]')
-      localStorage.setItem('chat-reminders', JSON.stringify(items.filter((i) => i.messageId !== r.messageId)))
-    } catch { /* ignore */ }
-  }, Math.min(delay, 2_147_483_647))
-}
-
-function setReminder(minutes: number) {
+async function handleSetReminder(data: { remindAt: string; note?: string }) {
   if (!reminderMessage.value) return
-  const msg = reminderMessage.value
-  const fireAt = Date.now() + minutes * 60 * 1000
-  const entry: ReminderEntry = { messageId: msg._id, content: msg.content ?? '', fireAt }
-  try {
-    const items: ReminderEntry[] = JSON.parse(localStorage.getItem('chat-reminders') ?? '[]')
-    localStorage.setItem('chat-reminders', JSON.stringify([...items.filter((i) => i.messageId !== msg._id), entry]))
-  } catch { /* ignore */ }
-  scheduleReminder(entry)
+  await chatSetReminder(reminderMessage.value._id, data)
   reminderMessage.value = null
-  const label = minutes < 60 ? `${minutes} min` : minutes < 1440 ? `${minutes / 60} hr` : 'tomorrow'
-  useToast().success(`Reminder set for ${label}`)
+  useToast().success('Reminder set!')
 }
 
-function loadReminders() {
-  try {
-    const items: ReminderEntry[] = JSON.parse(localStorage.getItem('chat-reminders') ?? '[]')
-    const now = Date.now()
-    for (const r of items) {
-      if (r.fireAt > now) scheduleReminder(r)
-    }
-    localStorage.setItem('chat-reminders', JSON.stringify(items.filter((r) => r.fireAt > now)))
-  } catch { /* ignore */ }
-}
+function loadReminders() { /* reminders are now loaded by RemindersPanel on mount */ }
 
 // ── Scheduled Messages ────────────────────────────────────────────────────────
-interface ScheduledMsg { id: string; convId: string; content: string; files: string[]; scheduledFor: number }
-
-const scheduledMsgs = ref<ScheduledMsg[]>([])
 const showScheduledPanel = ref(false)
 
-function loadScheduled() {
-  try {
-    scheduledMsgs.value = JSON.parse(localStorage.getItem('chat-scheduled-msgs') ?? '[]')
-    const now = Date.now()
-    // fire any that are overdue
-    for (const s of scheduledMsgs.value) {
-      if (s.scheduledFor <= now) armScheduled(s)
-    }
-  } catch { scheduledMsgs.value = [] }
-}
-
-function saveScheduled() {
-  localStorage.setItem('chat-scheduled-msgs', JSON.stringify(scheduledMsgs.value))
-}
-
-function armScheduled(s: ScheduledMsg) {
-  const delay = Math.max(0, s.scheduledFor - Date.now())
-  setTimeout(async () => {
-    if (!scheduledMsgs.value.find((x) => x.id === s.id)) return
-    try {
-      const { chatApi } = useApi()
-      await chatApi.sendMessage(s.convId, s.content, undefined, [])
-      useToast().success('Scheduled message sent.')
-    } catch {
-      useToast().error('Failed to send scheduled message.')
-    }
-    scheduledMsgs.value = scheduledMsgs.value.filter((x) => x.id !== s.id)
-    saveScheduled()
-  }, Math.min(delay, 2_147_483_647))
-}
-
-function handleScheduleMessage(content: string, _files: File[], scheduledFor: number) {
+async function handleScheduleMessage(content: string, _files: File[], scheduledFor: number) {
   if (!activeConversation.value) return
-  const entry: ScheduledMsg = {
-    id: `${Date.now()}-${Math.random()}`,
-    convId: activeConversation.value._id,
+  await chatScheduleMessage(activeConversation.value._id, {
     content,
-    files: [],
-    scheduledFor,
-  }
-  scheduledMsgs.value = [...scheduledMsgs.value, entry]
-  saveScheduled()
-  armScheduled(entry)
+    scheduledFor: new Date(scheduledFor).toISOString(),
+  })
   const timeStr = new Date(scheduledFor).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
   useToast().success(`Message scheduled for ${timeStr}`)
 }
 
-function cancelScheduled(id: string) {
-  scheduledMsgs.value = scheduledMsgs.value.filter((s) => s.id !== id)
-  saveScheduled()
-}
-
-const convScheduledMsgs = computed(() =>
-  scheduledMsgs.value.filter((s) => s.convId === activeConversation.value?._id)
-)
-
 onMounted(() => {
   loadReminders()
-  loadScheduled()
 
   function handleCtrlK(e: KeyboardEvent) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
