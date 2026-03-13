@@ -5,10 +5,16 @@
     :class="[mine ? 'flex-row-reverse' : 'flex-row', highlighted && 'msg-highlight']"
   >
     <!-- Avatar (other person only) -->
-    <div v-if="!mine" class="relative flex-shrink-0 self-end w-7">
+    <div
+      v-if="!mine"
+      ref="avatarWrapRef"
+      class="relative flex-shrink-0 self-end w-7"
+      @mouseenter="onAvatarEnter"
+      @mouseleave="onAvatarLeave"
+    >
       <template v-if="!isGrouped">
         <div
-          class="w-7 h-7 rounded-full bg-gradient-to-br flex items-center justify-center text-[10px] font-bold text-white shadow-md"
+          class="w-7 h-7 rounded-full bg-gradient-to-br flex items-center justify-center text-[10px] font-bold text-white shadow-md cursor-pointer"
           :class="senderGradient"
         >
           {{ senderInitials }}
@@ -19,6 +25,31 @@
         />
       </template>
     </div>
+
+    <!-- Avatar hover card — teleported to body -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-150 ease-out"
+        enter-from-class="opacity-0 scale-95 translate-y-1"
+        enter-to-class="opacity-100 scale-100 translate-y-0"
+        leave-active-class="transition duration-100 ease-in"
+        leave-from-class="opacity-100 scale-100 translate-y-0"
+        leave-to-class="opacity-0 scale-95 translate-y-1"
+      >
+        <div
+          v-if="showHoverCard && senderName"
+          class="fixed z-[99999] pointer-events-none origin-bottom-left"
+          :style="hoverCardStyle"
+        >
+          <UserHoverCard
+            :name="senderName"
+            :is-online="isOnline(message.senderId)"
+            :last-seen-text="getLastSeen(message.senderId)"
+            :custom-status="customStatusMap.get(message.senderId) ?? null"
+          />
+        </div>
+      </Transition>
+    </Teleport>
 
     <div class="max-w-[70%] flex flex-col" :class="mine ? 'items-end' : 'items-start'">
 
@@ -453,6 +484,8 @@ const props = defineProps<{
   memberMap?: Map<string, string>
   /** Used for group read/delivered rules (ALL others). */
   participantsCount?: number
+  /** Active in-conversation search query — highlights matching text */
+  searchQuery?: string
 }>()
 
 const emit = defineEmits<{
@@ -472,7 +505,34 @@ const emit = defineEmits<{
   'show-edit-history': [message: ChatMessage]
 }>()
 
-const { formatTime, isOnline } = useChat()
+const { formatTime, isOnline, getLastSeen, customStatusMap } = useChat()
+
+// ── Avatar hover card ─────────────────────────────────────────────────────────
+const avatarWrapRef = ref<HTMLElement | null>(null)
+const showHoverCard = ref(false)
+const hoverCardStyle = ref<Record<string, string>>({})
+let _hoverTimer: ReturnType<typeof setTimeout> | null = null
+
+function onAvatarEnter() {
+  if (_hoverTimer) clearTimeout(_hoverTimer)
+  _hoverTimer = setTimeout(() => {
+    const el = avatarWrapRef.value
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const cardW = 224
+    const left = Math.min(rect.right + 8, window.innerWidth - cardW - 8)
+    hoverCardStyle.value = {
+      left: `${left}px`,
+      top: `${rect.bottom - 44}px`,
+    }
+    showHoverCard.value = true
+  }, 300)
+}
+
+function onAvatarLeave() {
+  if (_hoverTimer) { clearTimeout(_hoverTimer); _hoverTimer = null }
+  showHoverCard.value = false
+}
 
 // ── Computed helpers ──────────────────────────────────────────────────────────
 
@@ -684,6 +744,14 @@ const renderedContent = computed(() => {
   text = linkify(text)
   text = text.replace(/\n/g, '<br>')
   text = text.replace(/\x00BLOCK(\d+)\x00/g, (_, idx: string) => codeBlocks[Number(idx)] ?? '')
+
+  // Highlight in-conversation search matches (skip inside HTML tags)
+  if (props.searchQuery?.trim()) {
+    const q = props.searchQuery.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    text = text.replace(new RegExp(`(?![^<]*>)(${q})`, 'gi'),
+      '<mark style="background:rgba(234,179,8,0.4);color:inherit;border-radius:2px;padding:0 1px;">$1</mark>')
+  }
+
   return text
 })
 

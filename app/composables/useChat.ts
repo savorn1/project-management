@@ -143,8 +143,6 @@ export function useChat() {
     attachmentsCount = 0,
   ): string {
 
-    if (!content) return 'Message deleted'
-
     if (type === 'image') {
       if (attachmentsCount > 1) return `📷 ${attachmentsCount} Photos`
       return '📷 Photo'
@@ -153,6 +151,8 @@ export function useChat() {
       if (attachmentsCount > 1) return `📎 ${attachmentsCount} files already sent`
       return '📎 File already sent'
     }
+
+    if (!content) return 'Message deleted'
     // Strip mention syntax: @[everyone] → @everyone, @[name](id) → @name
     // Strip markdown: ```block``` → block, `code` → code, **bold** → bold, *italic* → italic
     const plain = content

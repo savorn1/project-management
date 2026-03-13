@@ -22,7 +22,7 @@ const emit = defineEmits<{
   'update:modelValue': [value: string]
 }>()
 
-const buttons = [
+const buttons: { label: string; icon: string; wrap: [string, string] }[] = [
   { label: 'Bold',        icon: '<strong>B</strong>',  wrap: ['**', '**'] },
   { label: 'Italic',      icon: '<em>I</em>',          wrap: ['*', '*'] },
   { label: 'Strikethrough', icon: '<s>S</s>',          wrap: ['~~', '~~'] },

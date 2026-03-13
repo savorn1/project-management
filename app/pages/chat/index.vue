@@ -323,6 +323,67 @@
           </div>
         </div>
 
+        <!-- Pinned message banner (Telegram-style) -->
+        <Transition
+          enter-active-class="transition-all duration-200 ease-out"
+          enter-from-class="opacity-0 -translate-y-2"
+          enter-to-class="opacity-100 translate-y-0"
+          leave-active-class="transition-all duration-150 ease-in"
+          leave-from-class="opacity-100 translate-y-0"
+          leave-to-class="opacity-0 -translate-y-2"
+        >
+          <div
+            v-if="pinnedBannerVisible && activePinnedMsg"
+            class="flex items-center gap-2.5 px-4 py-2 border-b border-amber-500/15 bg-amber-500/[0.04] hover:bg-amber-500/[0.07] transition-colors cursor-pointer flex-shrink-0 group/pinbar"
+            @click="navigateToPinnedMessage(activePinnedMsg.messageId)"
+          >
+            <!-- Pin icon with left accent bar -->
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <div class="w-0.5 h-7 rounded-full bg-amber-500/50 flex-shrink-0" />
+              <svg class="w-3.5 h-3.5 text-amber-400/70 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+              </svg>
+            </div>
+            <!-- Text -->
+            <div class="flex-1 min-w-0">
+              <p class="text-[9px] font-semibold text-amber-400/60 uppercase tracking-wider leading-none mb-0.5">
+                Pinned message {{ pinnedMessages.length > 1 ? `· ${pinnedBannerIdx + 1} of ${pinnedMessages.length}` : '' }}
+              </p>
+              <p class="text-[11px] text-gray-300 truncate leading-snug">
+                {{ activePinnedMsg.content || '📎 Attachment' }}
+              </p>
+            </div>
+            <!-- Navigate through pins -->
+            <div v-if="pinnedMessages.length > 1" class="flex flex-col gap-0.5 flex-shrink-0">
+              <button
+                @click.stop="pinnedBannerIdx = (pinnedBannerIdx - 1 + pinnedMessages.length) % pinnedMessages.length"
+                class="w-4 h-4 flex items-center justify-center text-gray-600 hover:text-amber-400 transition-colors rounded"
+              >
+                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7" />
+                </svg>
+              </button>
+              <button
+                @click.stop="pinnedBannerIdx = (pinnedBannerIdx + 1) % pinnedMessages.length"
+                class="w-4 h-4 flex items-center justify-center text-gray-600 hover:text-amber-400 transition-colors rounded"
+              >
+                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </div>
+            <!-- Close banner -->
+            <button
+              @click.stop="pinnedBannerVisible = false"
+              class="w-5 h-5 flex items-center justify-center text-gray-700 hover:text-gray-400 transition-colors flex-shrink-0 opacity-0 group-hover/pinbar:opacity-100"
+            >
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </Transition>
+
         <!-- Messages -->
         <div ref="scrollRef" class="relative flex-1 overflow-y-auto px-5 py-4 space-y-3">
           <!-- Loading skeleton -->
@@ -388,6 +449,7 @@
                   :current-user-id="currentUserId"
                   :participants-count="activeConversation.participants.length"
                   :highlighted="msg._id === highlightedId"
+                  :search-query="searchQuery || undefined"
                   :is-starred="starredIds.has(msg._id)"
                   :is-grouped="groupedMessageIds.has(msg._id)"
                   :member-map="memberMap"
@@ -510,6 +572,7 @@
           @schedule="handleScheduleMessage"
           @typing="onTyping"
           @cancel-reply="replyingTo = null"
+          @open-status="showStatusPicker = true"
           @poll="handleCreatePoll"
         />
       </template>
@@ -1249,6 +1312,32 @@ const lightboxImages = ref<MessageAttachment[]>([])
 
 // Pinned panel
 const showPinned = ref(false)
+
+// Pinned banner (Telegram-style slim bar)
+const pinnedBannerVisible = ref(true)
+const pinnedBannerIdx = ref(0)
+
+const pinnedMessages = computed(() =>
+  [...(activeConversation.value?.pinnedMessages ?? [])].reverse()
+)
+
+const activePinnedMsg = computed(() =>
+  pinnedMessages.value[pinnedBannerIdx.value] ?? null
+)
+
+// Reset banner state when switching conversations
+watch(activeConversationId, () => {
+  pinnedBannerIdx.value = 0
+  pinnedBannerVisible.value = true
+})
+
+// Re-show banner whenever a new message is pinned
+watch(() => activeConversation.value?.pinnedMessages?.length, (newLen, oldLen) => {
+  if (newLen && oldLen !== undefined && newLen > oldLen) {
+    pinnedBannerIdx.value = 0
+    pinnedBannerVisible.value = true
+  }
+})
 
 // Draft message persistence
 const draftToRestore = ref('')

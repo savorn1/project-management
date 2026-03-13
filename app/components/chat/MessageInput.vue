@@ -271,6 +271,46 @@
       </div>
     </Transition>
 
+    <!-- Slash command picker -->
+    <Transition
+      enter-active-class="transition ease-out duration-150"
+      enter-from-class="opacity-0 translate-y-2 scale-95"
+      enter-to-class="opacity-100 translate-y-0 scale-100"
+      leave-active-class="transition ease-in duration-100"
+      leave-from-class="opacity-100 translate-y-0 scale-100"
+      leave-to-class="opacity-0 translate-y-2 scale-95"
+    >
+      <div
+        v-if="showSlashMenu"
+        class="mb-2 bg-slate-900 border border-slate-700/60 rounded-2xl shadow-2xl shadow-black/40 overflow-hidden origin-bottom"
+        @mousedown.prevent
+      >
+        <div class="px-3 pt-2.5 pb-1.5 border-b border-slate-800/60">
+          <p class="text-[9px] font-semibold uppercase tracking-wider text-slate-500">Commands</p>
+        </div>
+        <div class="py-1">
+          <button
+            v-for="(cmd, i) in filteredSlashCommands"
+            :key="cmd.name"
+            class="w-full flex items-center gap-3 px-3 py-2 text-left transition-colors"
+            :class="i === slashSelectedIdx
+              ? 'bg-indigo-500/15 text-white'
+              : 'text-gray-300 hover:bg-slate-800/60'"
+            @click="runSlashCommand(cmd)"
+          >
+            <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-base"
+              :class="i === slashSelectedIdx ? 'bg-indigo-500/20' : 'bg-slate-700/60'"
+            >{{ cmd.icon }}</div>
+            <div class="min-w-0">
+              <span class="text-xs font-semibold">{{ cmd.name }}</span>
+              <span class="text-[10px] text-gray-500 ml-1.5">{{ cmd.description }}</span>
+            </div>
+            <kbd class="ml-auto text-[9px] text-gray-700 bg-slate-800 border border-slate-700/40 rounded px-1.5 py-0.5 flex-shrink-0">↵</kbd>
+          </button>
+        </div>
+      </div>
+    </Transition>
+
     <!-- Main input container -->
     <div
       class="relative bg-slate-800/50 border rounded-2xl transition-all duration-200"
@@ -374,11 +414,30 @@
           </svg>
         </button>
 
+        <!-- All-files picker (toolbar attach button) -->
         <input
           ref="fileInputRef"
           type="file"
           multiple
           accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar"
+          class="hidden"
+          @change="onFileChange"
+        />
+        <!-- Image-only picker (/image slash command) -->
+        <input
+          ref="imageInputRef"
+          type="file"
+          multiple
+          accept="image/*"
+          class="hidden"
+          @change="onFileChange"
+        />
+        <!-- Document-only picker (/file slash command) -->
+        <input
+          ref="docInputRef"
+          type="file"
+          multiple
+          accept="application/pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar"
           class="hidden"
           @change="onFileChange"
         />
@@ -584,6 +643,7 @@ const emit = defineEmits<{
   schedule: [content: string, files: File[], scheduledFor: number]
   typing: [isTyping: boolean]
   'cancel-reply': []
+  'open-status': []
   poll: [question: string, options: string[], allowMultiple: boolean]
 }>()
 
@@ -614,6 +674,8 @@ onUnmounted(() => {
 })
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
+const imageInputRef = ref<HTMLInputElement | null>(null)
+const docInputRef = ref<HTMLInputElement | null>(null)
 const selectedFiles = ref<File[]>([])
 const previewUrls = ref<string[]>([])
 const fileError = ref('')
@@ -644,9 +706,39 @@ function autoResize() {
 function onInput() {
   handleInput()
   autoResize()
+  // Slash menu: open when text starts with '/' and has no space yet
+  const val = text.value
+  showSlashMenu.value = val.startsWith('/') && !val.includes(' ') && filteredSlashCommands.value.length > 0
+  if (!showSlashMenu.value) slashSelectedIdx.value = 0
 }
 
 function onKeydown(e: KeyboardEvent) {
+  // Slash menu navigation takes priority
+  if (showSlashMenu.value) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      slashSelectedIdx.value = (slashSelectedIdx.value + 1) % filteredSlashCommands.value.length
+      return
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      slashSelectedIdx.value = (slashSelectedIdx.value - 1 + filteredSlashCommands.value.length) % filteredSlashCommands.value.length
+      return
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      const cmd = filteredSlashCommands.value[slashSelectedIdx.value]
+      if (cmd) runSlashCommand(cmd)
+      return
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      showSlashMenu.value = false
+      slashSelectedIdx.value = 0
+      return
+    }
+  }
+
   const dropdownWasOpen = showDropdown.value
   mentionKeydown(e)
 
@@ -735,6 +827,74 @@ async function submit() {
   emit('send', content, files)
   loading.value = false
   startSlowCooldown()
+}
+
+// ── Slash commands ────────────────────────────────────────────────────────────
+
+interface SlashCommand {
+  icon: string
+  name: string
+  description: string
+  action: () => void
+}
+
+const SLASH_COMMANDS: SlashCommand[] = [
+  {
+    icon: '📊',
+    name: '/poll',
+    description: 'Create a poll',
+    action: () => { showPollModal.value = true },
+  },
+  {
+    icon: '🗓',
+    name: '/schedule',
+    description: 'Schedule a message',
+    action: () => { showSchedulePicker.value = true },
+  },
+  {
+    icon: '🖼',
+    name: '/image',
+    description: 'Attach an image or photo',
+    action: () => { imageInputRef.value?.click() },
+  },
+  {
+    icon: '📎',
+    name: '/file',
+    description: 'Attach a document or file',
+    action: () => { docInputRef.value?.click() },
+  },
+  {
+    icon: '😊',
+    name: '/status',
+    description: 'Update your status message',
+    action: () => { emit('open-status') },
+  },
+  {
+    icon: '✏️',
+    name: '/format',
+    description: 'Toggle formatting toolbar',
+    action: () => { showFormattingToolbar.value = !showFormattingToolbar.value },
+  },
+]
+
+const showSlashMenu = ref(false)
+const slashSelectedIdx = ref(0)
+
+const filteredSlashCommands = computed(() => {
+  const q = text.value.startsWith('/') ? text.value.slice(1).toLowerCase() : ''
+  return SLASH_COMMANDS.filter(c => c.name.slice(1).startsWith(q))
+})
+
+watch(filteredSlashCommands, (cmds) => {
+  if (slashSelectedIdx.value >= cmds.length) slashSelectedIdx.value = 0
+})
+
+function runSlashCommand(cmd: SlashCommand) {
+  text.value = ''
+  showSlashMenu.value = false
+  slashSelectedIdx.value = 0
+  cmd.action()
+  nextTick(() => textareaRef.value?.focus())
 }
 
 // ── Poll modal ───────────────────────────────────────────────────────────────
