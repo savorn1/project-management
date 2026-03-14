@@ -1057,6 +1057,9 @@ export function useChat() {
       await chatApi.cancelReminder(id)
       reminders.value = reminders.value.filter(r => r._id !== id)
     },
+    async setStandaloneReminder(data: { note: string; remindAt: string }) {
+      return chatApi.setStandaloneReminder(data)
+    },
 
     // Saved replies
     savedReplies: readonly(savedReplies),

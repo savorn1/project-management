@@ -163,23 +163,13 @@
                   :style="imageAttachments.length === 1 ? 'max-height:200px' : ''" />
               </button>
             </div>
-            <!-- Audio attachments (voice messages) -->
-            <div
+            <!-- Voice message attachments -->
+            <VoiceMessagePlayer
               v-for="audio in audioAttachments"
               :key="audio.url"
-              class="flex items-center gap-2.5 px-3 py-2 rounded-xl border max-w-[260px]"
-              :class="mine
-                ? 'bg-indigo-700/50 border-indigo-500/30'
-                : 'bg-slate-800/80 border-slate-700/40'"
-            >
-              <svg class="w-4 h-4 flex-shrink-0 text-indigo-400" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3zm-1 9V6a1 1 0 112 0v6a1 1 0 11-2 0zm-4 .5a5 5 0 0010 0h2a7 7 0 01-14 0h2z"/>
-              </svg>
-              <audio :src="audio.url" controls preload="metadata"
-                class="h-7 flex-1 min-w-0"
-                style="filter: invert(0.8) hue-rotate(200deg) brightness(1.2);"
-              />
-            </div>
+              :src="audio.url"
+              :mine="mine"
+            />
 
             <a
               v-for="file in fileAttachments"

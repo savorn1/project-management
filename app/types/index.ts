@@ -353,8 +353,8 @@ export interface PaymentQrDetail {
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────
 
-export type ConversationType = 'private' | 'group'
-export type MessageType = 'text' | 'image' | 'file' | 'system' | 'poll'
+export type ConversationType = 'private' | 'group' | 'broadcast'
+export type MessageType = 'text' | 'image' | 'file' | 'system' | 'poll' | 'voice'
 
 export interface PollOption {
   text: string

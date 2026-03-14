@@ -36,6 +36,27 @@
       @pick="insertSavedReply"
     />
 
+    <!-- GIF picker modal -->
+    <GiphyPicker
+      v-model="showGiphyPicker"
+      @select="insertGif"
+    />
+
+    <!-- Quick task modal -->
+    <QuickTaskModal
+      v-model="showQuickTask"
+      :initial-title="quickTaskTitle"
+      :projects="projects"
+      @created="onQuickTaskCreated"
+    />
+
+    <!-- Standalone reminder modal -->
+    <StandaloneReminderModal
+      v-model="showSlashReminder"
+      :initial-note="slashReminderNote"
+      @set="onSlashReminderSet"
+    />
+
     <!-- Poll creation modal -->
     <Teleport to="body">
       <div v-if="showPollModal" class="fixed inset-0 z-[9990] flex items-center justify-center p-4" @click.self="showPollModal = false">
@@ -268,8 +289,12 @@
       <div v-if="isRecording" class="flex items-center gap-3 mb-2 px-3 py-2 bg-rose-500/10 border border-rose-500/20 rounded-xl">
         <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse flex-shrink-0" />
         <div class="flex items-center gap-0.5 flex-shrink-0">
-          <span v-for="n in 5" :key="n" class="w-0.5 bg-rose-400 rounded-full animate-pulse"
-            :style="{ height: `${6 + (n % 3) * 4}px`, animationDelay: `${n * 0.1}s` }" />
+          <span
+            v-for="(h, i) in recordingBars"
+            :key="i"
+            class="w-0.5 bg-rose-400 rounded-full transition-none"
+            :style="{ height: `${h}px` }"
+          />
         </div>
         <span class="text-xs text-rose-300 font-mono flex-1">{{ recordingTime }}</span>
         <button @click="cancelRecording" class="text-[11px] text-gray-500 hover:text-gray-300 transition-colors">Cancel</button>
@@ -635,9 +660,10 @@
 </template>
 
 <script setup lang="ts">
-import type { TeamMember } from '~/types';
+import type { TeamMember, Project } from '~/types';
 
 const { savedReplies, loadSavedReplies } = useChat()
+const { projectsApi } = useApi()
 
 const props = defineProps<{
   members: TeamMember[]
@@ -653,6 +679,8 @@ const emit = defineEmits<{
   'cancel-reply': []
   'open-status': []
   poll: [question: string, options: string[], allowMultiple: boolean]
+  'create-task-from-chat': [data: { title: string; priority: string; projectId?: string }]
+  'standalone-reminder': [data: { note: string; remindAt: string }]
 }>()
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20 MB
@@ -848,6 +876,34 @@ interface SlashCommand {
 
 const showSavedRepliesModal = ref(false)
 
+// ── GIF / Quick-task / Standalone-reminder (slash commands) ──────────────────
+const showGiphyPicker = ref(false)
+const showQuickTask = ref(false)
+const quickTaskTitle = ref('')
+const showSlashReminder = ref(false)
+const slashReminderNote = ref('')
+const projects = ref<Project[]>([])
+
+async function loadProjects() {
+  if (projects.value.length > 0) return
+  projects.value = await projectsApi.getMyProjects()
+}
+
+function insertGif(url: string) {
+  showGiphyPicker.value = false
+  emit('send', url, [])
+}
+
+function onQuickTaskCreated(data: { title: string; priority: string; projectId?: string }) {
+  showQuickTask.value = false
+  emit('create-task-from-chat', data)
+}
+
+function onSlashReminderSet(data: { note: string; remindAt: string }) {
+  showSlashReminder.value = false
+  emit('standalone-reminder', data)
+}
+
 const SLASH_COMMANDS: SlashCommand[] = [
   {
     icon: '📊',
@@ -878,6 +934,24 @@ const SLASH_COMMANDS: SlashCommand[] = [
     name: '/file',
     description: 'Attach a document or file',
     action: () => { docInputRef.value?.click() },
+  },
+  {
+    icon: '🎬',
+    name: '/gif',
+    description: 'Search and send a GIF',
+    action: () => { showGiphyPicker.value = true },
+  },
+  {
+    icon: '✅',
+    name: '/task',
+    description: 'Create a task from this chat',
+    action: () => { quickTaskTitle.value = text.value.trim(); loadProjects(); showQuickTask.value = true },
+  },
+  {
+    icon: '⏰',
+    name: '/remind',
+    description: 'Set a reminder for yourself',
+    action: () => { slashReminderNote.value = text.value.trim(); showSlashReminder.value = true },
   },
   {
     icon: '😊',
@@ -1083,20 +1157,44 @@ function scheduleCustom() {
 // ── Voice Recording ──────────────────────────────────────────────────────────
 const isRecording = ref(false)
 const recordingTime = ref('0:00')
+const recordingBars = ref<number[]>(Array(20).fill(4))
 let mediaRecorder: MediaRecorder | null = null
 let audioChunks: Blob[] = []
 let recordingTimer: ReturnType<typeof setInterval> | null = null
 let recordingSeconds = 0
+let audioCtx: AudioContext | null = null
+let analyser: AnalyserNode | null = null
+let waveRaf: number | null = null
+
+function animateWaveform() {
+  if (!analyser) return
+  const data = new Uint8Array(analyser.frequencyBinCount)
+  analyser.getByteFrequencyData(data)
+  const step = Math.floor(data.length / recordingBars.value.length)
+  recordingBars.value = recordingBars.value.map((_, i) => {
+    const val = data[i * step] ?? 0
+    return 4 + Math.round((val / 255) * 20)
+  })
+  waveRaf = requestAnimationFrame(animateWaveform)
+}
 
 async function toggleRecording() {
   if (isRecording.value) { stopRecording(); return }
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    audioCtx = new AudioContext()
+    analyser = audioCtx.createAnalyser()
+    analyser.fftSize = 64
+    audioCtx.createMediaStreamSource(stream).connect(analyser)
+
     audioChunks = []
     mediaRecorder = new MediaRecorder(stream)
     mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data) }
     mediaRecorder.onstop = () => {
       stream.getTracks().forEach((t) => t.stop())
+      audioCtx?.close(); audioCtx = null; analyser = null
+      if (waveRaf) { cancelAnimationFrame(waveRaf); waveRaf = null }
+      recordingBars.value = Array(20).fill(4)
       if (audioChunks.length === 0) return
       const blob = new Blob(audioChunks, { type: 'audio/webm' })
       const file = new File([blob], `voice-${Date.now()}.webm`, { type: 'audio/webm' })
@@ -1116,6 +1214,7 @@ async function toggleRecording() {
       const s = recordingSeconds % 60
       recordingTime.value = `${m}:${s.toString().padStart(2, '0')}`
     }, 1000)
+    waveRaf = requestAnimationFrame(animateWaveform)
   } catch {
     showError('Microphone access denied.')
   }

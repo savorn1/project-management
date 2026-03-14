@@ -1124,6 +1124,13 @@ export function useApi() {
       await request(`/chat/reminders/${id}`, { method: 'DELETE' })
     },
 
+    async setStandaloneReminder(data: { note: string; remindAt: string }): Promise<MessageReminder | null> {
+      return request<MessageReminder>('/chat/reminders/standalone', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      })
+    },
+
     // ── Saved Replies ─────────────────────────────────────────────────────
     async getSavedReplies(): Promise<SavedReply[]> {
       return (await request<SavedReply[]>('/chat/saved-replies')) ?? []
