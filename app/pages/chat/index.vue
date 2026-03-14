@@ -112,13 +112,21 @@
             class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
             :class="activeConversation.type === 'group'
               ? 'bg-gradient-to-br from-violet-500 to-indigo-600'
-              : 'bg-gradient-to-br from-emerald-500 to-teal-600'"
+              : activeConversation.type === 'broadcast'
+                ? 'bg-gradient-to-br from-amber-500 to-orange-600'
+                : 'bg-gradient-to-br from-emerald-500 to-teal-600'"
           >
             {{ conversationInitials(activeConversation) }}
           </div>
           <div>
             <div class="flex items-center gap-2">
               <p class="text-sm font-semibold text-white">{{ conversationName(activeConversation) }}</p>
+
+              <!-- Broadcast badge -->
+              <span
+                v-if="activeConversation.type === 'broadcast'"
+                class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-[10px] font-semibold text-amber-400 leading-none"
+              >📢 Announcement</span>
 
               <!-- Rename group (admins only) -->
               <button
@@ -133,7 +141,7 @@
               </button>
             </div>
             <p class="text-[11px] text-gray-500">
-              {{ activeConversation.type === 'group'
+              {{ activeConversation.type === 'group' || activeConversation.type === 'broadcast'
                 ? `${activeConversation.participants.length} members`
                 : 'Private chat' }}
             </p>
@@ -561,7 +569,7 @@
           </button>
         </Transition>
 
-        <!-- Blocked notice or input -->
+        <!-- Blocked notice -->
         <div
           v-if="isBlockedInConversation"
           class="flex items-center justify-center gap-2 px-5 py-4 border-t border-slate-800/60 bg-slate-900/40"
@@ -571,6 +579,16 @@
           </svg>
           <span class="text-sm text-red-400/80">You have been blocked by an admin and cannot send messages.</span>
         </div>
+
+        <!-- Broadcast read-only notice (non-admins) -->
+        <div
+          v-else-if="isBroadcastChannel && !isAdminInBroadcast"
+          class="flex items-center justify-center gap-2 px-5 py-4 border-t border-slate-800/60 bg-slate-900/40"
+        >
+          <span class="text-lg leading-none">📢</span>
+          <span class="text-sm text-amber-400/80">This is an announcement channel. Only admins can post here.</span>
+        </div>
+
         <MessageInput
           v-else
           ref="inputRef"
@@ -584,6 +602,8 @@
           @cancel-reply="replyingTo = null"
           @open-status="showStatusPicker = true"
           @poll="handleCreatePoll"
+          @create-task-from-chat="handleCreateTaskFromChat"
+          @standalone-reminder="handleStandaloneReminder"
         />
       </template>
     </div><!-- end main chat column -->
@@ -598,7 +618,7 @@
       leave-to-class="opacity-0 translate-x-4"
     >
       <div
-        v-if="activeConversation && activeConversation.type === 'group' && showMembers"
+        v-if="activeConversation && (activeConversation.type === 'group' || activeConversation.type === 'broadcast') && showMembers"
         class="w-56 flex-shrink-0 border-l border-slate-800/60 flex flex-col h-full bg-slate-900/40 overflow-y-auto"
       >
         <!-- Panel header -->
@@ -1554,6 +1574,30 @@ async function confirmRenameGroup() {
 const isBlockedInConversation = computed(() =>
   !!activeConversation.value?.blockedMembers?.includes(currentUserId.value),
 )
+
+const isBroadcastChannel = computed(() => activeConversation.value?.type === 'broadcast')
+
+const isAdminInBroadcast = computed(() =>
+  !!activeConversation.value?.admins?.includes(currentUserId.value),
+)
+
+async function handleCreateTaskFromChat(data: { title: string; priority: string; projectId?: string }) {
+  const { tasksApi, projectsApi } = useApi()
+  const projects = await projectsApi.getAll()
+  const projectId = data.projectId ?? projects[0]?._id
+  if (!projectId) { useToast().error('No project found'); return }
+  const task = await tasksApi.create(
+    { title: data.title, priority: data.priority as 'low' | 'medium' | 'high' | 'urgent' },
+    projectId,
+  )
+  if (task) useToast().success('Task created')
+}
+
+async function handleStandaloneReminder(data: { note: string; remindAt: string }) {
+  const { chatApi } = useApi()
+  await chatApi.setStandaloneReminder(data)
+  useToast().success('Reminder set')
+}
 
 // Team member data
 const teamMembers = ref<TeamMember[]>([])

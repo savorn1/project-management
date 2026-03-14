@@ -166,7 +166,7 @@
             >
               <div
                 class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-                :class="item.type === 'group' ? 'bg-gradient-to-br from-violet-500 to-indigo-600' : 'bg-gradient-to-br from-emerald-500 to-teal-600'"
+                :class="item.type === 'group' ? 'bg-gradient-to-br from-violet-500 to-indigo-600' : item.type === 'broadcast' ? 'bg-gradient-to-br from-amber-500 to-orange-600' : 'bg-gradient-to-br from-emerald-500 to-teal-600'"
               >{{ conversationInitials(item) }}</div>
               <div class="flex-1 min-w-0">
                 <p class="text-xs font-medium text-gray-400 truncate">{{ conversationName(item) }}</p>

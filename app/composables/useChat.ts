@@ -411,6 +411,15 @@ export function useChat() {
     return created._id
   }
 
+  async function createBroadcastConversation(name: string, participantIds: string[]): Promise<string | null> {
+    const created = await chatApi.createConversation({ type: 'broadcast', participants: participantIds, name })
+    if (!created) return null
+    if (!conversations.value.find((c) => c._id === created._id))
+      conversations.value = [created, ...conversations.value]
+    joinConversationMemberRoom(created._id)
+    return created._id
+  }
+
   // ── Messages ──────────────────────────────────────────────────────────────
 
   async function flushQueue() {
@@ -991,6 +1000,7 @@ export function useChat() {
     selectConversation,
     createPrivateConversation,
     createGroupConversation,
+    createBroadcastConversation,
 
     // Message actions
     sendMessage,

@@ -826,7 +826,7 @@ export function useApi() {
     },
 
     async createConversation(data: {
-      type: 'private' | 'group'
+      type: 'private' | 'group' | 'broadcast'
       participants: string[]
       name?: string
       avatar?: string

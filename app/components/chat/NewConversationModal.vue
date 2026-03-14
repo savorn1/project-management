@@ -31,12 +31,12 @@
           </button>
         </div>
 
-        <!-- Group name (group only) -->
-        <div v-if="type === 'group'" class="px-5 pt-3 flex-shrink-0">
+        <!-- Group / Broadcast name -->
+        <div v-if="type === 'group' || type === 'broadcast'" class="px-5 pt-3 flex-shrink-0">
           <input
             v-model="groupName"
             type="text"
-            placeholder="Group name"
+            :placeholder="type === 'broadcast' ? 'Announcement channel name' : 'Group name'"
             class="w-full bg-slate-800/60 border border-slate-700/40 rounded-xl px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500/50"
           />
         </div>
@@ -56,8 +56,8 @@
           </div>
         </div>
 
-        <!-- Selected (group) -->
-        <div v-if="type === 'group' && selected.length > 0" class="px-5 pt-2 flex flex-wrap gap-1.5 flex-shrink-0">
+        <!-- Selected (group / broadcast) -->
+        <div v-if="(type === 'group' || type === 'broadcast') && selected.length > 0" class="px-5 pt-2 flex flex-wrap gap-1.5 flex-shrink-0">
           <span
             v-for="id in selected"
             :key="id"
@@ -91,7 +91,7 @@
                 <p class="text-xs font-medium text-white truncate">{{ m.name }}</p>
                 <p class="text-[11px] text-gray-500 truncate">{{ m.email }}</p>
               </div>
-              <div v-if="type === 'group'" class="w-4 h-4 rounded border flex items-center justify-center flex-shrink-0"
+              <div v-if="type === 'group' || type === 'broadcast'" class="w-4 h-4 rounded border flex items-center justify-center flex-shrink-0"
                 :class="selected.includes(m._id) ? 'bg-indigo-500 border-indigo-500' : 'border-slate-600'">
                 <svg v-if="selected.includes(m._id)" class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
@@ -101,17 +101,21 @@
           </div>
         </div>
 
-        <!-- Group create button -->
-        <div v-if="type === 'group'" class="px-5 pb-4 flex-shrink-0">
+        <!-- Group / Broadcast create button -->
+        <div v-if="type === 'group' || type === 'broadcast'" class="px-5 pb-4 flex-shrink-0">
           <button
-            @click="startGroup"
+            @click="type === 'broadcast' ? startBroadcast() : startGroup()"
             :disabled="!groupName.trim() || selected.length === 0 || creating"
             class="w-full py-2.5 rounded-xl text-sm font-semibold transition-all"
             :class="groupName.trim() && selected.length > 0 && !creating
-              ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-400 hover:to-violet-500'
+              ? type === 'broadcast'
+                ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:from-amber-400 hover:to-orange-500'
+                : 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-400 hover:to-violet-500'
               : 'bg-slate-800 text-gray-600 cursor-not-allowed'"
           >
-            <span v-if="!creating">Create Group ({{ selected.length }} member{{ selected.length !== 1 ? 's' : '' }})</span>
+            <span v-if="!creating">
+              {{ type === 'broadcast' ? 'Create Channel' : 'Create Group' }} ({{ selected.length }} member{{ selected.length !== 1 ? 's' : '' }})
+            </span>
             <span v-else class="flex items-center justify-center gap-2">
               <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               Creating…
@@ -133,13 +137,14 @@ const emit = defineEmits<{
 
 const { teamApi } = useApi()
 const { user } = useAuth()
-const { createPrivateConversation, createGroupConversation } = useChat()
+const { createPrivateConversation, createGroupConversation, createBroadcastConversation } = useChat()
 
-const type = ref<'private' | 'group'>('private')
+const type = ref<'private' | 'group' | 'broadcast'>('private')
 const tabs = [
-  { value: 'private', label: 'Private' },
-  { value: 'group', label: 'Group' },
-] as const
+  { value: 'private' as const, label: 'Private' },
+  { value: 'group' as const, label: 'Group' },
+  { value: 'broadcast' as const, label: '📢 Announce' },
+]
 
 const search = ref('')
 const groupName = ref('')
@@ -184,6 +189,14 @@ async function startGroup() {
   if (!groupName.value.trim() || selected.value.length === 0) return
   creating.value = true
   const id = await createGroupConversation(groupName.value.trim(), selected.value)
+  creating.value = false
+  if (id) emit('created', id)
+}
+
+async function startBroadcast() {
+  if (!groupName.value.trim() || selected.value.length === 0) return
+  creating.value = true
+  const id = await createBroadcastConversation(groupName.value.trim(), selected.value)
   creating.value = false
   if (id) emit('created', id)
 }

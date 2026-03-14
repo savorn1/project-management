@@ -402,8 +402,38 @@
         v-model="text"
       />
 
+      <!-- Voice recording overlay (replaces textarea while recording) -->
+      <div v-if="isRecording" class="flex items-center gap-3 px-4 py-3">
+        <!-- Animated waveform bars -->
+        <div class="flex items-center gap-[2px] h-8">
+          <div
+            v-for="(h, i) in recordingBars"
+            :key="i"
+            class="w-[3px] rounded-full bg-rose-400 transition-all duration-75"
+            :style="{ height: h + 'px' }"
+          />
+        </div>
+        <!-- Timer -->
+        <span class="text-sm font-mono text-rose-300 tabular-nums select-none">{{ recordingTime }}</span>
+        <div class="flex-1" />
+        <!-- Cancel -->
+        <button
+          @click.stop="cancelRecording"
+          class="px-3 py-1.5 rounded-lg text-xs text-gray-500 hover:text-gray-300 hover:bg-slate-700 transition-colors"
+        >Cancel</button>
+        <!-- Stop & attach -->
+        <button
+          @click.stop="stopRecording"
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-rose-500/20 border border-rose-500/30 text-rose-300 hover:bg-rose-500/30 transition-colors"
+        >
+          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+          Stop
+        </button>
+      </div>
+
       <!-- Textarea -->
       <textarea
+        v-else
         ref="textareaRef"
         v-model="text"
         @keydown="onKeydown"
