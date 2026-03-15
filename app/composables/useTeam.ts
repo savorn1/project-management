@@ -1,6 +1,7 @@
 import type { TeamMember } from '~/types'
 
 const members = ref<TeamMember[]>([])
+const total = ref(0)
 const isLoading = ref(false)
 const apiError = ref<string | null>(null)
 
@@ -8,17 +9,24 @@ export function useTeam() {
   const { teamApi, error: apiRequestError } = useApi()
   const toast = useToast()
 
-  async function loadMembers() {
+  async function loadMembers(params?: {
+    page?: number
+    pageSize?: number
+    name?: string
+    email?: string
+    role?: string
+  }) {
     isLoading.value = true
     apiError.value = null
 
-    const apiMembers = await teamApi.getAll()
+    const result = await teamApi.getAll(params)
 
     if (apiRequestError.value) {
       apiError.value = apiRequestError.value
     }
 
-    members.value = apiMembers
+    members.value = result.data
+    total.value = result.total
     isLoading.value = false
   }
 
@@ -59,6 +67,7 @@ export function useTeam() {
 
   return {
     members,
+    total,
     isLoading,
     apiError,
     loadMembers,

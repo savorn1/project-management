@@ -24,7 +24,7 @@ export function useSocket() {
     const apiBase = config.public.apiBase as string
 
     socket = io(apiBase, {
-      transports: ['polling', 'websocket'],
+      transports: ['websocket'],
       auth: {
         token: tokens.value?.accessToken,
         username: user.value?.name || 'Anonymous',

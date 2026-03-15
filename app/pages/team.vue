@@ -12,25 +12,218 @@
       </BaseButton>
     </div>
 
+    <!-- Filters -->
+    <div class="flex flex-col sm:flex-row gap-3">
+      <!-- Name search -->
+      <div class="relative flex-1">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input
+          v-model="filterName"
+          type="text"
+          placeholder="Search by name…"
+          class="w-full pl-9 pr-3 py-2 bg-slate-800/60 border border-slate-700/40 rounded-xl text-sm text-gray-300 placeholder-gray-600 focus:outline-none focus:border-indigo-500/50"
+        />
+      </div>
+
+      <!-- Email search -->
+      <div class="relative flex-1">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+        </svg>
+        <input
+          v-model="filterEmail"
+          type="text"
+          placeholder="Search by email…"
+          class="w-full pl-9 pr-3 py-2 bg-slate-800/60 border border-slate-700/40 rounded-xl text-sm text-gray-300 placeholder-gray-600 focus:outline-none focus:border-indigo-500/50"
+        />
+      </div>
+
+      <!-- Role filter -->
+      <select
+        v-model="filterRole"
+        class="px-3 py-2 bg-slate-800/60 border border-slate-700/40 rounded-xl text-sm text-gray-300 focus:outline-none focus:border-indigo-500/50 min-w-[140px]"
+      >
+        <option value="">All Roles</option>
+        <option value="admin">Admin</option>
+        <option value="super_admin">Super Admin</option>
+      </select>
+
+      <!-- Clear filters -->
+      <button
+        v-if="filterName || filterEmail || filterRole"
+        @click="filterName = ''; filterEmail = ''; filterRole = ''"
+        class="px-3 py-2 text-xs text-gray-500 hover:text-gray-300 border border-slate-700/40 rounded-xl hover:bg-slate-800/60 transition-colors whitespace-nowrap"
+      >
+        Clear
+      </button>
+    </div>
+
     <!-- Loading -->
     <div v-if="isLoading" class="flex items-center justify-center py-12">
       <div class="text-gray-400">Loading users...</div>
     </div>
 
-    <!-- User Grid -->
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <TeamMemberCard
-        v-for="member in members"
-        :key="member._id"
-        :member="member"
-        :current-user-id="user?.id"
-        @edit="openEditModal"
-        @delete="openDeleteConfirm"
-      />
+    <!-- Table -->
+    <div v-else-if="filteredMembers.length > 0" class="bg-slate-900/50 border border-slate-700/40 rounded-2xl overflow-hidden">
+      <!-- Result count -->
+      <div class="px-5 py-3 border-b border-slate-700/40 flex items-center justify-between">
+        <span class="text-xs text-gray-500">
+          {{ pageStart }}–{{ pageEnd }} of {{ total }} user{{ total !== 1 ? 's' : '' }}
+        </span>
+        <!-- Per-page selector -->
+        <div class="flex items-center gap-2 text-xs text-gray-500">
+          <span>Rows per page:</span>
+          <select
+            v-model="pageSize"
+            class="bg-slate-800 border border-slate-700/40 rounded-lg px-2 py-1 text-gray-300 focus:outline-none focus:border-indigo-500/50"
+          >
+            <option :value="5">5</option>
+            <option :value="10">10</option>
+            <option :value="25">25</option>
+            <option :value="50">50</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-slate-700/40">
+              <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+              <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+              <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+              <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Last Login</th>
+              <th class="px-5 py-3" />
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-700/30">
+            <tr
+              v-for="member in pagedMembers"
+              :key="member._id"
+              class="hover:bg-slate-800/40 transition-colors"
+            >
+              <!-- User -->
+              <td class="px-5 py-3.5">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+                    {{ getInitials(member.name) }}
+                  </div>
+                  <div>
+                    <p class="text-sm font-medium text-white">{{ member.name }}</p>
+                    <p v-if="member._id === user?.id" class="text-[11px] text-indigo-400">You</p>
+                  </div>
+                </div>
+              </td>
+
+              <!-- Email -->
+              <td class="px-5 py-3.5 text-gray-400 text-sm">{{ member.email }}</td>
+
+              <!-- Role -->
+              <td class="px-5 py-3.5">
+                <span
+                  class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium"
+                  :class="member.role === 'super_admin'
+                    ? 'bg-amber-500/15 text-amber-300 border border-amber-500/25'
+                    : 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/25'"
+                >
+                  {{ member.role === 'super_admin' ? '👑 Super Admin' : '🛡️ Admin' }}
+                </span>
+              </td>
+
+              <!-- Status -->
+              <td class="px-5 py-3.5">
+                <span
+                  class="inline-flex items-center gap-1.5 text-[11px] font-medium"
+                  :class="member.isActive ? 'text-emerald-400' : 'text-gray-500'"
+                >
+                  <span class="w-1.5 h-1.5 rounded-full flex-shrink-0" :class="member.isActive ? 'bg-emerald-400' : 'bg-gray-600'" />
+                  {{ member.isActive ? 'Active' : 'Inactive' }}
+                </span>
+              </td>
+
+              <!-- Last Login -->
+              <td class="px-5 py-3.5 text-gray-500 text-xs">
+                {{ member.lastLogin ? new Date(member.lastLogin).toLocaleDateString() : '—' }}
+              </td>
+
+              <!-- Actions -->
+              <td class="px-5 py-3.5">
+                <div class="flex items-center justify-end gap-2">
+                  <button
+                    @click="openEditModal(member)"
+                    class="p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-slate-700/60 transition-colors"
+                    title="Edit"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                  <button
+                    v-if="member._id !== user?.id"
+                    @click="openDeleteConfirm(member)"
+                    class="p-1.5 rounded-lg text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                    title="Delete"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination bar -->
+      <div class="px-5 py-3 border-t border-slate-700/40 flex items-center justify-between gap-4">
+        <button
+          @click="currentPage--"
+          :disabled="currentPage === 1"
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-gray-400 hover:text-white hover:bg-slate-700/60"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+          Prev
+        </button>
+
+        <!-- Page numbers -->
+        <div class="flex items-center gap-1">
+          <button
+            v-for="p in pageNumbers"
+            :key="p"
+            @click="p !== '…' && (currentPage = p as number)"
+            :disabled="p === '…'"
+            class="w-7 h-7 rounded-lg text-xs font-medium transition-colors"
+            :class="p === currentPage
+              ? 'bg-indigo-500 text-white'
+              : p === '…'
+                ? 'text-gray-600 cursor-default'
+                : 'text-gray-400 hover:text-white hover:bg-slate-700/60'"
+          >
+            {{ p }}
+          </button>
+        </div>
+
+        <button
+          @click="currentPage++"
+          :disabled="currentPage === totalPages"
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-gray-400 hover:text-white hover:bg-slate-700/60"
+        >
+          Next
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
     </div>
 
     <EmptyState
-      v-if="!isLoading && members.length === 0"
+      v-else-if="!isLoading && total === 0 && !filterName && !filterEmail && !filterRole"
       icon="👥"
       title="No users"
       description="Add your first user to get started"
@@ -39,6 +232,11 @@
         <BaseButton @click="openCreateModal">Add User</BaseButton>
       </template>
     </EmptyState>
+
+    <!-- No results from filter -->
+    <div v-else-if="!isLoading && total === 0" class="text-center py-12 text-gray-600 text-sm">
+      No users match your filters.
+    </div>
 
     <!-- Create User Modal -->
     <BaseModal v-model="showCreateModal" title="New User" size="md">
@@ -293,10 +491,64 @@ useSeoMeta({
 })
 
 const { user } = useAuth()
-const { members, isLoading, createMember, updateMember, deleteMember, loadMembers } = useTeam()
+const { members, total, isLoading, createMember, updateMember, deleteMember, loadMembers } = useTeam()
 
-onMounted(async () => {
-  if (members.value.length === 0) await loadMembers()
+// Filters
+const filterName = ref('')
+const filterEmail = ref('')
+const filterRole = ref('')
+
+// Pagination
+const currentPage = ref(1)
+const pageSize = ref(10)
+
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
+function fetchUsers() {
+  loadMembers({
+    page: currentPage.value,
+    pageSize: pageSize.value,
+    name: filterName.value || undefined,
+    email: filterEmail.value || undefined,
+    role: filterRole.value || undefined,
+  })
+}
+
+// Debounce text filters; immediate on page / pageSize / role changes
+watch([filterName, filterEmail], () => {
+  currentPage.value = 1
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(fetchUsers, 300)
+})
+
+watch([filterRole, pageSize], () => {
+  currentPage.value = 1
+  fetchUsers()
+})
+
+watch(currentPage, fetchUsers)
+
+onMounted(fetchUsers)
+
+// Derived pagination display values (based on server total)
+const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
+const pageStart = computed(() => total.value === 0 ? 0 : (currentPage.value - 1) * pageSize.value + 1)
+const pageEnd = computed(() => Math.min(currentPage.value * pageSize.value, total.value))
+
+// members from server IS already the current page — used directly in template
+const pagedMembers = computed(() => members.value)
+const filteredMembers = computed(() => members.value) // for empty-state checks
+
+const pageNumbers = computed(() => {
+  const t = totalPages.value
+  const cur = currentPage.value
+  if (t <= 7) return Array.from({ length: t }, (_, i) => i + 1)
+  const pages: (number | '…')[] = [1]
+  if (cur > 3) pages.push('…')
+  for (let p = Math.max(2, cur - 1); p <= Math.min(t - 1, cur + 1); p++) pages.push(p)
+  if (cur < t - 2) pages.push('…')
+  pages.push(t)
+  return pages
 })
 
 function getInitials(name: string): string {

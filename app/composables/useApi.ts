@@ -309,9 +309,21 @@ export function useApi() {
 
   // Team API (Users)
   const teamApi = {
-    async getAll(): Promise<TeamMember[]> {
-      const response = await request<ListResponse<TeamMember>>('/admin/users?limit=100')
-      return response?.data || []
+    async getAll(params?: {
+      page?: number
+      pageSize?: number
+      name?: string
+      email?: string
+      role?: string
+    }): Promise<{ data: TeamMember[]; total: number }> {
+      const qs = new URLSearchParams()
+      if (params?.page) qs.set('page', String(params.page))
+      if (params?.pageSize) qs.set('limit', String(params.pageSize))
+      if (params?.name) qs.set('name', params.name)
+      if (params?.email) qs.set('email', params.email)
+      if (params?.role) qs.set('role', params.role)
+      const response = await request<ListResponse<TeamMember>>(`/admin/users?${qs.toString()}`)
+      return { data: response?.data || [], total: response?.total || 0 }
     },
 
     async getById(id: string): Promise<TeamMember | null> {

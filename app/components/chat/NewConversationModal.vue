@@ -69,16 +69,29 @@
         </div>
 
         <!-- Member list -->
-        <div class="flex-1 overflow-y-auto px-5 pt-2 pb-4">
+        <div class="flex-1 overflow-y-auto px-5 pt-2 pb-4" @scroll="onScroll">
+          <!-- Select All (group / broadcast only) -->
+          <div v-if="(type === 'group' || type === 'broadcast') && members.length > 0" class="flex items-center justify-between mb-1">
+            <span class="text-[11px] text-gray-500">{{ members.length }}{{ hasMore ? '+' : '' }} member{{ members.length !== 1 ? 's' : '' }}</span>
+            <button
+              @click="toggleSelectAll"
+              class="text-[11px] font-medium transition-colors"
+              :class="isAllSelected ? 'text-indigo-400 hover:text-indigo-300' : 'text-gray-500 hover:text-gray-300'"
+            >
+              {{ isAllSelected ? 'Deselect All' : 'Select All' }}
+            </button>
+          </div>
+
+          <!-- Initial loading -->
           <div v-if="isLoading" class="flex justify-center py-8">
             <div class="w-5 h-5 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
           </div>
-          <div v-else-if="filteredMembers.length === 0" class="text-center py-8 text-xs text-gray-600">
+          <div v-else-if="members.length === 0" class="text-center py-8 text-xs text-gray-600">
             No team members found
           </div>
           <div v-else class="space-y-0.5">
             <button
-              v-for="m in filteredMembers"
+              v-for="m in members"
               :key="m._id"
               @click="type === 'private' ? startPrivate(m) : toggleSelect(m._id)"
               class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-800/60 transition-colors text-left"
@@ -98,6 +111,11 @@
                 </svg>
               </div>
             </button>
+
+            <!-- Load-more spinner -->
+            <div v-if="loadingMore" class="flex justify-center py-3">
+              <div class="w-4 h-4 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+            </div>
           </div>
         </div>
 
@@ -151,15 +169,55 @@ const groupName = ref('')
 const selected = ref<string[]>([])
 const members = ref<TeamMember[]>([])
 const isLoading = ref(false)
+const loadingMore = ref(false)
+const hasMore = ref(true)
 const creating = ref(false)
+const page = ref(1)
+const PAGE_SIZE = 20
 
-const filteredMembers = computed(() => {
-  const q = search.value.toLowerCase()
-  return members.value
-    .filter((m) => m._id !== user.value?.id)
-    .filter((m) =>
-      !q || m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q),
-    )
+// All loaded member names (including those scrolled past) for badge display
+const memberNameMap = ref<Map<string, string>>(new Map())
+
+async function fetchPage(reset = false) {
+  if (reset) {
+    page.value = 1
+    members.value = []
+    hasMore.value = true
+  }
+  if (!hasMore.value) return
+
+  if (page.value === 1) isLoading.value = true
+  else loadingMore.value = true
+
+  const { data } = await teamApi.getAll({
+    page: page.value,
+    pageSize: PAGE_SIZE,
+    name: search.value || undefined,
+  })
+
+  // Filter out current user client-side
+  const filtered = data.filter((m) => m._id !== user.value?.id)
+  filtered.forEach((m) => memberNameMap.value.set(m._id, m.name))
+
+  members.value = reset ? filtered : [...members.value, ...filtered]
+  hasMore.value = data.length === PAGE_SIZE
+  page.value++
+
+  isLoading.value = false
+  loadingMore.value = false
+}
+
+function onScroll(e: Event) {
+  const el = e.target as HTMLElement
+  if (el.scrollHeight - el.scrollTop - el.clientHeight < 80 && hasMore.value && !loadingMore.value) {
+    fetchPage()
+  }
+}
+
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+watch(search, () => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => fetchPage(true), 300)
 })
 
 function initials(name: string): string {
@@ -169,7 +227,21 @@ function initials(name: string): string {
 }
 
 function memberName(id: string): string {
-  return members.value.find((m) => m._id === id)?.name ?? id
+  return memberNameMap.value.get(id) ?? id
+}
+
+const isAllSelected = computed(() =>
+  members.value.length > 0 && members.value.every((m) => selected.value.includes(m._id)),
+)
+
+function toggleSelectAll() {
+  if (isAllSelected.value) {
+    const loadedIds = members.value.map((m) => m._id)
+    selected.value = selected.value.filter((id) => !loadedIds.includes(id))
+  } else {
+    const toAdd = members.value.map((m) => m._id).filter((id) => !selected.value.includes(id))
+    selected.value = [...selected.value, ...toAdd]
+  }
 }
 
 function toggleSelect(id: string) {
@@ -201,9 +273,5 @@ async function startBroadcast() {
   if (id) emit('created', id)
 }
 
-onMounted(async () => {
-  isLoading.value = true
-  members.value = await teamApi.getAll()
-  isLoading.value = false
-})
+onMounted(() => fetchPage(true))
 </script>

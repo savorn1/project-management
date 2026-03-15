@@ -619,39 +619,61 @@
     >
       <div
         v-if="activeConversation && (activeConversation.type === 'group' || activeConversation.type === 'broadcast') && showMembers"
-        class="w-56 flex-shrink-0 border-l border-slate-800/60 flex flex-col h-full bg-slate-900/40 overflow-y-auto"
+        class="w-64 flex-shrink-0 border-l border-slate-800/60 flex flex-col h-full bg-slate-900/50"
       >
         <!-- Panel header -->
-        <div class="px-4 py-3 border-b border-slate-800/60 flex items-center justify-between flex-shrink-0">
-          <div>
-            <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-              Members · {{ activeConversation.participants.length }}
+        <div class="px-4 py-3 border-b border-slate-800/60 flex-shrink-0">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-white/70 uppercase tracking-wider">Members</span>
+            <button
+              v-if="activeConversation.admins?.includes(currentUserId)"
+              @click="showAddMembers = !showAddMembers"
+              class="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium transition-colors"
+              :class="showAddMembers ? 'bg-indigo-500/20 text-indigo-300' : 'text-gray-500 hover:text-gray-300 hover:bg-slate-800/60'"
+            >
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Add
+            </button>
+          </div>
+          <!-- Stats row -->
+          <div class="flex items-center gap-3">
+            <span class="flex items-center gap-1 text-[11px] text-gray-500">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0" />
+              </svg>
+              {{ activeConversation.participants.length }}
             </span>
-            <span class="ml-2 text-[10px] text-emerald-400/80">
+            <span class="flex items-center gap-1 text-[11px] text-emerald-400/80">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
               {{ activeConversation.participants.filter(id => isOnline(id)).length }} online
             </span>
           </div>
-          <button
-            @click="showAddMembers = !showAddMembers"
-            class="w-6 h-6 rounded-md flex items-center justify-center transition-colors"
-            :class="showAddMembers ? 'bg-indigo-500/20 text-indigo-400' : 'text-gray-600 hover:text-gray-400 hover:bg-slate-800/60'"
-            title="Add members"
-          >
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          <!-- Member search -->
+          <div class="relative mt-2">
+            <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-          </button>
+            <input
+              v-model="memberListSearch"
+              type="text"
+              placeholder="Search members…"
+              class="w-full pl-7 pr-3 py-1.5 bg-slate-800/60 border border-slate-700/40 rounded-lg text-[11px] text-gray-300 placeholder-gray-600 focus:outline-none focus:border-indigo-500/50"
+            />
+          </div>
         </div>
 
         <!-- Add members picker -->
-        <div v-if="showAddMembers" class="border-b border-slate-800/60 px-3 py-3 space-y-2 flex-shrink-0">
+        <div v-if="showAddMembers" class="border-b border-slate-800/60 px-3 py-3 space-y-2 flex-shrink-0 bg-slate-800/20">
+          <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Add to group</p>
           <input
             v-model="addMemberSearch"
             type="text"
             placeholder="Search members…"
             class="w-full bg-slate-800/60 border border-slate-700/40 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500/50"
           />
-          <div class="max-h-36 overflow-y-auto space-y-0.5">
+          <div class="max-h-36 overflow-y-auto space-y-0.5" @scroll="onAddMemberScroll">
             <div
               v-for="[id, name] in addableMembersFiltered"
               :key="id"
@@ -659,151 +681,108 @@
               class="flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-colors"
               :class="selectedToAdd.has(id) ? 'bg-indigo-500/15 text-indigo-300' : 'hover:bg-slate-800/40 text-gray-400'"
             >
-              <div class="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0">
+              <div
+                class="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0 bg-gradient-to-br"
+                :class="memberAvatarGradient(id)"
+              >
                 {{ name.charAt(0).toUpperCase() }}
               </div>
               <span class="text-xs truncate flex-1">{{ name }}</span>
-              <svg v-if="selectedToAdd.has(id)" class="w-3 h-3 text-indigo-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-              </svg>
+              <div
+                class="w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 transition-colors"
+                :class="selectedToAdd.has(id) ? 'bg-indigo-500 border-indigo-500' : 'border-slate-600'"
+              >
+                <svg v-if="selectedToAdd.has(id)" class="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
             </div>
-            <p v-if="addableMembersFiltered.length === 0" class="text-[11px] text-gray-600 text-center py-2">
+            <p v-if="addableMembersFiltered.length === 0 && !teamLoadingMore" class="text-[11px] text-gray-600 text-center py-2">
               No members to add
             </p>
+            <div v-if="teamLoadingMore" class="flex justify-center py-2">
+              <div class="w-3.5 h-3.5 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+            </div>
           </div>
           <button
             v-if="selectedToAdd.size > 0"
             @click="confirmAddMembers"
             :disabled="addingMembers"
-            class="w-full py-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 text-indigo-400 text-xs font-medium transition-colors disabled:opacity-50"
+            class="w-full py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white text-xs font-medium transition-colors disabled:opacity-50"
           >
             {{ addingMembers ? 'Adding…' : `Add ${selectedToAdd.size} member${selectedToAdd.size > 1 ? 's' : ''}` }}
           </button>
         </div>
 
-        <!-- Member list -->
-        <div class="flex-1 overflow-y-auto py-2">
-          <div
-            v-for="participantId in activeConversation.participants"
-            :key="participantId"
-            class="group/row flex items-center gap-2 px-3 py-2 rounded-lg mx-2 transition-colors"
-            :class="[
-              participantId === currentUserId ? 'bg-slate-800/40' : 'hover:bg-slate-800/20',
-              activeConversation.blockedMembers?.includes(participantId) ? 'opacity-50' : '',
-            ]"
-          >
-            <!-- Avatar + online dot -->
-            <div class="relative flex-shrink-0">
-              <div
-                class="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
-                :class="activeConversation.admins?.includes(participantId)
-                  ? 'bg-gradient-to-br from-amber-500 to-orange-600'
-                  : 'bg-gradient-to-br from-slate-600 to-slate-700'"
-              >
-                {{ (memberMap.get(participantId) ?? '?').charAt(0).toUpperCase() }}
-              </div>
-              <!-- Online indicator dot -->
-              <span
-                class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-slate-900 flex-shrink-0"
-                :class="isOnline(participantId) ? 'bg-emerald-400' : 'bg-slate-600'"
-              />
-            </div>
+        <!-- Member list (sorted: online first, then admins, then alphabetical) -->
+        <div class="flex-1 overflow-y-auto py-2" @scroll="onMemberPanelScroll">
 
-            <!-- Name + badges -->
-            <div class="flex-1 min-w-0">
-              <p class="text-xs font-medium text-gray-300 truncate">
-                {{ memberMap.get(participantId) ?? participantId.slice(-4) }}
-                <span v-if="participantId === currentUserId" class="text-[10px] text-gray-600 font-normal">(you)</span>
-              </p>
-              <!-- Custom status -->
-              <p
-                v-if="customStatusMap.get(participantId)?.text"
-                class="text-[10px] text-gray-500 truncate max-w-[120px]"
-              >{{ customStatusMap.get(participantId)?.emoji }} {{ customStatusMap.get(participantId)?.text }}</p>
+          <!-- Online section -->
+          <template v-if="visibleOnline.length > 0">
+            <p class="px-4 pt-1 pb-1.5 text-[10px] font-semibold text-emerald-400/60 uppercase tracking-widest">
+              Online — {{ onlineParticipants.length }}
+            </p>
+            <MemberRow
+              v-for="participantId in visibleOnline"
+              :key="participantId"
+              :participant-id="participantId"
+              :current-user-id="currentUserId"
+              :member-map="memberMap"
+              :admins="activeConversation.admins"
+              :blocked-members="activeConversation.blockedMembers"
+              :is-online="isOnline(participantId)"
+              :last-seen="getLastSeen(participantId)"
+              :custom-status="customStatusMap.get(participantId)"
+              :is-admin="activeConversation.admins?.includes(currentUserId) ?? false"
+              :action-loading="memberActionLoading.has(participantId)"
+              :avatar-gradient="memberAvatarGradient(participantId)"
+              @leave="leaveGroup"
+              @block="toggleBlock(participantId)"
+              @remove="removeMember(participantId)"
+            />
+          </template>
 
-              <div class="flex items-center gap-1 flex-wrap">
-                <!-- Online status -->
-                <span
-                  class="text-[9px] font-medium"
-                  :class="isOnline(participantId) ? 'text-emerald-400' : 'text-gray-600'"
-                >{{ getLastSeen(participantId) }}</span>
+          <!-- Offline section -->
+          <template v-if="visibleOffline.length > 0">
+            <p class="px-4 pt-3 pb-1.5 text-[10px] font-semibold text-gray-600 uppercase tracking-widest">
+              Offline — {{ offlineParticipants.length }}
+            </p>
+            <MemberRow
+              v-for="participantId in visibleOffline"
+              :key="participantId"
+              :participant-id="participantId"
+              :current-user-id="currentUserId"
+              :member-map="memberMap"
+              :admins="activeConversation.admins"
+              :blocked-members="activeConversation.blockedMembers"
+              :is-online="false"
+              :last-seen="getLastSeen(participantId)"
+              :custom-status="customStatusMap.get(participantId)"
+              :is-admin="activeConversation.admins?.includes(currentUserId) ?? false"
+              :action-loading="memberActionLoading.has(participantId)"
+              :avatar-gradient="memberAvatarGradient(participantId)"
+              @leave="leaveGroup"
+              @block="toggleBlock(participantId)"
+              @remove="removeMember(participantId)"
+            />
+          </template>
 
-                <span v-if="activeConversation.admins?.includes(participantId)" class="text-[9px] text-gray-700">·</span>
-                <span
-                  v-if="activeConversation.admins?.includes(participantId)"
-                  class="text-[9px] font-semibold uppercase tracking-wide text-amber-400/80"
-                >Admin</span>
-                <span v-if="activeConversation.blockedMembers?.includes(participantId)" class="text-[9px] text-gray-700">·</span>
-                <span
-                  v-if="activeConversation.blockedMembers?.includes(participantId)"
-                  class="text-[9px] font-semibold uppercase tracking-wide text-red-400/70"
-                >Blocked</span>
-              </div>
-            </div>
-
-            <!-- Action buttons (visible on row hover) -->
-            <div
-              class="flex items-center gap-0.5 opacity-0 group-hover/row:opacity-100 transition-opacity flex-shrink-0"
-            >
-              <!-- Loading spinner -->
-              <div
-                v-if="memberActionLoading.has(participantId)"
-                class="w-4 h-4 border border-white/20 border-t-white/60 rounded-full animate-spin"
-              />
-
-              <template v-else>
-                <!-- Self: Leave button -->
-                <button
-                  v-if="participantId === currentUserId"
-                  @click="leaveGroup"
-                  class="w-5 h-5 rounded flex items-center justify-center text-red-400/70 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                  title="Leave group"
-                >
-                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                  </svg>
-                </button>
-
-                <!-- Admin actions on other members -->
-                <template v-else-if="activeConversation.admins?.includes(currentUserId)">
-                  <!-- Block / Unblock -->
-                  <button
-                    @click="toggleBlock(participantId)"
-                    class="w-5 h-5 rounded flex items-center justify-center transition-colors"
-                    :class="activeConversation.blockedMembers?.includes(participantId)
-                      ? 'text-emerald-400/70 hover:text-emerald-400 hover:bg-emerald-500/10'
-                      : 'text-yellow-400/70 hover:text-yellow-400 hover:bg-yellow-500/10'"
-                    :title="activeConversation.blockedMembers?.includes(participantId) ? 'Unblock member' : 'Block member'"
-                  >
-                    <svg v-if="activeConversation.blockedMembers?.includes(participantId)" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-                    </svg>
-                    <svg v-else class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zM10 11V7a2 2 0 114 0v4" />
-                    </svg>
-                  </button>
-
-                  <!-- Remove member -->
-                  <button
-                    @click="removeMember(participantId)"
-                    class="w-5 h-5 rounded flex items-center justify-center text-red-400/70 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                    title="Remove from group"
-                  >
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6" />
-                    </svg>
-                  </button>
-                </template>
-              </template>
-            </div>
+          <!-- Load more indicator -->
+          <div v-if="hasMoreMembersToShow" class="flex flex-col items-center py-3 gap-1">
+            <div v-if="teamLoadingMore" class="w-4 h-4 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+            <p class="text-[10px] text-gray-600">
+              Showing {{ memberPanelVisible }} of {{ totalParticipants }}
+            </p>
           </div>
+
+          <!-- Empty search result -->
+          <p v-if="onlineParticipants.length === 0 && offlineParticipants.length === 0" class="text-center py-8 text-[11px] text-gray-600">
+            No members match "{{ memberListSearch }}"
+          </p>
         </div>
 
-        <!-- Leave group footer (always visible for non-admins) -->
-        <div
-          v-if="!activeConversation.admins?.includes(currentUserId)"
-          class="flex-shrink-0 px-3 py-3 border-t border-slate-800/60"
-        >
+        <!-- Leave group footer -->
+        <div class="flex-shrink-0 px-3 py-3 border-t border-slate-800/60">
           <button
             @click="leaveGroup"
             :disabled="memberActionLoading.has(currentUserId)"
@@ -1610,6 +1589,115 @@ const conversationMembers = computed<TeamMember[]>(() => {
   return teamMembers.value.filter((m) => participantIds.has(m._id) && m._id !== currentUserId.value)
 })
 
+// Team members — loaded progressively page by page in the background
+const teamPage = ref(1)
+const TEAM_PAGE_SIZE = 50
+const teamHasMore = ref(true)
+const teamLoadingMore = ref(false)
+
+async function loadNextTeamPage() {
+  if (!teamHasMore.value || teamLoadingMore.value) return
+  teamLoadingMore.value = true
+  try {
+    const { data } = await teamApi.getAll({ page: teamPage.value, pageSize: TEAM_PAGE_SIZE })
+    data.forEach((m) => memberMap.value.set(m._id, m.name))
+    teamMembers.value = [...teamMembers.value, ...data]
+    teamHasMore.value = data.length === TEAM_PAGE_SIZE
+    teamPage.value++
+  } catch {
+    teamHasMore.value = false
+  } finally {
+    teamLoadingMore.value = false
+  }
+}
+
+function onAddMemberScroll(e: Event) {
+  const el = e.target as HTMLElement
+  if (el.scrollHeight - el.scrollTop - el.clientHeight < 40 && teamHasMore.value && !teamLoadingMore.value) {
+    loadNextTeamPage()
+  }
+}
+
+// Member list helpers
+const memberListSearch = ref('')
+
+const AVATAR_GRADIENTS = [
+  'from-indigo-500 to-purple-600',
+  'from-blue-500 to-cyan-500',
+  'from-emerald-500 to-teal-600',
+  'from-rose-500 to-pink-600',
+  'from-amber-500 to-orange-500',
+  'from-violet-500 to-purple-700',
+  'from-sky-500 to-blue-600',
+  'from-green-500 to-emerald-600',
+]
+
+function memberAvatarGradient(id: string): string {
+  let hash = 0
+  for (const c of id) hash = (hash * 31 + c.charCodeAt(0)) & 0xffff
+  return AVATAR_GRADIENTS[hash % AVATAR_GRADIENTS.length]!
+}
+
+function participantMatchesSearch(id: string): boolean {
+  const q = memberListSearch.value.toLowerCase()
+  if (!q) return true
+  return (memberMap.value.get(id) ?? '').toLowerCase().includes(q)
+}
+
+const onlineParticipants = computed(() => {
+  if (!activeConversation.value) return []
+  return [...activeConversation.value.participants]
+    .filter(id => isOnline(id) && participantMatchesSearch(id))
+    .sort((a, b) => {
+      const aAdmin = activeConversation.value!.admins?.includes(a) ? 0 : 1
+      const bAdmin = activeConversation.value!.admins?.includes(b) ? 0 : 1
+      if (aAdmin !== bAdmin) return aAdmin - bAdmin
+      return (memberMap.value.get(a) ?? '').localeCompare(memberMap.value.get(b) ?? '')
+    })
+})
+
+const offlineParticipants = computed(() => {
+  if (!activeConversation.value) return []
+  return [...activeConversation.value.participants]
+    .filter(id => !isOnline(id) && participantMatchesSearch(id))
+    .sort((a, b) => {
+      const aAdmin = activeConversation.value!.admins?.includes(a) ? 0 : 1
+      const bAdmin = activeConversation.value!.admins?.includes(b) ? 0 : 1
+      if (aAdmin !== bAdmin) return aAdmin - bAdmin
+      return (memberMap.value.get(a) ?? '').localeCompare(memberMap.value.get(b) ?? '')
+    })
+})
+
+// Member panel pagination
+const MEMBER_PANEL_PAGE_SIZE = 15
+const memberPanelVisible = ref(MEMBER_PANEL_PAGE_SIZE)
+
+// Reset visible count when conversation or search changes
+watch(
+  [() => activeConversation.value?._id, memberListSearch],
+  () => { memberPanelVisible.value = MEMBER_PANEL_PAGE_SIZE },
+)
+
+const totalParticipants = computed(() => onlineParticipants.value.length + offlineParticipants.value.length)
+const hasMoreMembersToShow = computed(() => memberPanelVisible.value < totalParticipants.value)
+
+const visibleOnline = computed(() => onlineParticipants.value.slice(0, memberPanelVisible.value))
+const visibleOffline = computed(() => {
+  const remaining = memberPanelVisible.value - onlineParticipants.value.length
+  return remaining > 0 ? offlineParticipants.value.slice(0, remaining) : []
+})
+
+function onMemberPanelScroll(e: Event) {
+  const el = e.target as HTMLElement
+  if (el.scrollHeight - el.scrollTop - el.clientHeight < 80 && hasMoreMembersToShow.value) {
+    memberPanelVisible.value += MEMBER_PANEL_PAGE_SIZE
+    // If some visible IDs still lack a name in memberMap, fetch next team page
+    const visibleIds = [...visibleOnline.value, ...visibleOffline.value]
+    const hasUnresolved = visibleIds.some(id => !memberMap.value.has(id))
+    if (hasUnresolved) loadNextTeamPage()
+  }
+}
+
 // Add-members state
 const showAddMembers = ref(false)
 const addMemberSearch = ref('')
@@ -1967,10 +2055,9 @@ onUnmounted(() => scrollRef.value?.removeEventListener('scroll', onScroll))
 
 onMounted(async () => {
   refreshDraftConvIds()
-  const team = await teamApi.getAll()
-  teamMembers.value = team
-  memberMap.value = new Map(team.map((m) => [m._id, m.name]))
-  await loadConversations(team)
+  // Load first page synchronously so conversations can be rendered immediately
+  await loadNextTeamPage()
+  await loadConversations(teamMembers.value)
   await loadArchivedConversations()
   startListening()
 
