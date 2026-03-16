@@ -1,4 +1,4 @@
-import type { ChatMessage, Conversation, MessageReminder, SavedReply, ScheduledMessage, TeamMember } from '~/types'
+import type { ChatMessage, Conversation, MessageReminder, SavedReply, ScheduledMessage } from '~/types'
 import type { ConversationUpdatedEvent } from '~/types/socketEvents'
 
 // ── Singleton state ────────────────────────────────────────────────────────────
@@ -100,6 +100,21 @@ export function useChat() {
     conversations.value = conversations.value.map((c) =>
       c._id === id ? { ...c, ...patch } : c,
     ) as Conversation[]
+  }
+
+  /**
+   * Re-resolve private conversation display names using a fresh name map.
+   * Call this after each incremental team page load to fix any "Unknown User" entries.
+   */
+  function resolvePrivateNames(nameMap: Map<string, string>, currentUserId: string) {
+    conversations.value = conversations.value.map((conv) => {
+      if (conv.type !== 'private') return conv
+      const otherId = conv.participants.find((p) => p !== currentUserId)
+      if (!otherId) return conv
+      const name = nameMap.get(otherId)
+      if (!name || conv.name === name) return conv
+      return { ...conv, name }
+    }) as Conversation[]
   }
 
   /** Sort conversations by most recent lastMessage, falling back to updatedAt */
@@ -231,20 +246,36 @@ export function useChat() {
 
   // ── Conversations ─────────────────────────────────────────────────────────
 
-  async function loadConversations(teamMembers?: TeamMember[]) {
+  async function loadConversations() {
+    const { teamApi } = useApi()
     const data = await chatApi.getConversations()
 
     // Seed _unread from the API-persisted unreadCount
     const seeded = data.map((item) => ({ ...item, _unread: item.unreadCount ?? 0 }))
 
-    if (teamMembers && user.value) {
-      const memberMap = new Map(teamMembers.map((m) => [m._id, m]))
-      conversations.value = seeded.map((item) => {
-        if (item.type !== 'private') return item
-        const otherId = item.participants.find((p) => p !== user.value!.id)
-        const other = otherId ? memberMap.get(otherId) : undefined
-        return { ...item, name: other?.name ?? 'Unknown User' }
-      })
+    // Collect all unique participant IDs across private conversations
+    // that don't already have a name resolved
+    const currentId = user.value?.id
+    if (currentId) {
+      const unknownIds = new Set<string>()
+      for (const conv of seeded) {
+        if (conv.type !== 'private') continue
+        const otherId = conv.participants.find((p) => p !== currentId)
+        if (otherId) unknownIds.add(otherId)
+      }
+
+      if (unknownIds.size > 0) {
+        const users = await teamApi.getByIds([...unknownIds])
+        const nameMap = new Map(users.map((u) => [u._id, u.name]))
+        conversations.value = seeded.map((item) => {
+          if (item.type !== 'private') return item
+          const otherId = item.participants.find((p) => p !== currentId)
+          const name = otherId ? nameMap.get(otherId) : undefined
+          return { ...item, name: name ?? item.name ?? 'Unknown User' }
+        })
+      } else {
+        conversations.value = seeded
+      }
     } else {
       conversations.value = seeded
     }
@@ -253,7 +284,6 @@ export function useChat() {
     recalculateUnreadCount()
 
     // Join conversation member rooms for scalable broadcasts
-    // (If the socket isn't connected yet, socket.io will buffer the emits.)
     for (const c of conversations.value) {
       joinConversationMemberRoom(c._id)
     }
@@ -997,6 +1027,7 @@ export function useChat() {
 
     // Conversation actions
     loadConversations,
+    resolvePrivateNames,
     selectConversation,
     createPrivateConversation,
     createGroupConversation,

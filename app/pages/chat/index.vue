@@ -13,24 +13,28 @@
       />
 
       <!-- My status footer — always accessible -->
-      <div class="flex-shrink-0 border-t border-slate-800/60 px-3 py-2.5">
+      <div class="flex-shrink-0 border-t border-slate-800/60 px-3 py-2">
         <div class="relative">
           <button
             ref="statusBtnRef"
             @click.stop="showStatusPicker = !showStatusPicker"
-            class="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl hover:bg-slate-800/60 transition-colors text-left"
+            class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-slate-800/50 transition-colors text-left group/status"
           >
-            <div class="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
-              {{ (user?.name ?? '?').charAt(0).toUpperCase() }}
+            <!-- Avatar with online ring -->
+            <div class="relative flex-shrink-0">
+              <div class="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-xs font-bold text-white shadow-sm">
+                {{ (user?.name ?? '?').charAt(0).toUpperCase() }}
+              </div>
+              <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-slate-900" />
             </div>
             <div class="flex-1 min-w-0">
-              <p class="text-xs font-medium text-gray-300 truncate">{{ user?.name ?? 'Me' }}</p>
-              <p v-if="myStatus?.text" class="text-[10px] text-gray-500 truncate">
+              <p class="text-xs font-semibold text-gray-200 truncate leading-tight">{{ user?.name ?? 'Me' }}</p>
+              <p v-if="myStatus?.text" class="text-[10px] text-gray-500 truncate leading-tight">
                 {{ myStatus.emoji }} {{ myStatus.text }}
               </p>
-              <p v-else class="text-[10px] text-gray-700">Set a status…</p>
+              <p v-else class="text-[10px] text-gray-600 group-hover/status:text-gray-500 leading-tight transition-colors">Set a status…</p>
             </div>
-            <svg class="w-3.5 h-3.5 text-gray-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-3 h-3 text-gray-600 group-hover/status:text-gray-400 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
             </svg>
           </button>
@@ -82,18 +86,28 @@
       </div>
 
       <!-- Empty state -->
-      <div v-if="!activeConversation" class="flex-1 flex flex-col items-center justify-center text-center p-8">
-        <div class="w-16 h-16 rounded-2xl bg-slate-800/60 border border-slate-700/30 flex items-center justify-center mb-4">
-          <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-          </svg>
+      <div v-if="!activeConversation" class="flex-1 flex flex-col items-center justify-center text-center p-8 select-none">
+        <!-- Stacked chat bubbles illustration -->
+        <div class="relative w-20 h-20 mb-6">
+          <div class="absolute bottom-0 left-0 w-12 h-10 rounded-2xl rounded-bl-sm bg-slate-800/80 border border-slate-700/40" />
+          <div class="absolute bottom-3 left-5 w-14 h-11 rounded-2xl rounded-bl-sm bg-slate-700/80 border border-slate-600/40" />
+          <div class="absolute bottom-6 left-3 w-14 h-11 rounded-2xl rounded-tl-sm bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-indigo-400/70" />
+            <span class="w-1.5 h-1.5 rounded-full bg-indigo-400/70" />
+            <span class="w-1.5 h-1.5 rounded-full bg-indigo-400/70" />
+          </div>
         </div>
-        <p class="text-sm font-medium text-gray-400">Select a conversation</p>
-        <p class="text-xs text-gray-600 mt-1">or start a new one</p>
+        <p class="text-sm font-semibold text-gray-300 mb-1">No conversation selected</p>
+        <p class="text-xs text-gray-600 max-w-[180px] leading-relaxed">
+          Choose one from the sidebar or start a fresh one
+        </p>
         <button
           @click="showModal = true"
-          class="mt-4 px-4 py-2 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 text-indigo-400 hover:text-indigo-300 text-xs font-medium transition-all"
+          class="mt-5 flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 text-indigo-400 hover:text-indigo-300 text-xs font-semibold transition-all"
         >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
           New Conversation
         </button>
       </div>
@@ -101,243 +115,275 @@
       <!-- Active conversation -->
       <template v-else>
         <!-- Header -->
-        <div class="flex items-center gap-3 px-5 py-3.5 border-b border-slate-800/60 flex-shrink-0">
-          <img
-            v-if="activeConversation.avatar"
-            :src="activeConversation.avatar"
-            class="w-9 h-9 rounded-full object-cover flex-shrink-0"
-          />
-          <div
-            v-else
-            class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
-            :class="activeConversation.type === 'group'
-              ? 'bg-gradient-to-br from-violet-500 to-indigo-600'
-              : activeConversation.type === 'broadcast'
-                ? 'bg-gradient-to-br from-amber-500 to-orange-600'
-                : 'bg-gradient-to-br from-emerald-500 to-teal-600'"
-          >
-            {{ conversationInitials(activeConversation) }}
+        <div class="flex items-center gap-3 px-5 py-3 border-b border-slate-800/60 flex-shrink-0 bg-slate-900/40">
+          <div class="relative flex-shrink-0">
+            <img
+              v-if="activeConversation.avatar"
+              :src="activeConversation.avatar"
+              class="w-9 h-9 rounded-xl object-cover shadow-sm"
+            />
+            <div
+              v-else
+              class="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-sm"
+              :class="activeConversation.type === 'group'
+                ? 'bg-gradient-to-br from-violet-500 to-indigo-600'
+                : activeConversation.type === 'broadcast'
+                  ? 'bg-gradient-to-br from-amber-500 to-orange-600'
+                  : 'bg-gradient-to-br from-emerald-500 to-teal-600'"
+            >
+              {{ conversationInitials(activeConversation) }}
+            </div>
+            <!-- Online dot for private chats -->
+            <span
+              v-if="activeConversation.type === 'private' && isOnline(activeConversation.participants.find(id => id !== currentUserId) ?? '')"
+              class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-slate-900"
+            />
           </div>
-          <div>
-            <div class="flex items-center gap-2">
-              <p class="text-sm font-semibold text-white">{{ conversationName(activeConversation) }}</p>
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 min-w-0">
+              <p class="text-sm font-bold text-white truncate">{{ conversationName(activeConversation) }}</p>
 
               <!-- Broadcast badge -->
               <span
                 v-if="activeConversation.type === 'broadcast'"
-                class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-[10px] font-semibold text-amber-400 leading-none"
-              >📢 Announcement</span>
+                class="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-[10px] font-semibold text-amber-400 leading-none"
+              >📢 Announce</span>
 
               <!-- Rename group (admins only) -->
               <button
                 v-if="activeConversation.type === 'group' && activeConversation.admins?.includes(currentUserId)"
                 @click="openRenameGroup()"
-                class="w-6 h-6 rounded-md flex items-center justify-center text-gray-600 hover:text-indigo-300 hover:bg-slate-800/60 transition-colors"
+                class="shrink-0 w-5 h-5 rounded-md flex items-center justify-center text-gray-600 hover:text-indigo-300 hover:bg-slate-800/60 transition-colors"
                 title="Rename group"
               >
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                 </svg>
               </button>
             </div>
-            <p class="text-[11px] text-gray-500">
-              {{ activeConversation.type === 'group' || activeConversation.type === 'broadcast'
-                ? `${activeConversation.participants.length} members`
-                : 'Private chat' }}
+            <p class="text-[11px] text-gray-500 flex items-center gap-1.5">
+              <template v-if="activeConversation.type === 'group' || activeConversation.type === 'broadcast'">
+                <span>{{ activeConversation.participants.length }} members</span>
+                <span v-if="activeConversation.participants.filter(id => isOnline(id)).length > 0" class="flex items-center gap-1 text-emerald-400/80">
+                  <span class="w-1 h-1 rounded-full bg-emerald-400 inline-block" />
+                  {{ activeConversation.participants.filter(id => isOnline(id)).length }} online
+                </span>
+              </template>
+              <template v-else>
+                <span v-if="isOnline(activeConversation.participants.find(id => id !== currentUserId) ?? '')">
+                  <span class="text-emerald-400">Online</span>
+                </span>
+                <span v-else>Private chat</span>
+              </template>
             </p>
           </div>
 
-          <!-- Search + controls -->
-          <div class="ml-auto flex items-center gap-2">
-            <!-- Search bar -->
+          <!-- Toolbar (right side) -->
+          <div class="ml-auto flex items-center gap-1">
+
+            <!-- Live indicator -->
+            <span
+              class="w-1.5 h-1.5 rounded-full flex-shrink-0 mr-1"
+              :class="isConnected ? 'bg-emerald-400 shadow-[0_0_6px] shadow-emerald-400/50' : 'bg-slate-600'"
+              :title="isConnected ? 'Connected' : 'Offline'"
+            />
+
+            <!-- In-conversation search -->
             <div class="relative">
               <input
                 v-model="searchQuery"
                 type="text"
                 placeholder="Search…"
-                class="w-32 focus:w-44 transition-all duration-200 bg-slate-800/60 border border-slate-700/40 rounded-lg px-2.5 py-1 text-xs text-gray-300 placeholder-gray-600 focus:outline-none focus:border-indigo-500/50"
+                class="w-28 focus:w-44 transition-all duration-200 bg-slate-800/60 border border-slate-700/40 rounded-lg px-2.5 py-1 text-xs text-gray-300 placeholder-gray-600 focus:outline-none focus:border-indigo-500/50"
               />
               <svg v-if="!searchQuery" class="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-600 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              <button v-else @click="searchQuery = ''" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+              <button v-else @click="searchQuery = ''" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors">
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
-            <span class="w-2 h-2 rounded-full flex-shrink-0"
-              :class="isConnected ? 'bg-emerald-400 shadow-[0_0_6px] shadow-emerald-400/60' : 'bg-gray-600'" />
-            <span class="text-[10px] text-gray-600">{{ isConnected ? 'Live' : 'Offline' }}</span>
-
-            <!-- Pinned messages toggle -->
+            <!-- Pinned messages (only shown when there are pinned messages) -->
             <button
               v-if="activeConversation.pinnedMessages?.length"
               @click="showPinned = !showPinned"
-              class="ml-1 w-7 h-7 rounded-lg flex items-center justify-center transition-colors relative"
-              :class="showPinned ? 'bg-amber-500/20 text-amber-400' : 'text-gray-600 hover:text-gray-400 hover:bg-slate-800/60'"
+              class="relative w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+              :class="showPinned ? 'bg-amber-500/20 text-amber-400' : 'text-gray-500 hover:text-gray-300 hover:bg-slate-800/60'"
               title="Pinned messages"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
               </svg>
-              <span class="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-amber-500 text-[8px] font-bold text-white flex items-center justify-center">
+              <span class="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-amber-500 text-[8px] font-bold text-white flex items-center justify-center leading-none">
                 {{ activeConversation.pinnedMessages.length }}
               </span>
             </button>
 
-            <!-- Global search -->
+            <!-- Members panel toggle (group/broadcast only) -->
             <button
-              @click="showGlobalSearch = true"
-              class="ml-1 w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-gray-400 hover:bg-slate-800/60 transition-colors"
-              title="Search messages (Ctrl+K)"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </button>
-
-            <!-- Mentions inbox toggle -->
-            <button
-              @click="showMentions = !showMentions; showStarred = false"
-              class="ml-1 w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
-              :class="showMentions ? 'bg-sky-500/20 text-sky-400' : 'text-gray-600 hover:text-gray-400 hover:bg-slate-800/60'"
-              title="Mentions"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-              </svg>
-            </button>
-
-            <!-- Starred messages toggle -->
-            <button
-              @click="showStarred = !showStarred; showMentions = false"
-              class="ml-1 w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
-              :class="showStarred ? 'bg-amber-500/20 text-amber-400' : 'text-gray-600 hover:text-gray-400 hover:bg-slate-800/60'"
-              title="Starred messages"
-            >
-              <svg class="w-4 h-4" :fill="showStarred ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-              </svg>
-            </button>
-
-            <!-- Archive conversation -->
-            <button
-              @click="handleArchive(!activeConversation.archived)"
-              class="ml-1 w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
-              :class="activeConversation.archived ? 'bg-amber-500/20 text-amber-400' : 'text-gray-600 hover:text-gray-400 hover:bg-slate-800/60'"
-              :title="activeConversation.archived ? 'Unarchive conversation' : 'Archive conversation'"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-              </svg>
-            </button>
-
-            <!-- Disappearing messages toggle -->
-            <div class="relative ml-1">
-              <button
-                @click.stop="showDisappearingMenu = !showDisappearingMenu"
-                class="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
-                :class="activeConversation.disappearingMessages?.enabled
-                  ? 'bg-amber-500/20 text-amber-400'
-                  : 'text-gray-600 hover:text-gray-400 hover:bg-slate-800/60'"
-                title="Disappearing messages"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </button>
-              <Teleport to="body">
-                <div
-                  v-if="showDisappearingMenu"
-                  class="fixed z-[9990] w-44 bg-slate-900 border border-slate-700/60 rounded-xl shadow-2xl shadow-black/40 py-1 overflow-hidden"
-                  style="top:56px;right:16px"
-                  @click.stop
-                >
-                  <p class="text-[9px] font-semibold uppercase tracking-wider text-gray-600 px-3 py-1.5">Auto-delete messages</p>
-                  <button
-                    v-for="opt in disappearingOptions"
-                    :key="opt.label"
-                    @click="setDisappearing(opt.enabled, opt.ttl)"
-                    class="w-full flex items-center justify-between px-3 py-1.5 text-xs transition-colors"
-                    :class="(!opt.enabled && !activeConversation.disappearingMessages?.enabled) ||
-                      (opt.enabled && activeConversation.disappearingMessages?.enabled && activeConversation.disappearingMessages?.ttl === opt.ttl)
-                      ? 'text-indigo-300 bg-indigo-500/10'
-                      : 'text-gray-400 hover:bg-slate-800/60'"
-                  >
-                    {{ opt.label }}
-                    <svg v-if="(!opt.enabled && !activeConversation.disappearingMessages?.enabled) ||
-                      (opt.enabled && activeConversation.disappearingMessages?.enabled && activeConversation.disappearingMessages?.ttl === opt.ttl)"
-                      class="w-3 h-3 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-                    </svg>
-                  </button>
-                </div>
-                <div v-if="showDisappearingMenu" class="fixed inset-0 z-[9989]" @click="showDisappearingMenu = false" />
-              </Teleport>
-            </div>
-
-            <!-- Media gallery toggle -->
-            <button
-              @click="showMediaGallery = !showMediaGallery"
-              class="ml-1 w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
-              :class="showMediaGallery ? 'bg-indigo-500/20 text-indigo-400' : 'text-gray-600 hover:text-gray-400 hover:bg-slate-800/60'"
-              title="Media & Files"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </button>
-
-            <!-- Scheduled messages toggle -->
-            <button
-              @click="showScheduledPanel = !showScheduledPanel; showRemindersPanel = false"
-              class="ml-1 w-7 h-7 rounded-lg flex items-center justify-center transition-colors relative"
-              :class="showScheduledPanel ? 'bg-indigo-500/20 text-indigo-400' : 'text-gray-600 hover:text-gray-400 hover:bg-slate-800/60'"
-              title="Scheduled messages"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </button>
-
-            <!-- Reminders toggle -->
-            <button
-              @click="showRemindersPanel = !showRemindersPanel; showScheduledPanel = false"
-              class="ml-1 w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
-              :class="showRemindersPanel ? 'bg-amber-500/20 text-amber-400' : 'text-gray-600 hover:text-gray-400 hover:bg-slate-800/60'"
-              title="Reminders"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-            </button>
-
-            <!-- Conversation info panel toggle -->
-            <button
-              @click="showConvInfo = !showConvInfo"
-              class="ml-1 w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
-              :class="showConvInfo ? 'bg-indigo-500/20 text-indigo-400' : 'text-gray-600 hover:text-gray-400 hover:bg-slate-800/60'"
-              title="Conversation info"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </button>
-
-            <!-- Members panel toggle (group only) -->
-            <button
-              v-if="activeConversation.type === 'group'"
+              v-if="activeConversation.type === 'group' || activeConversation.type === 'broadcast'"
               @click="showMembers = !showMembers"
-              class="ml-1 w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
-              :class="showMembers ? 'bg-indigo-500/20 text-indigo-400' : 'text-gray-600 hover:text-gray-400 hover:bg-slate-800/60'"
-              title="Toggle member list"
+              class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+              :class="showMembers ? 'bg-indigo-500/20 text-indigo-400' : 'text-gray-500 hover:text-gray-300 hover:bg-slate-800/60'"
+              title="Members"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </button>
+
+            <!-- More options (···) -->
+            <div class="relative">
+              <button
+                @click.stop="showOverflowMenu = !showOverflowMenu"
+                class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                :class="showOverflowMenu ? 'bg-slate-700 text-gray-200' : 'text-gray-500 hover:text-gray-300 hover:bg-slate-800/60'"
+                title="More options"
+              >
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" />
+                </svg>
+              </button>
+
+              <Teleport to="body">
+                <div
+                  v-if="showOverflowMenu"
+                  class="fixed z-[9992] w-56 bg-slate-900 border border-slate-700/50 rounded-2xl shadow-2xl shadow-black/50 py-1.5 overflow-hidden"
+                  style="top: 56px; right: 16px;"
+                  @click.stop
+                >
+                  <!-- Search -->
+                  <button
+                    @click="showGlobalSearch = true; showOverflowMenu = false"
+                    class="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-gray-300 hover:bg-slate-800/60 hover:text-white transition-colors"
+                  >
+                    <svg class="w-3.5 h-3.5 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <span class="flex-1 text-left">Global Search</span>
+                    <kbd class="text-[9px] text-gray-600 border border-slate-700 rounded px-1 py-0.5 font-mono">⌘K</kbd>
+                  </button>
+
+                  <!-- Mentions -->
+                  <button
+                    @click="showMentions = !showMentions; showStarred = false; showOverflowMenu = false"
+                    class="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs transition-colors"
+                    :class="showMentions ? 'text-sky-400 bg-sky-500/10' : 'text-gray-300 hover:bg-slate-800/60 hover:text-white'"
+                  >
+                    <svg class="w-3.5 h-3.5 flex-shrink-0" :class="showMentions ? 'text-sky-400' : 'text-gray-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                    </svg>
+                    Mentions
+                    <span v-if="showMentions" class="ml-auto w-1.5 h-1.5 rounded-full bg-sky-400" />
+                  </button>
+
+                  <!-- Starred -->
+                  <button
+                    @click="showStarred = !showStarred; showMentions = false; showOverflowMenu = false"
+                    class="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs transition-colors"
+                    :class="showStarred ? 'text-amber-400 bg-amber-500/10' : 'text-gray-300 hover:bg-slate-800/60 hover:text-white'"
+                  >
+                    <svg class="w-3.5 h-3.5 flex-shrink-0" :class="showStarred ? 'text-amber-400' : 'text-gray-500'" :fill="showStarred ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                    </svg>
+                    Starred Messages
+                    <span v-if="showStarred" class="ml-auto w-1.5 h-1.5 rounded-full bg-amber-400" />
+                  </button>
+
+                  <div class="h-px bg-slate-800/60 mx-3 my-1" />
+
+                  <!-- Conversation info -->
+                  <button
+                    @click="showConvInfo = !showConvInfo; showOverflowMenu = false"
+                    class="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs transition-colors"
+                    :class="showConvInfo ? 'text-indigo-400 bg-indigo-500/10' : 'text-gray-300 hover:bg-slate-800/60 hover:text-white'"
+                  >
+                    <svg class="w-3.5 h-3.5 flex-shrink-0" :class="showConvInfo ? 'text-indigo-400' : 'text-gray-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Conversation Info
+                  </button>
+
+                  <!-- Media gallery -->
+                  <button
+                    @click="showMediaGallery = !showMediaGallery; showOverflowMenu = false"
+                    class="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs transition-colors"
+                    :class="showMediaGallery ? 'text-indigo-400 bg-indigo-500/10' : 'text-gray-300 hover:bg-slate-800/60 hover:text-white'"
+                  >
+                    <svg class="w-3.5 h-3.5 flex-shrink-0" :class="showMediaGallery ? 'text-indigo-400' : 'text-gray-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Media &amp; Files
+                  </button>
+
+                  <!-- Scheduled messages -->
+                  <button
+                    @click="showScheduledPanel = !showScheduledPanel; showRemindersPanel = false; showOverflowMenu = false"
+                    class="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs transition-colors"
+                    :class="showScheduledPanel ? 'text-indigo-400 bg-indigo-500/10' : 'text-gray-300 hover:bg-slate-800/60 hover:text-white'"
+                  >
+                    <svg class="w-3.5 h-3.5 flex-shrink-0" :class="showScheduledPanel ? 'text-indigo-400' : 'text-gray-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Scheduled
+                  </button>
+
+                  <!-- Reminders -->
+                  <button
+                    @click="showRemindersPanel = !showRemindersPanel; showScheduledPanel = false; showOverflowMenu = false"
+                    class="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs transition-colors"
+                    :class="showRemindersPanel ? 'text-amber-400 bg-amber-500/10' : 'text-gray-300 hover:bg-slate-800/60 hover:text-white'"
+                  >
+                    <svg class="w-3.5 h-3.5 flex-shrink-0" :class="showRemindersPanel ? 'text-amber-400' : 'text-gray-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                    Reminders
+                  </button>
+
+                  <div class="h-px bg-slate-800/60 mx-3 my-1" />
+
+                  <!-- Disappearing messages -->
+                  <div class="px-3.5 py-1.5">
+                    <p class="text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1.5 flex items-center gap-1.5">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Auto-delete
+                    </p>
+                    <div class="flex gap-1">
+                      <button
+                        v-for="opt in disappearingOptions"
+                        :key="opt.label"
+                        @click="setDisappearing(opt.enabled, opt.ttl)"
+                        class="flex-1 py-1 rounded-lg text-[10px] font-semibold transition-all border"
+                        :class="(!opt.enabled && !activeConversation.disappearingMessages?.enabled) ||
+                          (opt.enabled && activeConversation.disappearingMessages?.enabled && activeConversation.disappearingMessages?.ttl === opt.ttl)
+                          ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300'
+                          : 'bg-slate-800/60 border-slate-700/40 text-gray-500 hover:text-gray-300'"
+                      >{{ opt.label }}</button>
+                    </div>
+                  </div>
+
+                  <div class="h-px bg-slate-800/60 mx-3 my-1" />
+
+                  <!-- Archive -->
+                  <button
+                    @click="handleArchive(!activeConversation.archived); showOverflowMenu = false"
+                    class="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs transition-colors"
+                    :class="activeConversation.archived ? 'text-amber-400 bg-amber-500/10' : 'text-gray-300 hover:bg-slate-800/60 hover:text-white'"
+                  >
+                    <svg class="w-3.5 h-3.5 flex-shrink-0" :class="activeConversation.archived ? 'text-amber-400' : 'text-gray-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                    </svg>
+                    {{ activeConversation.archived ? 'Unarchive' : 'Archive' }}
+                  </button>
+                </div>
+                <div v-if="showOverflowMenu" class="fixed inset-0 z-[9991]" @click="showOverflowMenu = false" />
+              </Teleport>
+            </div>
           </div>
         </div>
 
@@ -622,36 +668,38 @@
         class="w-64 flex-shrink-0 border-l border-slate-800/60 flex flex-col h-full bg-slate-900/50"
       >
         <!-- Panel header -->
-        <div class="px-4 py-3 border-b border-slate-800/60 flex-shrink-0">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-semibold text-white/70 uppercase tracking-wider">Members</span>
+        <div class="px-4 pt-3.5 pb-3 border-b border-slate-800/60 flex-shrink-0 space-y-2.5">
+          <!-- Title row -->
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold text-white/80 tracking-tight">Members</span>
+              <!-- Stats chips -->
+              <span class="text-[10px] font-semibold text-gray-600 px-1.5 py-0.5 bg-slate-800/60 rounded-md">
+                {{ activeConversation.participants.length }}
+              </span>
+              <span v-if="activeConversation.participants.filter(id => isOnline(id)).length > 0" class="flex items-center gap-1 text-[10px] font-semibold text-emerald-400/80">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                {{ activeConversation.participants.filter(id => isOnline(id)).length }}
+              </span>
+            </div>
+            <!-- Add member button (admins only) -->
             <button
               v-if="activeConversation.admins?.includes(currentUserId)"
               @click="showAddMembers = !showAddMembers"
-              class="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium transition-colors"
-              :class="showAddMembers ? 'bg-indigo-500/20 text-indigo-300' : 'text-gray-500 hover:text-gray-300 hover:bg-slate-800/60'"
+              class="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold transition-all"
+              :class="showAddMembers
+                ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                : 'text-gray-500 hover:text-gray-200 hover:bg-slate-800/60 border border-transparent'"
             >
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
               </svg>
               Add
             </button>
           </div>
-          <!-- Stats row -->
-          <div class="flex items-center gap-3">
-            <span class="flex items-center gap-1 text-[11px] text-gray-500">
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0" />
-              </svg>
-              {{ activeConversation.participants.length }}
-            </span>
-            <span class="flex items-center gap-1 text-[11px] text-emerald-400/80">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
-              {{ activeConversation.participants.filter(id => isOnline(id)).length }} online
-            </span>
-          </div>
+
           <!-- Member search -->
-          <div class="relative mt-2">
+          <div class="relative">
             <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
@@ -659,7 +707,7 @@
               v-model="memberListSearch"
               type="text"
               placeholder="Search members…"
-              class="w-full pl-7 pr-3 py-1.5 bg-slate-800/60 border border-slate-700/40 rounded-lg text-[11px] text-gray-300 placeholder-gray-600 focus:outline-none focus:border-indigo-500/50"
+              class="w-full pl-7 pr-3 py-1.5 bg-slate-800/50 border border-slate-700/40 rounded-lg text-[11px] text-gray-300 placeholder-gray-600 focus:outline-none focus:border-indigo-500/50 transition-colors"
             />
           </div>
         </div>
@@ -782,16 +830,16 @@
         </div>
 
         <!-- Leave group footer -->
-        <div class="flex-shrink-0 px-3 py-3 border-t border-slate-800/60">
+        <div class="flex-shrink-0 px-3 py-2.5 border-t border-slate-800/60 bg-slate-900/30">
           <button
             @click="leaveGroup"
             :disabled="memberActionLoading.has(currentUserId)"
-            class="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-red-500/20 text-red-400/80 hover:text-red-400 hover:bg-red-500/10 text-xs font-medium transition-colors disabled:opacity-50"
+            class="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-red-500/15 text-red-400/60 hover:text-red-400 hover:bg-red-500/8 hover:border-red-500/25 text-xs font-semibold transition-all disabled:opacity-40"
           >
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
-            Leave group
+            Leave {{ activeConversation.type === 'broadcast' ? 'Channel' : 'Group' }}
           </button>
         </div>
       </div>
@@ -923,7 +971,7 @@
       >
         <RemindersPanel
           @close="showRemindersPanel = false"
-          @jump="(convId, msgId) => { showRemindersPanel = false; handleStarNavigate({ conversationId: convId, messageId: msgId }) }"
+          @jump="(convId, msgId) => { showRemindersPanel = false; handleStarNavigate(convId, msgId) }"
         />
       </div>
     </Transition>
@@ -1255,6 +1303,7 @@ const { user } = useAuth()
 
 const showModal = ref(false)
 const showMembers = ref(true)
+const showOverflowMenu = ref(false)
 const loadingMessages = ref(false)
 const scrollRef = ref<HTMLElement | null>(null)
 const bottomRef = ref<HTMLElement | null>(null)
@@ -1545,7 +1594,7 @@ async function confirmRenameGroup() {
   renamingGroup.value = false
   if (updated) {
     // Optimistic UI update (socket will also sync all members)
-    await loadConversations(teamFromMemberMap())
+    await loadConversations()
     showRenameModal.value = false
   }
 }
@@ -1721,12 +1770,6 @@ const addableMembersFiltered = computed(() =>
   ),
 )
 
-function teamFromMemberMap(): TeamMember[] {
-  return Array.from(memberMap.value.entries()).map(([_id, name]) => ({
-    _id, name, email: '', role: 'admin' as const, isActive: true, isEmailVerified: true, createdAt: '',
-  }))
-}
-
 function toggleAddMember(id: string) {
   const s = new Set(selectedToAdd.value)
   s.has(id) ? s.delete(id) : s.add(id)
@@ -1743,7 +1786,7 @@ async function confirmAddMembers() {
   )
   addingMembers.value = false
   if (updated) {
-    await loadConversations(teamFromMemberMap())
+    await loadConversations()
     selectedToAdd.value = new Set()
     addMemberSearch.value = ''
     showAddMembers.value = false
@@ -1939,7 +1982,7 @@ async function deleteMessage(id: string) {
 
 async function handleCreated(id: string) {
   showModal.value = false
-  await loadConversations(teamFromMemberMap())
+  await loadConversations()
   await handleSelect(id)
 }
 
@@ -2057,7 +2100,7 @@ onMounted(async () => {
   refreshDraftConvIds()
   // Load first page synchronously so conversations can be rendered immediately
   await loadNextTeamPage()
-  await loadConversations(teamMembers.value)
+  await loadConversations()
   await loadArchivedConversations()
   startListening()
 

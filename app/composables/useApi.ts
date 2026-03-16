@@ -317,8 +317,10 @@ export function useApi() {
       role?: string
     }): Promise<{ data: TeamMember[]; total: number }> {
       const qs = new URLSearchParams()
-      if (params?.page) qs.set('page', String(params.page))
-      if (params?.pageSize) qs.set('limit', String(params.pageSize))
+      const limit = params?.pageSize ?? 20
+      const skip = params?.page ? (params.page - 1) * limit : 0
+      qs.set('limit', String(limit))
+      if (skip > 0) qs.set('skip', String(skip))
       if (params?.name) qs.set('name', params.name)
       if (params?.email) qs.set('email', params.email)
       if (params?.role) qs.set('role', params.role)
@@ -329,6 +331,12 @@ export function useApi() {
     async getById(id: string): Promise<TeamMember | null> {
       const response = await request<SingleResponse<TeamMember>>(`/admin/users/${id}`)
       return response?.data || null
+    },
+
+    async getByIds(ids: string[]): Promise<TeamMember[]> {
+      if (!ids.length) return []
+      const response = await request<TeamMember[]>(`/admin/users/by-ids?ids=${ids.join(',')}`)
+      return response ?? []
     },
 
     async create(data: Partial<TeamMember>): Promise<TeamMember | null> {

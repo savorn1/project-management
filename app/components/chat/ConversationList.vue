@@ -1,10 +1,16 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- Header -->
-    <div class="p-4 border-b border-slate-800/60 flex items-center justify-between flex-shrink-0">
-      <h2 class="text-sm font-semibold text-white">Messages</h2>
+    <div class="px-4 pt-4 pb-3 border-b border-slate-800/60 flex items-center justify-between flex-shrink-0">
+      <div class="flex items-center gap-2">
+        <h2 class="text-sm font-bold text-white tracking-tight">Messages</h2>
+        <span
+          v-if="totalUnreadCount > 0"
+          class="min-w-[18px] h-[18px] px-1 rounded-full bg-indigo-500 text-white text-[9px] font-bold flex items-center justify-center shadow-sm shadow-indigo-500/40 leading-none"
+        >{{ totalUnreadCount > 99 ? '99+' : totalUnreadCount }}</span>
+      </div>
       <div class="flex items-center gap-1">
-        <!-- Mark all as read (only shown when there are unread conversations) -->
+        <!-- Mark all as read -->
         <button
           v-if="totalUnreadCount > 0"
           @click="handleMarkAllRead"
