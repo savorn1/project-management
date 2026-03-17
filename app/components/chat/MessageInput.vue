@@ -1,5 +1,5 @@
 <template>
-  <div class="relative px-4 py-3 border-t border-slate-800/60">
+  <div class="relative px-4 py-3 border-t border-slate-700/30 bg-slate-900/40 backdrop-blur-sm">
 
     <!-- Reply preview strip -->
     <Transition
@@ -446,7 +446,8 @@
       />
 
       <!-- Bottom toolbar -->
-      <div class="flex items-center gap-1 px-2 pb-2">
+      <div class="h-px mx-3 bg-slate-700/30" />
+      <div class="flex items-center gap-1 px-2 pb-2 pt-1">
 
         <!-- Emoji button -->
         <button
@@ -651,7 +652,7 @@
         <div class="flex-1" />
 
         <!-- Hint -->
-        <span class="hidden sm:block text-[10px] text-gray-700 pr-1 select-none">Enter to send</span>
+        <span class="hidden sm:block text-[10px] text-gray-600 pr-1 select-none">Enter to send</span>
 
         <!-- Schedule button -->
         <button

@@ -115,7 +115,7 @@
       <!-- Active conversation -->
       <template v-else>
         <!-- Header -->
-        <div class="flex items-center gap-3 px-5 py-3 border-b border-slate-800/60 flex-shrink-0 bg-slate-900/40">
+        <div class="flex items-center gap-3 px-5 py-3.5 border-b border-slate-700/30 flex-shrink-0 bg-slate-900/70 backdrop-blur-md">
           <div class="relative flex-shrink-0">
             <img
               v-if="activeConversation.avatar"
@@ -606,7 +606,7 @@
           <button
             v-if="!isAtBottom"
             @click="scrollToBottom"
-            class="absolute bottom-24 right-5 z-10 w-9 h-9 rounded-full bg-slate-700 hover:bg-slate-600 border border-slate-600/60 shadow-lg flex items-center justify-center text-gray-300 hover:text-white transition-all"
+            class="absolute bottom-24 right-5 z-10 w-9 h-9 rounded-full bg-slate-800/90 backdrop-blur-sm hover:bg-slate-700/90 border border-slate-600/50 shadow-xl shadow-black/40 flex items-center justify-center text-gray-300 hover:text-white transition-all"
             title="Scroll to bottom"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

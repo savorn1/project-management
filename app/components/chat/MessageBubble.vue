@@ -292,7 +292,7 @@
         >
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <span class="text-xs text-gray-600" :title="fullDateTime">{{ formatTime(message.createdAt) }}</span>
+        <span class="text-[11px] text-gray-500" :title="fullDateTime">{{ formatTime(message.createdAt) }}</span>
         <button
           v-if="message.editedAt"
           @click.stop="emit('show-edit-history', message)"
@@ -339,60 +339,60 @@
                 @click.stop
               >
                 <button @click="doAction('reply')"
-                  class="w-full flex items-center gap-3 px-4 py-3 text-base text-gray-200 hover:bg-slate-700/60 transition-colors text-left">
-                  <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-gray-200 hover:bg-slate-700/60 transition-colors text-left">
+                  <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                   </svg>
                   Reply
                 </button>
                 <button @click="doAction('pin')"
-                  class="w-full flex items-center gap-3 px-4 py-3 text-base text-gray-200 hover:bg-slate-700/60 transition-colors text-left">
-                  <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-gray-200 hover:bg-slate-700/60 transition-colors text-left">
+                  <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2l4 4-8 8-4-4 8-8z" />
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14l-4 4" />
                   </svg>
                   Pin
                 </button>
                 <button @click="doAction('star')"
-                  class="w-full flex items-center gap-3 px-4 py-3 text-base text-gray-200 hover:bg-slate-700/60 transition-colors text-left">
-                  <svg class="w-5 h-5 flex-shrink-0" :fill="isStarred ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24"
+                  class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-gray-200 hover:bg-slate-700/60 transition-colors text-left">
+                  <svg class="w-4 h-4 flex-shrink-0" :fill="isStarred ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24"
                     :class="isStarred ? 'text-amber-400' : 'text-gray-400'">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                   </svg>
                   {{ isStarred ? 'Unstar' : 'Star' }}
                 </button>
                 <button v-if="message.content" @click="doAction('copy')"
-                  class="w-full flex items-center gap-3 px-4 py-3 text-base text-gray-200 hover:bg-slate-700/60 transition-colors text-left">
-                  <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-gray-200 hover:bg-slate-700/60 transition-colors text-left">
+                  <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                   </svg>
                   Copy
                 </button>
                 <button v-if="!message.isDeleted" @click="doAction('thread')"
-                  class="w-full flex items-center gap-3 px-4 py-3 text-base text-gray-200 hover:bg-slate-700/60 transition-colors text-left">
-                  <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-gray-200 hover:bg-slate-700/60 transition-colors text-left">
+                  <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                   </svg>
                   Thread
                 </button>
                 <button @click="doAction('remind')"
-                  class="w-full flex items-center gap-3 px-4 py-3 text-base text-gray-200 hover:bg-slate-700/60 transition-colors text-left">
-                  <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-gray-200 hover:bg-slate-700/60 transition-colors text-left">
+                  <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                   </svg>
                   Remind me
                 </button>
                 <button v-if="message.content" @click="doAction('create-task')"
-                  class="w-full flex items-center gap-3 px-4 py-3 text-base text-gray-200 hover:bg-slate-700/60 transition-colors text-left">
-                  <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-gray-200 hover:bg-slate-700/60 transition-colors text-left">
+                  <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                   </svg>
                   Create task
                 </button>
                 <template v-if="mine && message.content">
                   <button @click="doAction('edit')"
-                    class="w-full flex items-center gap-3 px-4 py-3 text-base text-gray-200 hover:bg-slate-700/60 transition-colors text-left">
-                    <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-gray-200 hover:bg-slate-700/60 transition-colors text-left">
+                    <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                     Edit
@@ -400,15 +400,15 @@
                 </template>
                 <div v-if="mine" class="h-px bg-slate-700/60 mx-2 my-0.5" />
                 <button v-if="mine" @click="doAction('delete')"
-                  class="w-full flex items-center gap-3 px-4 py-3 text-base text-rose-400 hover:bg-rose-500/10 transition-colors text-left">
-                  <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-rose-400 hover:bg-rose-500/10 transition-colors text-left">
+                  <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
                   Unsend
                 </button>
                 <button v-if="!mine" @click="doAction('report')"
-                  class="w-full flex items-center gap-3 px-4 py-3 text-base text-rose-400 hover:bg-rose-500/10 transition-colors text-left">
-                  <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-rose-400 hover:bg-rose-500/10 transition-colors text-left">
+                  <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
                   </svg>
                   Report
