@@ -533,6 +533,65 @@ export interface SavedReply {
   updatedAt: string
 }
 
+// ─── Resume / CV ─────────────────────────────────────────────────────────────
+
+export interface WorkExperience {
+  title: string
+  company: string
+  location?: string
+  startDate: string
+  endDate?: string
+  isCurrent: boolean
+  responsibilities: string[]
+}
+
+export interface ResumeEducation {
+  degree: string
+  institution: string
+  year: string
+  highlights: string[]
+}
+
+export interface ResumeLanguage {
+  name: string
+  level?: string
+}
+
+export interface ResumeAward {
+  title: string
+  organization: string
+  year: string
+}
+
+export interface ResumeReference {
+  name: string
+  jobTitle: string
+  organization: string
+  email?: string
+  phone?: string
+}
+
+export interface Resume {
+  _id: string
+  userId: string
+  fullName: string
+  title?: string
+  phone?: string
+  email?: string
+  location?: string
+  profileUrl?: string
+  summary: string
+  skills: string[]
+  experiences: WorkExperience[]
+  education: ResumeEducation[]
+  languages: ResumeLanguage[]
+  awards: ResumeAward[]
+  references: ResumeReference[]
+  hobbies: string[]
+  createdAt: string
+  updatedAt: string
+}
+
 // Dashboard Stats
 export interface DashboardStats {
   totalProjects: number

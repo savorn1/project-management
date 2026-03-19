@@ -81,6 +81,7 @@ const navItems = [
   { path: '/fund-pools',   label: 'Fund Pools',   icon: '💰' },
   { path: '/feature-flags',label: 'Feature Flags',icon: '🏳️' },
   { path: '/uploads',      label: 'File Uploads', icon: '📎' },
+  { path: '/resume',       label: 'Resume / CV',  icon: '📄' },
 ]
 
 function isActive(path: string): boolean {
