@@ -772,6 +772,126 @@
       </div>
 
       <!-- ════════════════════════════════════════════════════════════
+           LP (LABEL PANEL) LAYOUT  (lp-* themes)
+      ════════════════════════════════════════════════════════════ -->
+      <div
+        v-else-if="isLpLayout && !editing"
+        id="cv-document"
+        class="cv-lp-paper w-full max-w-3xl shadow-2xl"
+        :class="`theme-${activeTheme}`"
+      >
+        <!-- Name header -->
+        <div class="cv-lp-name-area">
+          <h1 class="cv-lp-name">{{ form.fullName }}</h1>
+          <p v-if="form.title" class="cv-lp-subtitle">{{ form.title }}</p>
+          <div class="cv-lp-name-rule"></div>
+        </div>
+
+        <!-- Contact bar -->
+        <div class="cv-lp-contact-bar">
+          <div v-if="form.phone" class="cv-lp-contact-item">{{ form.phone }}</div>
+          <div v-if="form.email" class="cv-lp-contact-item">{{ form.email }}</div>
+          <div v-if="form.location" class="cv-lp-contact-item">{{ form.location }}</div>
+          <div v-if="form.profileUrl" class="cv-lp-contact-item">WWW: <a :href="form.profileUrl" target="_blank" class="cv-lp-link">Bold Profile</a></div>
+        </div>
+
+        <!-- Label-panel rows -->
+        <div class="cv-lp-body">
+
+          <div v-if="form.skills.length" class="cv-lp-row">
+            <div class="cv-lp-label">Skills</div>
+            <div class="cv-lp-content">
+              <div class="cv-lp-skills-grid">
+                <div v-for="skill in form.skills" :key="skill" class="cv-lp-skill">
+                  <span class="cv-lp-bullet">·</span> {{ skill }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="form.summary" class="cv-lp-row">
+            <div class="cv-lp-label">Professional<br>Summary</div>
+            <div class="cv-lp-content">
+              <p class="cv-lp-body-text">{{ form.summary }}</p>
+            </div>
+          </div>
+
+          <div v-if="form.experiences.length" class="cv-lp-row">
+            <div class="cv-lp-label">Work History</div>
+            <div class="cv-lp-content">
+              <div v-for="(exp, i) in form.experiences" :key="i" class="cv-lp-exp">
+                <div class="cv-lp-exp-header">
+                  <span class="cv-lp-exp-title">{{ exp.title }}</span>
+                  <span class="cv-lp-exp-date">, {{ exp.startDate }} – {{ exp.isCurrent ? 'Current' : exp.endDate }}</span>
+                </div>
+                <div class="cv-lp-exp-company">{{ exp.company }}<span v-if="exp.location">, {{ exp.location }}</span></div>
+                <ul class="cv-lp-bullets">
+                  <li v-for="r in exp.responsibilities" :key="r"><span class="cv-lp-bullet">·</span> {{ r }}</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="form.education.length" class="cv-lp-row">
+            <div class="cv-lp-label">Education</div>
+            <div class="cv-lp-content">
+              <div v-for="(edu, i) in form.education" :key="i" class="cv-lp-edu">
+                <div class="cv-lp-exp-title">{{ edu.institution }}</div>
+                <div class="cv-lp-exp-dateline">{{ edu.degree }}<span v-if="edu.year"> | {{ edu.year }}</span></div>
+                <ul v-if="edu.highlights.length" class="cv-lp-bullets">
+                  <li v-for="h in edu.highlights" :key="h"><span class="cv-lp-bullet">·</span> {{ h }}</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="form.languages.length" class="cv-lp-row">
+            <div class="cv-lp-label">Languages</div>
+            <div class="cv-lp-content">
+              <div v-for="lang in form.languages" :key="lang.name" class="cv-lp-body-text">
+                <strong>{{ lang.name }}</strong><span v-if="lang.level" style="color:#6b7280"> — {{ lang.level }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="form.awards.length" class="cv-lp-row">
+            <div class="cv-lp-label">Awards</div>
+            <div class="cv-lp-content">
+              <div v-for="award in form.awards" :key="award.title" class="cv-lp-edu">
+                <div class="cv-lp-exp-title">{{ award.title }}</div>
+                <div class="cv-lp-exp-dateline">{{ award.organization }}, {{ award.year }}</div>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="form.references.length" class="cv-lp-row">
+            <div class="cv-lp-label">References</div>
+            <div class="cv-lp-content">
+              <div v-for="ref in form.references" :key="ref.name" class="cv-lp-edu">
+                <div class="cv-lp-exp-title">{{ ref.name }}</div>
+                <div class="cv-lp-body-text">{{ ref.jobTitle }}, {{ ref.organization }}</div>
+                <div v-if="ref.email || ref.phone" class="cv-lp-body-text" style="color:#6b7280">
+                  {{ ref.email }}<span v-if="ref.phone"> · {{ ref.phone }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="form.hobbies.length" class="cv-lp-row">
+            <div class="cv-lp-label">Hobbies</div>
+            <div class="cv-lp-content">
+              <div class="cv-lp-skills-grid">
+                <div v-for="h in form.hobbies" :key="h" class="cv-lp-skill">
+                  <span class="cv-lp-bullet">·</span> {{ h }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════════════════
            REGULAR LAYOUT  (all other themes + edit mode)
       ════════════════════════════════════════════════════════════ -->
       <div
@@ -1131,6 +1251,20 @@ const themes = [
   { key: 'tc-copper',  label: 'Pro · Copper',   swatch: '#b45309' },
   { key: 'tc-indigo',  label: 'Pro · Indigo',   swatch: '#4338ca' },
   { key: 'tc-forest',  label: 'Pro · Forest',   swatch: '#15803d' },
+  // 2026 Colour Palette — Pro layout
+  { key: 'tc-mocha',    label: '2026 · Mocha',    swatch: '#8B5E52' },
+  { key: 'tc-lavender', label: '2026 · Lavender', swatch: '#7C6DB5' },
+  { key: 'tc-terra',    label: '2026 · Terra',    swatch: '#C4704F' },
+  { key: 'tc-moss',     label: '2026 · Moss',     swatch: '#4A7A50' },
+  { key: 'tc-cobalt',   label: '2026 · Cobalt',   swatch: '#1E4D9E' },
+  { key: 'tc-sand',     label: '2026 · Sand',     swatch: '#B8956A' },
+  { key: 'tc-rose',     label: '2026 · Rose',     swatch: '#B87890' },
+  // 2026 Colour Palette — Dual layout
+  { key: 'dp-mocha',    label: '2026 Dual · Mocha',    swatch: '#8B5E52' },
+  { key: 'dp-lavender', label: '2026 Dual · Lavender', swatch: '#7C6DB5' },
+  { key: 'dp-terra',    label: '2026 Dual · Terra',    swatch: '#C4704F' },
+  { key: 'dp-moss',     label: '2026 Dual · Moss',     swatch: '#4A7A50' },
+  { key: 'dp-sand',     label: '2026 Dual · Sand',     swatch: '#B8956A' },
   // Dual-panel layout
   { key: 'dp-blue',     label: 'Dual · Blue',     swatch: '#8faec8' },
   { key: 'dp-green',    label: 'Dual · Green',    swatch: '#7aaa7a' },
@@ -1162,6 +1296,13 @@ const themes = [
   { key: 'sl-burgundy', label: 'Side · Burgundy', swatch: '#5c1010' },
   { key: 'sl-plum',     label: 'Side · Plum',     swatch: '#4c1d95' },
   { key: 'sl-teal',     label: 'Side · Teal',     swatch: '#134e4a' },
+  // Label Panel layout
+  { key: 'lp-teal',   label: 'Panel · Teal',   swatch: '#2a6b56' },
+  { key: 'lp-navy',   label: 'Panel · Navy',   swatch: '#2d5282' },
+  { key: 'lp-forest', label: 'Panel · Forest', swatch: '#166534' },
+  { key: 'lp-slate',  label: 'Panel · Slate',  swatch: '#475569' },
+  { key: 'lp-plum',   label: 'Panel · Plum',   swatch: '#6d28d9' },
+  { key: 'lp-mocha',  label: 'Panel · Mocha',  swatch: '#8B5E52' },
   // Header-bar layout
   { key: 'hb-blue',    label: 'HBar · Blue',    swatch: '#8faec8' },
   { key: 'hb-teal',    label: 'HBar · Teal',    swatch: '#5aaa9a' },
@@ -1180,17 +1321,21 @@ const isWbLayout    = computed(() => activeTheme.value.startsWith('wb-'))
 const isClsLayout   = computed(() => activeTheme.value.startsWith('cls-'))
 const isDpLayout    = computed(() => activeTheme.value.startsWith('dp-'))
 const isHbLayout    = computed(() => activeTheme.value.startsWith('hb-'))
+const isLpLayout    = computed(() => activeTheme.value.startsWith('lp-'))
 
 // ─── Theme picker UI ──────────────────────────────────────────────────────────
 
 const showThemePicker = ref(false)
 const activeThemeObj  = computed(() => themes.find(t => t.key === activeTheme.value))
 const themeGroups = [
+  { label: '✦ 2026 Collection · Pro',  themes: themes.filter(t => t.label.startsWith('2026 ·')) },
+  { label: '✦ 2026 Collection · Dual', themes: themes.filter(t => t.label.startsWith('2026 Dual')) },
   { label: 'Base',          themes: themes.filter(t => ['classic','professional','modern','creative','minimal','sidebar'].includes(t.key)) },
-  { label: 'Pro (Two-Col)', themes: themes.filter(t => t.key.startsWith('tc-')) },
-  { label: 'Dual Panel',    themes: themes.filter(t => t.key.startsWith('dp-')) },
+  { label: 'Pro (Two-Col)', themes: themes.filter(t => t.key.startsWith('tc-') && !t.label.startsWith('2026')) },
+  { label: 'Dual Panel',    themes: themes.filter(t => t.key.startsWith('dp-') && !t.label.startsWith('2026')) },
   { label: 'Classic Serif', themes: themes.filter(t => t.key.startsWith('cls-')) },
   { label: 'Bar',           themes: themes.filter(t => t.key.startsWith('wb-')) },
+  { label: 'Label Panel',   themes: themes.filter(t => t.key.startsWith('lp-')) },
   { label: 'Header Bar',    themes: themes.filter(t => t.key.startsWith('hb-')) },
   { label: 'Sidebar Split', themes: themes.filter(t => t.key.startsWith('sl-')) },
 ]
@@ -1739,7 +1884,15 @@ textarea.cv-input { resize: vertical; }
 .theme-tc-slate  { --tc-a: #475569; --tc-al: #f1f5f9; --tc-am: #cbd5e1; --tc-at: #334155; --tc-lbl: #334155; --tc-hbg: transparent; --tc-hborder: 2px solid #e5e7eb; --tc-nm: #111827; --tc-ct: #4b5563; }
 .theme-tc-copper { --tc-a: #b45309; --tc-al: #fef3c7; --tc-am: #fde68a; --tc-at: #92400e; --tc-lbl: #92400e; --tc-hbg: transparent; --tc-hborder: 2px solid #e5e7eb; --tc-nm: #111827; --tc-ct: #4b5563; }
 .theme-tc-indigo { --tc-a: #4338ca; --tc-al: #eef2ff; --tc-am: #c7d2fe; --tc-at: #3730a3; --tc-lbl: #3730a3; --tc-hbg: transparent; --tc-hborder: 2px solid #e5e7eb; --tc-nm: #111827; --tc-ct: #4b5563; }
-.theme-tc-forest { --tc-a: #15803d; --tc-al: #f0fdf4; --tc-am: #bbf7d0; --tc-at: #14532d; --tc-lbl: #14532d; --tc-hbg: transparent; --tc-hborder: 2px solid #e5e7eb; --tc-nm: #111827; --tc-ct: #4b5563; }
+.theme-tc-forest   { --tc-a: #15803d; --tc-al: #f0fdf4; --tc-am: #bbf7d0; --tc-at: #14532d; --tc-lbl: #14532d; --tc-hbg: transparent; --tc-hborder: 2px solid #e5e7eb; --tc-nm: #111827; --tc-ct: #4b5563; }
+/* ── 2026 Colour Palette ───────────────────────────────────────── */
+.theme-tc-mocha    { --tc-a: #8B5E52; --tc-al: #f5ece8; --tc-am: #e8d0c8; --tc-at: #6b4438; --tc-lbl: #6b4438; --tc-hbg: transparent; --tc-hborder: 2px solid #e5e7eb; --tc-nm: #111827; --tc-ct: #4b5563; }
+.theme-tc-lavender { --tc-a: #7C6DB5; --tc-al: #f0eef9; --tc-am: #d8d4f0; --tc-at: #5a4d9c; --tc-lbl: #5a4d9c; --tc-hbg: transparent; --tc-hborder: 2px solid #e5e7eb; --tc-nm: #111827; --tc-ct: #4b5563; }
+.theme-tc-terra    { --tc-a: #C4704F; --tc-al: #fdf0eb; --tc-am: #f8d5c0; --tc-at: #9a4e30; --tc-lbl: #9a4e30; --tc-hbg: transparent; --tc-hborder: 2px solid #e5e7eb; --tc-nm: #111827; --tc-ct: #4b5563; }
+.theme-tc-moss     { --tc-a: #4A7A50; --tc-al: #eaf4ec; --tc-am: #b8dcbc; --tc-at: #2d5a33; --tc-lbl: #2d5a33; --tc-hbg: transparent; --tc-hborder: 2px solid #e5e7eb; --tc-nm: #111827; --tc-ct: #4b5563; }
+.theme-tc-cobalt   { --tc-a: #1E4D9E; --tc-al: #e8edf8; --tc-am: #c0ccee; --tc-at: #163880; --tc-lbl: #163880; --tc-hbg: transparent; --tc-hborder: 2px solid #e5e7eb; --tc-nm: #111827; --tc-ct: #4b5563; }
+.theme-tc-sand     { --tc-a: #B8956A; --tc-al: #fdf5ec; --tc-am: #f0dcc0; --tc-at: #8b6840; --tc-lbl: #8b6840; --tc-hbg: transparent; --tc-hborder: 2px solid #e5e7eb; --tc-nm: #111827; --tc-ct: #4b5563; }
+.theme-tc-rose     { --tc-a: #B87890; --tc-al: #fdf0f4; --tc-am: #f0d0dc; --tc-at: #8b4a6a; --tc-lbl: #8b4a6a; --tc-hbg: transparent; --tc-hborder: 2px solid #e5e7eb; --tc-nm: #111827; --tc-ct: #4b5563; }
 
 /* ── Shared header ──────────────────────────────────────────────── */
 [class*="theme-tc-"] .cv-header {
@@ -1844,7 +1997,13 @@ textarea.cv-input { resize: vertical; }
 .theme-dp-slate   { --dp-hbg: #d1d8e0; --dp-acc: #334155; --dp-nm: #111827; --dp-link: #1e293b; }
 .theme-dp-crimson { --dp-hbg: #e8c8d0; --dp-acc: #9d174d; --dp-nm: #111827; --dp-link: #be123c; }
 .theme-dp-teal    { --dp-hbg: #c8e4e0; --dp-acc: #0f766e; --dp-nm: #111827; --dp-link: #0d9488; }
-.theme-dp-charcoal{ --dp-hbg: #c8ccd0; --dp-acc: #1e293b; --dp-nm: #111827; --dp-link: #334155; }
+.theme-dp-charcoal { --dp-hbg: #c8ccd0; --dp-acc: #1e293b; --dp-nm: #111827; --dp-link: #334155; }
+/* ── 2026 Colour Palette ───────────────────────────────────────── */
+.theme-dp-mocha    { --dp-hbg: #e0ccc4; --dp-acc: #8B5E52; --dp-nm: #111827; --dp-link: #7a4a3e; }
+.theme-dp-lavender { --dp-hbg: #dcd8ee; --dp-acc: #6b5aaa; --dp-nm: #111827; --dp-link: #5a4a9e; }
+.theme-dp-terra    { --dp-hbg: #ecd0c0; --dp-acc: #b85a38; --dp-nm: #111827; --dp-link: #9a4828; }
+.theme-dp-moss     { --dp-hbg: #ccdccc; --dp-acc: #4A7A50; --dp-nm: #111827; --dp-link: #2d5a33; }
+.theme-dp-sand     { --dp-hbg: #e8dcc8; --dp-acc: #B8956A; --dp-nm: #111827; --dp-link: #8b6840; }
 
 /* ── Paper ────────────────────────────────────────────────────── */
 .cv-dp-paper {
@@ -1960,6 +2119,98 @@ textarea.cv-input { resize: vertical; }
 .cv-dp-edu-institution { font-weight: 800; font-size: 0.875rem; color: #111827; }
 .cv-dp-edu-year        { font-size: 0.76rem; color: var(--dp-acc); font-weight: 600; margin-bottom: 0.1rem; }
 .cv-dp-edu-degree      { font-style: italic; font-weight: 600; font-size: 0.845rem; color: #374151; margin-bottom: 0.15rem; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   THEMES — LABEL PANEL LAYOUT  (lp-* themes)
+═══════════════════════════════════════════════════════════════════ */
+
+/* ── Color tokens ─────────────────────────────────────────────── */
+.theme-lp-teal   { --lp-acc: #1d5f4a; --lp-sbg: #2a6b56; --lp-cbg: #1a2e28; --lp-link: #a8d8c8; }
+.theme-lp-navy   { --lp-acc: #1e3a5f; --lp-sbg: #2d5282; --lp-cbg: #0f1f3a; --lp-link: #93c5fd; }
+.theme-lp-forest { --lp-acc: #14532d; --lp-sbg: #166534; --lp-cbg: #0a2d18; --lp-link: #6ee7b7; }
+.theme-lp-slate  { --lp-acc: #334155; --lp-sbg: #475569; --lp-cbg: #1e293b; --lp-link: #94a3b8; }
+.theme-lp-plum   { --lp-acc: #4c1d95; --lp-sbg: #6d28d9; --lp-cbg: #2e0a6e; --lp-link: #c4b5fd; }
+.theme-lp-mocha  { --lp-acc: #6b4438; --lp-sbg: #8B5E52; --lp-cbg: #3a2020; --lp-link: #e8c8b8; }
+
+/* ── Paper ────────────────────────────────────────────────────── */
+.cv-lp-paper {
+  background: white;
+  color: #111827;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+/* ── Name header ──────────────────────────────────────────────── */
+.cv-lp-name-area { padding: 1.75rem 2rem 0.75rem; background: white; }
+.cv-lp-name {
+  font-size: 2.5rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: var(--lp-acc);
+  letter-spacing: 0.06em;
+  line-height: 1.05;
+}
+.cv-lp-subtitle {
+  font-size: 0.8rem;
+  color: #6b7280;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  margin-top: 0.2rem;
+}
+.cv-lp-name-rule { height: 2px; background: var(--lp-acc); margin-top: 0.65rem; }
+
+/* ── Contact bar ──────────────────────────────────────────────── */
+.cv-lp-contact-bar {
+  background: var(--lp-cbg);
+  color: #e5e7eb;
+  padding: 0.55rem 2rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.15rem 1.5rem;
+  font-size: 0.8rem;
+}
+.cv-lp-link { color: var(--lp-link); font-weight: 700; }
+
+/* ── Label-panel rows ─────────────────────────────────────────── */
+.cv-lp-body { display: flex; flex-direction: column; }
+.cv-lp-row  { display: flex; align-items: stretch; border-bottom: 1px solid #e5e7eb; }
+.cv-lp-row:last-child { border-bottom: none; }
+
+.cv-lp-label {
+  width: 27%;
+  flex-shrink: 0;
+  background: var(--lp-sbg);
+  color: white;
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 1rem 0.85rem 1rem 1.25rem;
+  line-height: 1.45;
+}
+.cv-lp-content { flex: 1; padding: 0.9rem 1.25rem; background: white; }
+
+/* ── Skills grid ──────────────────────────────────────────────── */
+.cv-lp-skills-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.1rem 0.5rem; }
+.cv-lp-skill { font-size: 0.855rem; color: #374151; display: flex; align-items: baseline; gap: 0.3rem; }
+.cv-lp-bullet { color: var(--lp-acc); font-size: 1.15rem; line-height: 1; flex-shrink: 0; }
+
+/* ── Body text ────────────────────────────────────────────────── */
+.cv-lp-body-text { font-size: 0.875rem; color: #374151; line-height: 1.6; }
+
+/* ── Work experience ──────────────────────────────────────────── */
+.cv-lp-exp { margin-bottom: 1rem; }
+.cv-lp-exp:last-child { margin-bottom: 0; }
+.cv-lp-exp-title   { font-weight: 800; text-transform: uppercase; letter-spacing: 0.03em; color: #111827; font-size: 0.875rem; }
+.cv-lp-exp-date    { font-weight: 400; color: #6b7280; font-size: 0.875rem; }
+.cv-lp-exp-company { font-size: 0.855rem; font-weight: 700; color: #374151; margin-bottom: 0.3rem; }
+.cv-lp-exp-dateline{ font-size: 0.8rem; color: #6b7280; margin-bottom: 0.15rem; font-style: italic; }
+.cv-lp-bullets { list-style: none; padding: 0; margin: 0.25rem 0 0; }
+.cv-lp-bullets li  { display: flex; gap: 0.35rem; align-items: flex-start; font-size: 0.845rem; color: #374151; padding: 0.04rem 0; }
+.cv-lp-bullets li .cv-lp-bullet { margin-top: 0.05rem; }
+
+/* ── Education ────────────────────────────────────────────────── */
+.cv-lp-edu { margin-bottom: 0.85rem; }
+.cv-lp-edu:last-child { margin-bottom: 0; }
 
 /* ═══════════════════════════════════════════════════════════════════
    THEMES — CLASSIC SERIF LAYOUT  (cls-* themes)
