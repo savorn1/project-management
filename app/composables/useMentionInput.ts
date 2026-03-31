@@ -11,21 +11,29 @@ export function useMentionInput(
   textareaRef: Ref<HTMLTextAreaElement | null>,
   members: Ref<TeamMember[]>,
   modelValue: Ref<string>,
+  conversationType?: Ref<string | undefined>,
 ) {
   const showDropdown = ref(false)
   const selectedIndex = ref(0)
   const mentionQuery = ref('')
   const mentionStartPos = ref(-1)
 
-  const EVERYONE_OPTION: MentionOption = { type: 'everyone', id: 'everyone', name: 'everyone' }
+  const BROADCAST_OPTIONS: MentionOption[] = [
+    { type: 'everyone', id: 'everyone', name: 'everyone' },
+    { type: 'everyone', id: 'here',     name: 'here' },
+    { type: 'everyone', id: 'channel',  name: 'channel' },
+  ]
 
   const filteredOptions = computed<MentionOption[]>(() => {
     const query = mentionQuery.value.toLowerCase()
     const options: MentionOption[] = []
 
-    // Add @everyone if query matches
-    if ('everyone'.includes(query)) {
-      options.push(EVERYONE_OPTION)
+    // Add @everyone / @here / @channel only in group/broadcast conversations
+    const isGroupOrBroadcast = conversationType?.value === 'group' || conversationType?.value === 'broadcast'
+    if (isGroupOrBroadcast) {
+      for (const opt of BROADCAST_OPTIONS) {
+        if (opt.name.includes(query)) options.push(opt)
+      }
     }
 
     // Add matching active members
@@ -106,7 +114,7 @@ export function useMentionInput(
     const after = modelValue.value.slice(textarea.selectionStart)
 
     const mention = option.type === 'everyone'
-      ? '@[everyone] '
+      ? `@[${option.name}] `
       : `@[${option.name}](${option.id}) `
 
     modelValue.value = before + mention + after

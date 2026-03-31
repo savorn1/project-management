@@ -169,7 +169,40 @@
             class="flex-shrink-0 text-[10px] font-semibold transition-colors px-1.5 py-0.5 rounded-md"
             :class="inviteCopied ? 'text-emerald-400 bg-emerald-500/10' : 'text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10'"
           >{{ inviteCopied ? 'Copied!' : 'Copy' }}</button>
+          <button
+            @click="showQrModal = true"
+            class="flex-shrink-0 text-[10px] font-semibold text-gray-500 hover:text-gray-300 hover:bg-slate-700/50 transition-colors px-1.5 py-0.5 rounded-md"
+            title="Show QR Code"
+          >QR</button>
         </div>
+
+        <!-- QR Code modal -->
+        <Teleport to="body">
+          <div
+            v-if="showQrModal"
+            class="fixed inset-0 z-[99999] flex items-center justify-center p-4"
+            @click.self="showQrModal = false"
+          >
+            <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="showQrModal = false" />
+            <div class="relative bg-slate-900 border border-slate-700/60 rounded-2xl shadow-2xl p-5 flex flex-col items-center gap-3 w-64" @click.stop>
+              <p class="text-xs font-semibold text-white">Scan to Join</p>
+              <div class="bg-white rounded-xl p-2 shadow-lg">
+                <img
+                  :src="`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(inviteLink)}`"
+                  alt="QR Code"
+                  width="180"
+                  height="180"
+                  class="rounded-lg"
+                />
+              </div>
+              <p class="text-[10px] text-gray-600 text-center break-all max-w-full select-all">{{ inviteLink }}</p>
+              <button
+                @click="showQrModal = false"
+                class="px-4 py-1.5 rounded-xl text-xs font-medium bg-slate-800 hover:bg-slate-700 text-gray-300 transition-colors border border-slate-700/40"
+              >Close</button>
+            </div>
+          </div>
+        </Teleport>
         <div class="flex items-center gap-1.5">
           <button
             v-if="!inviteLink"
@@ -277,6 +310,36 @@
             </div>
             <span class="text-xs text-rose-400 group-hover:text-rose-300 transition-colors">Leave group</span>
           </button>
+
+          <!-- Export conversation -->
+          <div class="h-px bg-slate-800/60 mx-1 my-0.5" />
+          <div class="flex items-center gap-1.5">
+            <button
+              @click="exportConversation('txt')"
+              :disabled="exportLoading"
+              class="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl hover:bg-slate-800/50 transition-colors text-left"
+            >
+              <div class="w-7 h-7 rounded-lg bg-slate-700/50 flex items-center justify-center flex-shrink-0">
+                <div v-if="exportLoading" class="w-3 h-3 border border-indigo-400/40 border-t-indigo-400 rounded-full animate-spin" />
+                <svg v-else class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+              </div>
+              <span class="text-xs text-gray-400 group-hover:text-gray-200 transition-colors">Export .txt</span>
+            </button>
+            <button
+              @click="exportConversation('json')"
+              :disabled="exportLoading"
+              class="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl hover:bg-slate-800/50 transition-colors text-left"
+            >
+              <div class="w-7 h-7 rounded-lg bg-slate-700/50 flex items-center justify-center flex-shrink-0">
+                <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+              </div>
+              <span class="text-xs text-gray-400 group-hover:text-gray-200 transition-colors">Export .json</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -305,9 +368,68 @@ defineEmits<{
   leave: []
 }>()
 
-const { conversationName, conversationInitials, isOnline, getLastSeen, updateGroupAvatar, setSlowMode } = useChat()
+const { conversationName, conversationInitials, isOnline, getLastSeen, updateGroupAvatar, setSlowMode, messages } = useChat()
 const { chatApi } = useApi()
 const toast = useToast()
+
+// ── Export conversation ──────────────────────────────────────────────────────
+const exportLoading = ref(false)
+
+async function exportConversation(format: 'txt' | 'json') {
+  if (exportLoading.value) return
+  exportLoading.value = true
+  try {
+    // Use already-loaded messages from useChat state (no extra API call)
+    const msgs = messages.value
+    const convName = conversationName(props.conversation)
+    const filename = `${convName.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().slice(0, 10)}`
+
+    let content: string
+    let mimeType: string
+
+    if (format === 'json') {
+      content = JSON.stringify(
+        msgs.map(m => ({
+          id: m._id,
+          sender: props.memberMap.get(m.senderId) ?? m.senderId,
+          content: m.content,
+          type: m.type,
+          createdAt: m.createdAt,
+          editedAt: m.editedAt,
+          attachments: (m.attachments ?? []).map(a => a.originalName),
+        })),
+        null, 2
+      )
+      mimeType = 'application/json'
+    } else {
+      const lines: string[] = [`Conversation: ${convName}`, `Exported: ${new Date().toLocaleString()}`, '─'.repeat(50), '']
+      for (const m of msgs) {
+        if (m.isDeleted) continue
+        const sender = props.memberMap.get(m.senderId) ?? m.senderId.slice(-4)
+        const time = new Date(m.createdAt).toLocaleString()
+        lines.push(`[${time}] ${sender}:`)
+        if (m.content) lines.push(m.content)
+        if (m.attachments?.length) lines.push(`  📎 ${m.attachments.map(a => a.originalName).join(', ')}`)
+        lines.push('')
+      }
+      content = lines.join('\n')
+      mimeType = 'text/plain'
+    }
+
+    const blob = new Blob([content], { type: mimeType })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${filename}.${format}`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success(`Exported as ${filename}.${format}`)
+  } catch (e) {
+    toast.error('Export failed')
+  } finally {
+    exportLoading.value = false
+  }
+}
 
 const name = computed(() => conversationName(props.conversation))
 const initials = computed(() => conversationInitials(props.conversation))
@@ -372,6 +494,7 @@ async function onAvatarSelected(e: Event) {
 
 const inviteLink = ref('')
 const inviteCopied = ref(false)
+const showQrModal = ref(false)
 const inviteLinkLoading = ref(false)
 let copiedTimer: ReturnType<typeof setTimeout> | null = null
 

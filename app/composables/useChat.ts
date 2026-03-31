@@ -176,7 +176,7 @@ export function useChat() {
     // Strip mention syntax: @[everyone] → @everyone, @[name](id) → @name
     // Strip markdown: ```block``` → block, `code` → code, **bold** → bold, *italic* → italic
     const plain = content
-      .replace(/@\[everyone\]/g, '@everyone')
+      .replace(/@\[(everyone|here|channel)\]/g, (_, name: string) => `@${name}`)
       .replace(/@\[([^\]]+)\]\([^)]+\)/g, '@$1')
       .replace(/```[\s\S]*?```/g, (m) => m.slice(3, -3).trim())
       .replace(/`([^`]+)`/g, '$1')
@@ -335,6 +335,13 @@ export function useChat() {
       patchConversation(id, { _unread: 0 })
       recalculateUnreadCount()
     }
+  }
+
+  function clearActiveConversation() {
+    if (activeConversationId.value) {
+      socketEmit('leaveConversationRoom', { conversationId: activeConversationId.value })
+    }
+    activeConversationId.value = null
   }
 
   async function loadMessages(conversationId: string, page = 1) {
@@ -608,6 +615,8 @@ export function useChat() {
     }
     totalUnread.value = 0
   }
+
+
 
   async function setDisappearingMessages(conversationId: string, enabled: boolean, ttl: number) {
     await chatApi.setDisappearingMessages(conversationId, enabled, ttl)
@@ -988,6 +997,11 @@ export function useChat() {
       ) as ChatMessage[]
     })
 
+    // Clear all typing indicators when socket disconnects (avoids ghost "typing…" stuck state)
+    on('disconnect', () => {
+      typingMap.value = new Map()
+    })
+
     // Track browser network state for offline queue
     if (typeof window !== 'undefined') {
       window.addEventListener('online', () => {
@@ -1029,6 +1043,7 @@ export function useChat() {
     loadConversations,
     resolvePrivateNames,
     selectConversation,
+    clearActiveConversation,
     createPrivateConversation,
     createGroupConversation,
     createBroadcastConversation,

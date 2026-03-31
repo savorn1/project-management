@@ -9,7 +9,7 @@
     <!-- Panel -->
     <div
       class="relative w-full max-w-lg mx-4 bg-slate-900 border border-slate-700/60 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden flex flex-col"
-      style="max-height:70vh"
+      style="max-height:75vh"
       @click.stop
     >
       <!-- Search input -->
@@ -25,15 +25,65 @@
           @keydown.escape="$emit('close')"
         />
         <button
-          v-if="query"
-          @click="query = ''"
+          v-if="query || hasFilters"
+          @click="clearAll"
           class="w-5 h-5 flex items-center justify-center rounded-md text-gray-600 hover:text-gray-400 transition-colors"
+          title="Clear all"
         >
           <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
         <kbd class="text-[10px] text-gray-700 bg-slate-800 border border-slate-700/50 rounded px-1.5 py-0.5 flex-shrink-0">Esc</kbd>
+      </div>
+
+      <!-- Filter bar -->
+      <div class="flex items-center gap-1.5 px-4 py-2 border-b border-slate-800/40 flex-shrink-0 flex-wrap">
+        <!-- Type filter pills -->
+        <button
+          v-for="t in typeFilters"
+          :key="t.value"
+          @click="toggleType(t.value)"
+          class="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold transition-all border"
+          :class="selectedTypes.has(t.value)
+            ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300'
+            : 'bg-transparent border-slate-700/40 text-gray-600 hover:text-gray-300 hover:border-slate-600'"
+        >
+          <span>{{ t.icon }}</span>
+          {{ t.label }}
+        </button>
+
+        <div class="w-px h-3.5 bg-slate-700/50 mx-0.5" />
+
+        <!-- Date range -->
+        <button
+          @click="showDateFilter = !showDateFilter"
+          class="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold transition-all border"
+          :class="(dateFrom || dateTo)
+            ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+            : 'bg-transparent border-slate-700/40 text-gray-600 hover:text-gray-300 hover:border-slate-600'"
+        >
+          <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          {{ dateFrom || dateTo ? `${dateFrom ?? '…'} → ${dateTo ?? '…'}` : 'Date' }}
+        </button>
+
+        <!-- Date picker (inline) -->
+        <div v-if="showDateFilter" class="w-full flex items-center gap-2 mt-1 px-1">
+          <input
+            v-model="dateFrom"
+            type="date"
+            class="flex-1 bg-slate-800/60 border border-slate-700/40 rounded-lg px-2 py-1 text-[10px] text-gray-300 focus:outline-none focus:border-indigo-500/50"
+          />
+          <span class="text-[10px] text-gray-600">to</span>
+          <input
+            v-model="dateTo"
+            type="date"
+            class="flex-1 bg-slate-800/60 border border-slate-700/40 rounded-lg px-2 py-1 text-[10px] text-gray-300 focus:outline-none focus:border-indigo-500/50"
+          />
+          <button @click="dateFrom = ''; dateTo = ''; showDateFilter = false" class="text-[10px] text-gray-600 hover:text-gray-300 transition-colors">Clear</button>
+        </div>
       </div>
 
       <!-- Results -->
@@ -44,33 +94,44 @@
         </div>
 
         <!-- Empty query -->
-        <div v-else-if="!query.trim()" class="flex flex-col items-center justify-center py-10 text-center px-6">
+        <div v-else-if="!query.trim() && !hasFilters" class="flex flex-col items-center justify-center py-10 text-center px-6">
           <svg class="w-8 h-8 text-gray-700 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <p class="text-xs text-gray-600">Type to search across all conversations</p>
+          <p class="text-[10px] text-gray-700 mt-1">Use filters to narrow by type or date</p>
         </div>
 
         <!-- No results -->
-        <div v-else-if="results.length === 0 && !loading" class="flex flex-col items-center justify-center py-10 text-center px-6">
-          <p class="text-sm text-gray-500">No messages found for</p>
-          <p class="text-sm font-medium text-gray-300 mt-0.5">"{{ query }}"</p>
+        <div v-else-if="filteredResults.length === 0 && !loading" class="flex flex-col items-center justify-center py-10 text-center px-6">
+          <p class="text-sm text-gray-500">No messages found</p>
+          <p v-if="query" class="text-sm font-medium text-gray-300 mt-0.5">"{{ query }}"</p>
+          <button v-if="hasFilters" @click="clearFilters" class="mt-2 text-[11px] text-indigo-400 hover:text-indigo-300 transition-colors">Clear filters</button>
         </div>
 
         <!-- Result list -->
         <div v-else class="py-1.5">
-          <p class="text-[10px] text-gray-600 px-4 pb-1.5">{{ results.length }} result{{ results.length !== 1 ? 's' : '' }}</p>
+          <p class="text-[10px] text-gray-600 px-4 pb-1.5">
+            {{ filteredResults.length }} result{{ filteredResults.length !== 1 ? 's' : '' }}
+            <span v-if="hasFilters" class="text-indigo-400/70"> (filtered)</span>
+          </p>
           <button
-            v-for="item in results"
+            v-for="item in filteredResults"
             :key="item.message._id"
             class="w-full text-left px-4 py-2.5 hover:bg-slate-800/50 transition-colors"
             @click="handleNavigate(item)"
           >
-            <!-- Conversation name + time -->
+            <!-- Conversation name + time + type badge -->
             <div class="flex items-center justify-between mb-0.5">
-              <span class="text-[10px] font-semibold text-indigo-400/80 truncate max-w-[240px]">
-                {{ convName(item.conversationId) }}
-              </span>
+              <div class="flex items-center gap-1.5 min-w-0">
+                <span class="text-[10px] font-semibold text-indigo-400/80 truncate max-w-[180px]">
+                  {{ convName(item.conversationId) }}
+                </span>
+                <span
+                  v-if="item.message.type && item.message.type !== 'text'"
+                  class="px-1 py-0.5 rounded text-[9px] font-semibold bg-slate-800 text-gray-500 flex-shrink-0"
+                >{{ typeLabel(item.message.type) }}</span>
+              </div>
               <span class="text-[10px] text-gray-600 flex-shrink-0 ml-2">
                 {{ formatDate(item.message.createdAt) }}
               </span>
@@ -108,6 +169,67 @@ const loading = ref(false)
 const results = ref<StarredMessage[]>([])
 const inputRef = ref<HTMLInputElement | null>(null)
 
+// ── Filters ──────────────────────────────────────────────────────────────────
+
+const typeFilters = [
+  { value: 'text',        icon: '💬', label: 'Text' },
+  { value: 'image',       icon: '🖼️',  label: 'Image' },
+  { value: 'file',        icon: '📎', label: 'File' },
+  { value: 'poll',        icon: '📊', label: 'Poll' },
+  { value: 'voice',       icon: '🎙️', label: 'Voice' },
+  { value: 'ai_response', icon: '🤖', label: 'AI' },
+]
+
+const selectedTypes = ref<Set<string>>(new Set())
+const dateFrom = ref('')
+const dateTo = ref('')
+const showDateFilter = ref(false)
+
+const hasFilters = computed(() =>
+  selectedTypes.value.size > 0 || !!dateFrom.value || !!dateTo.value
+)
+
+function toggleType(type: string) {
+  const next = new Set(selectedTypes.value)
+  if (next.has(type)) next.delete(type)
+  else next.add(type)
+  selectedTypes.value = next
+}
+
+function clearFilters() {
+  selectedTypes.value = new Set()
+  dateFrom.value = ''
+  dateTo.value = ''
+  showDateFilter.value = false
+}
+
+function clearAll() {
+  query.value = ''
+  results.value = []
+  clearFilters()
+}
+
+const filteredResults = computed(() => {
+  let list = results.value
+
+  // Type filter
+  if (selectedTypes.value.size > 0) {
+    list = list.filter(item => selectedTypes.value.has(item.message.type ?? 'text'))
+  }
+
+  // Date filter
+  if (dateFrom.value) {
+    const from = new Date(dateFrom.value).getTime()
+    list = list.filter(item => new Date(item.message.createdAt).getTime() >= from)
+  }
+  if (dateTo.value) {
+    const to = new Date(dateTo.value).getTime() + 86400000 // include the whole day
+    list = list.filter(item => new Date(item.message.createdAt).getTime() <= to)
+  }
+
+  return list
+})
+
 onMounted(() => nextTick(() => inputRef.value?.focus()))
 
 // Debounced search
@@ -115,16 +237,20 @@ let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 watch(query, (val) => {
   if (debounceTimer) clearTimeout(debounceTimer)
-  if (!val.trim()) { results.value = []; return }
+  if (!val.trim()) { results.value = []; loading.value = false; return }
   loading.value = true
   debounceTimer = setTimeout(async () => {
-    results.value = await chatApi.searchMessages(val.trim())
+    results.value = await chatApi.searchMessages(val.trim(), 100)
     loading.value = false
   }, 300)
 })
 
 function convName(convId: string): string {
   return props.conversationNameMap?.get(convId) ?? convId.slice(-6)
+}
+
+function typeLabel(type: string): string {
+  return typeFilters.find(t => t.value === type)?.label ?? type
 }
 
 function formatDate(dateStr: string): string {

@@ -193,10 +193,12 @@
               <input
                 v-model="searchQuery"
                 type="text"
-                placeholder="Search…"
-                class="w-28 focus:w-44 transition-all duration-200 bg-slate-800/60 border border-slate-700/40 rounded-lg px-2.5 py-1 text-xs text-gray-300 placeholder-gray-600 focus:outline-none focus:border-indigo-500/50"
+                placeholder="Search messages…"
+                class="w-28 focus:w-52 transition-all duration-200 bg-slate-800/60 border border-slate-700/40 rounded-lg px-2.5 py-1 text-xs text-gray-300 placeholder-gray-600 focus:outline-none focus:border-indigo-500/50"
               />
-              <svg v-if="!searchQuery" class="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-600 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <!-- Spinner while searching API -->
+              <div v-if="searchLoading" class="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 border border-indigo-500/40 border-t-indigo-400 rounded-full animate-spin pointer-events-none" />
+              <svg v-else-if="!searchQuery" class="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-600 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               <button v-else @click="searchQuery = ''" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors">
@@ -204,6 +206,11 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
+              <!-- Search result count -->
+              <span
+                v-if="searchQuery.trim() && !searchLoading"
+                class="absolute -bottom-5 right-0 text-[9px] text-gray-600 whitespace-nowrap"
+              >{{ searchResults.length }} result{{ searchResults.length !== 1 ? 's' : '' }}</span>
             </div>
 
             <!-- Pinned messages (only shown when there are pinned messages) -->
@@ -278,6 +285,19 @@
                     </svg>
                     Mentions
                     <span v-if="showMentions" class="ml-auto w-1.5 h-1.5 rounded-full bg-sky-400" />
+                  </button>
+
+                  <!-- Bookmarks -->
+                  <button
+                    @click="showBookmarks = !showBookmarks; showStarred = false; showMentions = false; showOverflowMenu = false"
+                    class="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs transition-colors"
+                    :class="showBookmarks ? 'text-violet-400 bg-violet-500/10' : 'text-gray-300 hover:bg-slate-800/60 hover:text-white'"
+                  >
+                    <svg class="w-3.5 h-3.5 flex-shrink-0" :class="showBookmarks ? 'text-violet-400' : 'text-gray-500'" :fill="showBookmarks ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                    </svg>
+                    Bookmarks
+                    <span v-if="showBookmarks" class="ml-auto w-1.5 h-1.5 rounded-full bg-violet-400" />
                   </button>
 
                   <!-- Starred -->
@@ -444,6 +464,32 @@
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
               </svg>
+            </button>
+          </div>
+        </Transition>
+
+        <!-- Emoji Reaction Summary Bar -->
+        <Transition
+          enter-active-class="transition ease-out duration-200"
+          enter-from-class="opacity-0 -translate-y-1"
+          enter-to-class="opacity-100 translate-y-0"
+          leave-active-class="transition ease-in duration-150"
+          leave-from-class="opacity-100 translate-y-0"
+          leave-to-class="opacity-0 -translate-y-1"
+        >
+          <div
+            v-if="topReactions.length > 0 && !loadingMessages"
+            class="flex items-center gap-0.5 px-4 py-1.5 border-b border-slate-800/40 flex-shrink-0 overflow-x-auto"
+          >
+            <span class="text-[9px] font-semibold uppercase tracking-wider text-gray-700 mr-1.5 flex-shrink-0">Top reactions</span>
+            <button
+              v-for="item in topReactions"
+              :key="item.emoji"
+              class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-800/60 border border-slate-700/40 hover:bg-slate-700/60 hover:border-slate-600/50 transition-all text-[11px] flex-shrink-0"
+              :title="`${item.emoji} — used ${item.count} time${item.count !== 1 ? 's' : ''}`"
+            >
+              <span>{{ item.emoji }}</span>
+              <span class="text-gray-400 font-medium tabular-nums">{{ item.count }}</span>
             </button>
           </div>
         </Transition>
@@ -626,6 +672,25 @@
           <span class="text-sm text-red-400/80">You have been blocked by an admin and cannot send messages.</span>
         </div>
 
+        <!-- AI thinking indicator -->
+        <Transition
+          v-if="aiLoading"
+          enter-active-class="transition ease-out duration-150"
+          enter-from-class="opacity-0 translate-y-1"
+          enter-to-class="opacity-100 translate-y-0"
+          leave-active-class="transition ease-in duration-100"
+          leave-from-class="opacity-100 translate-y-0"
+          leave-to-class="opacity-0 translate-y-1"
+        >
+          <div class="flex items-center gap-2 px-5 py-2 border-t border-slate-700/30 bg-slate-900/40">
+            <span class="text-sm leading-none">🤖</span>
+            <span class="text-xs text-indigo-300/80">AI is thinking…</span>
+            <div class="flex gap-0.5 ml-1">
+              <span v-for="i in 3" :key="i" class="w-1 h-1 rounded-full bg-indigo-400/70 animate-bounce" :style="`animation-delay:${(i-1)*0.15}s`" />
+            </div>
+          </div>
+        </Transition>
+
         <!-- Broadcast read-only notice (non-admins) -->
         <div
           v-else-if="isBroadcastChannel && !isAdminInBroadcast"
@@ -642,6 +707,7 @@
           :replying-to="replyingTo ?? undefined"
           :initial-draft="draftToRestore"
           :slow-mode="activeConversation.slowMode"
+          :conversation-type="activeConversation.type"
           @send="onSend"
           @schedule="handleScheduleMessage"
           @typing="onTyping"
@@ -650,6 +716,7 @@
           @poll="handleCreatePoll"
           @create-task-from-chat="handleCreateTaskFromChat"
           @standalone-reminder="handleStandaloneReminder"
+          @ai-assist="handleAiAssist"
         />
       </template>
     </div><!-- end main chat column -->
@@ -918,6 +985,23 @@
         :member-map="memberMap"
         :conversation-name-map="conversationNameMap"
         @close="showMentions = false"
+        @navigate="handleStarNavigate"
+      />
+    </Transition>
+
+    <!-- ── Bookmarks panel ───────────────────────────────────────── -->
+    <Transition
+      enter-active-class="transition-all duration-200 ease-out"
+      enter-from-class="opacity-0 translate-x-4"
+      enter-to-class="opacity-100 translate-x-0"
+      leave-active-class="transition-all duration-150 ease-in"
+      leave-from-class="opacity-100 translate-x-0"
+      leave-to-class="opacity-0 translate-x-4"
+    >
+      <BookmarksPanel
+        v-if="showBookmarks"
+        :conversation-name-map="conversationNameMap"
+        @close="showBookmarks = false"
         @navigate="handleStarNavigate"
       />
     </Transition>
@@ -1289,6 +1373,7 @@ const {
   scheduleMessage: chatScheduleMessage,
   setReminder: chatSetReminder,
   startListening,
+  clearActiveConversation,
   conversationName,
   conversationInitials,
   isMyMessage,
@@ -1311,6 +1396,22 @@ const inputRef = ref<{ focus: () => void; getDraft: () => string; addFiles: (fil
 
 // Search
 const searchQuery = ref('')
+const searchResults = ref<ChatMessage[]>([])
+const searchLoading = ref(false)
+let searchDebounce: ReturnType<typeof setTimeout> | null = null
+
+watch([searchQuery, activeConversationId], async ([q, convId]) => {
+  if (searchDebounce) clearTimeout(searchDebounce)
+  if (!q.trim() || !convId) { searchResults.value = []; return }
+  searchDebounce = setTimeout(async () => {
+    searchLoading.value = true
+    try {
+      const { chatApi } = useApi()
+      searchResults.value = await chatApi.searchInConversation(convId, q)
+    } catch { searchResults.value = [] }
+    finally { searchLoading.value = false }
+  }, 350)
+})
 
 // Reply state
 const replyingTo = ref<{ _id: string; content: string; senderName: string } | null>(null)
@@ -1396,6 +1497,9 @@ const threadMessage = ref<ChatMessage | null>(null)
 // Starred panel
 const showStarred = ref(false)
 
+// Bookmarks panel
+const showBookmarks = ref(false)
+
 // Mentions inbox
 const showMentions = ref(false)
 
@@ -1404,6 +1508,36 @@ const showConvInfo = ref(false)
 
 // Global search
 const showGlobalSearch = ref(false)
+
+// ── Bookmarks ──────────────────────────────────────────────────────────────
+const { toggleBookmark, isBookmarked } = useBookmarks()
+
+function handleBookmark(msg: ChatMessage) {
+  const senderName = memberMap.value.get(msg.senderId) ?? msg.senderId.slice(-4)
+  toggleBookmark({
+    messageId: msg._id,
+    conversationId: activeConversationId.value ?? '',
+    content: msg.content ?? '',
+    senderName,
+    senderId: msg.senderId,
+    createdAt: msg.createdAt,
+    bookmarkedAt: new Date().toISOString(),
+  })
+}
+
+// ── Emoji Reaction Summary Bar ─────────────────────────────────────────────
+const topReactions = computed(() => {
+  const map = new Map<string, number>()
+  for (const msg of messages.value) {
+    for (const r of (msg.reactions ?? [])) {
+      map.set(r.emoji, (map.get(r.emoji) ?? 0) + 1)
+    }
+  }
+  return [...map.entries()]
+    .map(([emoji, count]) => ({ emoji, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 8)
+})
 
 // Rename group modal
 const showRenameModal = ref(false)
@@ -1439,6 +1573,24 @@ async function handleCreatePoll(question: string, options: string[], allowMultip
   if (!activeConversation.value) return
   const { chatApi } = useApi()
   await chatApi.createPoll(activeConversation.value._id, question, options, allowMultiple)
+}
+
+// AI assistant
+const aiLoading = ref(false)
+
+async function handleAiAssist(query: string) {
+  if (!activeConversation.value || aiLoading.value) return
+  aiLoading.value = true
+  try {
+    const { chatApi } = useApi()
+    await chatApi.aiAssist(activeConversation.value._id, query)
+    // The response arrives via WebSocket as chat:message:new
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'AI assistant failed'
+    toast.error(msg)
+  } finally {
+    aiLoading.value = false
+  }
 }
 
 // Disappearing messages — TTL dropdown state
@@ -1566,14 +1718,53 @@ async function handleScheduleMessage(content: string, _files: File[], scheduledF
 onMounted(() => {
   loadReminders()
 
-  function handleCtrlK(e: KeyboardEvent) {
+  function handleGlobalKeydown(e: KeyboardEvent) {
+    const tag = (e.target as HTMLElement)?.tagName
+    const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable
+
+    // Ctrl/Cmd+K — toggle global search
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
       e.preventDefault()
       showGlobalSearch.value = !showGlobalSearch.value
+      return
+    }
+
+    // Ctrl/Cmd+B — toggle bookmarks panel
+    if ((e.ctrlKey || e.metaKey) && e.key === 'b' && !isTyping) {
+      e.preventDefault()
+      showBookmarks.value = !showBookmarks.value
+      return
+    }
+
+    // Alt+ArrowDown / Alt+ArrowUp — switch conversation
+    if (e.altKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp') && !isTyping) {
+      e.preventDefault()
+      const convList = conversations.value as Conversation[]
+      if (!convList.length) return
+      const currentIdx = convList.findIndex(c => c._id === activeConversationId.value)
+      const nextIdx = e.key === 'ArrowDown'
+        ? (currentIdx + 1) % convList.length
+        : (currentIdx - 1 + convList.length) % convList.length
+      const next = convList[nextIdx]
+      if (next) handleSelect(next._id)
+      return
+    }
+
+    // Escape — close open panels/modals in order of priority
+    if (e.key === 'Escape' && !isTyping) {
+      if (showGlobalSearch.value) { showGlobalSearch.value = false; return }
+      if (showBookmarks.value) { showBookmarks.value = false; return }
+      if (showStarred.value) { showStarred.value = false; return }
+      if (showMentions.value) { showMentions.value = false; return }
+      if (showPinned.value) { showPinned.value = false; return }
+      if (showConvInfo.value) { showConvInfo.value = false; return }
+      if (showMembers.value) { showMembers.value = false; return }
+      if (threadMessage.value) { threadMessage.value = null; return }
     }
   }
-  window.addEventListener('keydown', handleCtrlK)
-  onUnmounted(() => window.removeEventListener('keydown', handleCtrlK))
+
+  window.addEventListener('keydown', handleGlobalKeydown)
+  onUnmounted(() => window.removeEventListener('keydown', handleGlobalKeydown))
 })
 
 const currentUserId = computed(() => user.value?.id ?? '')
@@ -1793,12 +1984,13 @@ async function confirmAddMembers() {
   }
 }
 
-// Search filter — always sorted by createdAt ascending
+// Search filter — uses API results when searching (full history), else locally-sorted messages
 const filteredMessages = computed(() => {
-  const base = searchQuery.value.trim()
-    ? messages.value.filter(m => m.content.toLowerCase().includes(searchQuery.value.toLowerCase()))
-    : messages.value
-  return [...base].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+  if (searchQuery.value.trim()) {
+    // Use API-backed search results (covers full message history, not just loaded page)
+    return [...searchResults.value].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+  }
+  return [...messages.value].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
 })
 
 // Map messageId → message for resolving replyTo
@@ -2094,7 +2286,11 @@ watch(scrollRef, (el, prev) => {
   el?.addEventListener('scroll', onScroll, { passive: true })
 })
 
-onUnmounted(() => scrollRef.value?.removeEventListener('scroll', onScroll))
+onUnmounted(() => {
+  scrollRef.value?.removeEventListener('scroll', onScroll)
+  // Clear active conversation so onNewMessage doesn't silently markAsRead while navigated away
+  clearActiveConversation()
+})
 
 onMounted(async () => {
   refreshDraftConvIds()

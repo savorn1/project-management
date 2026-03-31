@@ -1048,6 +1048,20 @@ export function useApi() {
       return response ?? []
     },
 
+    async searchInConversation(conversationId: string, q: string, limit = 50): Promise<ChatMessage[]> {
+      const response = await request<{ message: ChatMessage; conversationId: string }[]>(
+        `/chat/messages/search?q=${encodeURIComponent(q)}&conversationId=${conversationId}&limit=${limit}`
+      )
+      return (response ?? []).map(r => r.message)
+    },
+
+    async aiAssist(conversationId: string, query: string): Promise<ChatMessage | null> {
+      return await request<ChatMessage>(`/chat/conversations/${conversationId}/ai-assist`, {
+        method: 'POST',
+        body: JSON.stringify({ query }),
+      })
+    },
+
     async setDisappearingMessages(conversationId: string, enabled: boolean, ttl: number): Promise<void> {
       await request(`/chat/conversations/${conversationId}/disappearing`, {
         method: 'PATCH', body: JSON.stringify({ enabled, ttl }),
