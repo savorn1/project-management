@@ -80,8 +80,9 @@ const navItems = [
   { path: '/qr-history',   label: 'QR History',   icon: '🔲' },
   { path: '/fund-pools',   label: 'Fund Pools',   icon: '💰' },
   { path: '/feature-flags',label: 'Feature Flags',icon: '🏳️' },
-  { path: '/uploads',      label: 'File Uploads', icon: '📎' },
-  { path: '/resume',       label: 'Resume / CV',  icon: '📄' },
+  { path: '/uploads',          label: 'File Uploads',     icon: '📎' },
+  { path: '/resume',           label: 'Resume / CV',      icon: '📄' },
+  { path: '/form-components',  label: 'Form Components',  icon: '🧩' },
 ]
 
 function isActive(path: string): boolean {
