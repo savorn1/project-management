@@ -238,6 +238,18 @@
                 <FieldPassword v-model="vals.password" label="Password" placeholder="Enter password" autocomplete="new-password" :show-strength="true" :disabled="forceDisabled" :error="forceError ? 'Password is too weak' : ''" hint="Click the eye icon to reveal" />
                 <FieldPassword v-model="vals.password_confirm" label="Confirm password" placeholder="Repeat password" autocomplete="new-password" :disabled="forceDisabled" :error="forceError ? 'Passwords do not match' : ''" />
               </div>
+              <!-- ── time_picker ── -->
+              <div v-else-if="active === 'time_picker'" class="space-y-4">
+                <FieldTimePicker v-model="vals.time_picker" label="Meeting time" :disabled="forceDisabled" :error="forceError ? 'Time is required' : ''" hint="24-hour format, 5-min steps" />
+                <FieldTimePicker v-model="vals.time_picker_12h" label="Reminder (12 h mode)" :use24h="false" :minute-step="15" :disabled="forceDisabled" hint="AM/PM mode, 15-min steps" />
+              </div>
+              <!-- ── phone_number ── -->
+              <FieldPhoneNumber v-else-if="active === 'phone_number'" v-model="vals.phone" label="Phone number" :disabled="forceDisabled" :error="forceError ? 'Phone number is required' : ''" hint="Country dial code included" />
+              <!-- ── currency ── -->
+              <div v-else-if="active === 'currency'" class="space-y-4">
+                <FieldCurrency v-model="vals.currency" label="Price (USD)" :min="0" :disabled="forceDisabled" :error="forceError ? 'Price is required' : ''" hint="USD · 2 decimal places" />
+                <FieldCurrency v-model="vals.currency_eur" label="Amount (EUR)" currency="EUR" locale="de-DE" :min="0" :disabled="forceDisabled" hint="Euro · de-DE locale formatting" />
+              </div>
             </div>
           </div>
 
@@ -805,6 +817,42 @@ const groups: NavGroup[] = [
           'The hex field strips non-hex characters on input.',
         ],
       },
+      {
+        id: 'phone_number', icon: '📱', label: 'phone_number', isNew: true,
+        description: 'Phone number input with a searchable country dial-code selector. Emits a structured PhoneValue object including E.164 format.',
+        usage: `<FieldPhoneNumber\n  v-model="phone"\n  label="Phone"\n  default-country="KH"\n  placeholder="012 345 678"\n/>`,
+        props: [
+          { name: 'modelValue', type: 'PhoneValue | null', required: true, description: 'PhoneValue: { countryCode, dialCode, number, e164 } or null. Emits null when the number field is cleared.' },
+          { name: 'defaultCountry', type: 'string', default: '"KH"', description: 'ISO 3166-1 alpha-2 code of the pre-selected country on first render (e.g. "US", "GB").' },
+          { name: 'placeholder', type: 'string', default: '"012 345 678"', description: 'Placeholder shown inside the number input field.' },
+          ...COMMON,
+        ],
+        emits: [COMMON_MODEL_EMIT('PhoneValue | null', 'e164 is "+{dialCode}{digitsOnly}". Emits null when the number is empty.')],
+        notes: [
+          'e164 strips all non-digit characters from the local number and prepends "+{dialCode}".',
+          'The country dropdown can be searched by name or dial code. 25 countries are included.',
+          'The dropdown panel teleports to <body> and flips upward when insufficient space exists below.',
+        ],
+      },
+      {
+        id: 'currency', icon: '💰', label: 'currency', isNew: true,
+        description: 'Currency amount input with a live locale-aware formatted display, currency symbol prefix, and ISO code badge. Supports min/max clamping and ↑↓ keyboard stepping.',
+        usage: `<FieldCurrency\n  v-model="price"\n  label="Price"\n  currency="USD"\n  :decimals="2"\n  locale="en-US"\n  :min="0"\n/>`,
+        props: [
+          { name: 'modelValue', type: 'number | null', required: true, description: 'Numeric amount (use v-model). null represents an empty field.' },
+          { name: 'currency', type: 'string', default: '"USD"', description: 'ISO 4217 currency code. Controls the symbol shown on the left and the Intl.NumberFormat formatting (e.g. "USD", "EUR", "KHR").' },
+          { name: 'decimals', type: 'number', default: '2', description: 'Decimal places enforced on blur. Use 0 for zero-decimal currencies like JPY or KRW.' },
+          { name: 'locale', type: 'string', default: '"en-US"', description: 'BCP 47 locale tag for Intl.NumberFormat display (e.g. "fr-FR", "de-DE", "ja-JP").' },
+          { name: 'min / max', type: 'number', description: 'Value boundaries applied on blur and stepper limits.' },
+          ...COMMON,
+        ],
+        emits: [COMMON_MODEL_EMIT('number | null', 'Emits raw number on every input. Decimal rounding and clamping are applied on blur.')],
+        notes: [
+          'While focused the input shows the raw number for easy editing. On blur it rounds to the configured decimal precision and clamps to min/max.',
+          '↑ / ↓ arrow keys increment or decrement by 1 unit.',
+          'The formatted Intl display is shown below the input when the field is not focused.',
+        ],
+      },
     ],
   },
   {
@@ -967,6 +1015,25 @@ const groups: NavGroup[] = [
         notes: [
           'The time part defaults to "00:00" when a date is first selected. Clearing the date sets the entire value to null.',
           'The time input uses a native <input type="time"> — appearance varies by browser.',
+        ],
+      },
+      {
+        id: 'time_picker', icon: '⏱️', label: 'time_picker', isNew: true,
+        description: 'Scrollable column time picker for selecting hours and minutes. Supports 24-hour and 12-hour (AM/PM) modes with configurable minute-step granularity.',
+        usage: `<FieldTimePicker\n  v-model="time"\n  label="Meeting time"\n  :use24h="true"\n  :minute-step="5"\n  :clearable="true"\n/>`,
+        props: [
+          { name: 'modelValue', type: 'string | null', required: true, description: '"HH:mm" 24-hour string, or null when unset.' },
+          { name: 'use24h', type: 'boolean', default: 'true', description: 'Display and input in 24-hour format. Set false to enable 12-hour AM/PM mode.' },
+          { name: 'minuteStep', type: 'number', default: '5', description: 'Granularity of the minute column (e.g. 5 → 00, 05, 10 … 55).' },
+          { name: 'clearable', type: 'boolean', default: 'true', description: 'Show an × clear button inside the trigger.' },
+          { name: 'placeholder', type: 'string', default: '"Select time"', description: 'Trigger button placeholder text.' },
+          ...COMMON,
+        ],
+        emits: [COMMON_MODEL_EMIT('string | null', 'Emits "HH:mm" when the "Set time" button is clicked, or null when cleared.')],
+        notes: [
+          'The value is always stored and emitted as a 24-hour "HH:mm" string regardless of the use24h display mode.',
+          'Changes are only committed when the "Set time" confirm button is clicked — scrolling the columns does not emit immediately.',
+          'The dropdown panel teleports to <body> and flips upward when insufficient viewport space exists below.',
         ],
       },
     ],
@@ -1256,6 +1323,9 @@ const vals = reactive<Record<string, any>>({
   range_single: 40, range_dual: [200, 600] as [number, number],
   otp: '', otp4: '',
   rating: null, rating_half: null,
+  time_picker: null as string | null, time_picker_12h: null as string | null,
+  phone: null,
+  currency: null as number | null, currency_eur: null as number | null,
 })
 
 const DISPLAY_KEY_MAP: Record<string, string[]> = {
@@ -1273,6 +1343,8 @@ const DISPLAY_KEY_MAP: Record<string, string[]> = {
   range:        ['range_single', 'range_dual'],
   otp:          ['otp', 'otp4'],
   rating:       ['rating', 'rating_half'],
+  time_picker:  ['time_picker', 'time_picker_12h'],
+  currency:     ['currency', 'currency_eur'],
 }
 
 const DEFAULT_VALS: Record<string, any> = {
@@ -1297,6 +1369,9 @@ const DEFAULT_VALS: Record<string, any> = {
   range_single: 40, range_dual: [200, 600],
   otp: '', otp4: '',
   rating: null, rating_half: null,
+  time_picker: null, time_picker_12h: null,
+  phone: null,
+  currency: null, currency_eur: null,
 }
 
 const activeValueJson = computed(() => {
