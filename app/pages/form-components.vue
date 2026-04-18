@@ -238,6 +238,57 @@
                 <FieldPassword v-model="vals.password" label="Password" placeholder="Enter password" autocomplete="new-password" :show-strength="true" :disabled="forceDisabled" :error="forceError ? 'Password is too weak' : ''" hint="Click the eye icon to reveal" />
                 <FieldPassword v-model="vals.password_confirm" label="Confirm password" placeholder="Repeat password" autocomplete="new-password" :disabled="forceDisabled" :error="forceError ? 'Passwords do not match' : ''" />
               </div>
+              <!-- ── boolean ── -->
+              <div v-else-if="active === 'boolean'" class="space-y-4">
+                <FieldBoolean v-model="vals.boolean" label="Active status" true-hint="User can log in" false-hint="Account suspended" :disabled="forceDisabled" :error="forceError ? 'Required' : ''" />
+                <FieldBoolean v-model="vals.boolean2" label="Email verified" true-label="Verified" false-label="Unverified" :disabled="forceDisabled" />
+              </div>
+              <!-- ── url ── -->
+              <div v-else-if="active === 'url'" class="space-y-4">
+                <FieldUrl v-model="vals.url" label="Website" placeholder="https://example.com" :disabled="forceDisabled" :error="forceError ? 'Invalid URL' : ''" hint="Validates format on blur; click ↗ to open" />
+                <FieldUrl v-model="vals.url_repo" label="Repository" placeholder="https://github.com/user/repo" :disabled="forceDisabled" />
+              </div>
+              <!-- ── hidden ── -->
+              <div v-else-if="active === 'hidden'" class="space-y-4">
+                <div class="p-4 bg-slate-800/50 rounded-xl border border-slate-700/50 text-sm text-gray-400 text-center">
+                  <svg class="w-8 h-8 mx-auto mb-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21" /></svg>
+                  <p class="font-medium text-gray-300 mb-1">Renders invisibly in the DOM</p>
+                  <p class="text-xs">The value below is tracked — check the inspector →</p>
+                </div>
+                <FieldHidden v-model="vals.hidden" name="csrf_token" />
+                <FieldText v-model="vals.hidden" label="Bound source (edit to update hidden value)" placeholder="Type something…" hint="The FieldHidden below reflects this value" :disabled="forceDisabled" />
+              </div>
+              <!-- ── enum ── -->
+              <div v-else-if="active === 'enum'" class="space-y-4">
+                <FieldEnum v-model="vals.enum" :options="enumOptions" label="Status" :disabled="forceDisabled" :error="forceError ? 'Status is required' : ''" hint="Record<value, label> options" />
+                <FieldEnum v-model="vals.enum2" :options="['low', 'medium', 'high', 'critical']" label="Priority" :disabled="forceDisabled" hint="Plain string array" />
+              </div>
+              <!-- ── month ── -->
+              <div v-else-if="active === 'month'" class="space-y-4">
+                <FieldMonth v-model="vals.month" label="Report month" :disabled="forceDisabled" :error="forceError ? 'Month is required' : ''" hint="Returns YYYY-MM" />
+                <FieldMonth v-model="vals.month2" label="Contract start" :clearable="false" :disabled="forceDisabled" />
+              </div>
+              <!-- ── week ── -->
+              <div v-else-if="active === 'week'" class="space-y-4">
+                <FieldWeek v-model="vals.week" label="Sprint week" :disabled="forceDisabled" :error="forceError ? 'Week is required' : ''" hint="Returns YYYY-Www" />
+                <FieldWeek v-model="vals.week2" label="Delivery window" :disabled="forceDisabled" />
+              </div>
+              <!-- ── json ── -->
+              <div v-else-if="active === 'json'" class="space-y-4">
+                <FieldJson v-model="vals.json" label="Configuration" :disabled="forceDisabled" :error="forceError ? 'Invalid JSON' : ''" hint="Click Format to pretty-print" />
+              </div>
+              <!-- ── checklist ── -->
+              <div v-else-if="active === 'checklist'" class="space-y-4">
+                <FieldChecklist v-model="vals.checklist" :options="checklistOptions" label="Required features" :disabled="forceDisabled" :error="forceError ? 'Select at least one feature' : ''" hint="Searchable list with select-all" />
+              </div>
+              <!-- ── checklist_dependency ── -->
+              <div v-else-if="active === 'checklist_dependency'" class="space-y-4">
+                <FieldChecklistDependency v-model="vals.checklist_dep" :options="depOptions" label="Permissions" :disabled="forceDisabled" :error="forceError ? 'Select at least one permission' : ''" hint="Checking a parent reveals its children" />
+              </div>
+              <!-- ── code ── -->
+              <div v-else-if="active === 'code'" class="space-y-4">
+                <FieldCode v-model="vals.code" v-model:language="vals.code_lang" label="Script" :disabled="forceDisabled" :error="forceError ? 'Code is required' : ''" hint="Tab inserts 2 spaces" />
+              </div>
               <!-- ── time_picker ── -->
               <div v-else-if="active === 'time_picker'" class="space-y-4">
                 <FieldTimePicker v-model="vals.time_picker" label="Meeting time" :disabled="forceDisabled" :error="forceError ? 'Time is required' : ''" hint="24-hour format, 5-min steps" />
@@ -476,6 +527,50 @@ const colorPresets = [
   '#6366f1', '#8b5cf6', '#ec4899', '#ef4444',
   '#f97316', '#eab308', '#22c55e', '#06b6d4',
 ]
+const enumOptions: Record<string, string> = {
+  active: 'Active',
+  inactive: 'Inactive',
+  draft: 'Draft',
+  pending: 'Pending review',
+  archived: 'Archived',
+}
+
+const checklistOptions = [
+  { value: 'auth',      label: 'Authentication',    description: 'Login, register, password reset' },
+  { value: 'rbac',      label: 'Role-based access',  description: 'Permissions & roles' },
+  { value: 'api',       label: 'REST API',           description: 'CRUD endpoints' },
+  { value: 'ws',        label: 'WebSockets',         description: 'Real-time events' },
+  { value: 'storage',   label: 'File storage',       description: 'S3 / MinIO integration' },
+  { value: 'queue',     label: 'Job queues',         description: 'BullMQ background jobs' },
+  { value: 'cache',     label: 'Caching',            description: 'Redis layer' },
+  { value: 'search',    label: 'Full-text search',   description: 'Elasticsearch / Meilisearch' },
+]
+
+const depOptions = [
+  {
+    value: 'users', label: 'Users', children: [
+      { value: 'users.view',   label: 'View users' },
+      { value: 'users.create', label: 'Create users' },
+      { value: 'users.edit',   label: 'Edit users' },
+      { value: 'users.delete', label: 'Delete users', description: 'Irreversible' },
+    ],
+  },
+  {
+    value: 'projects', label: 'Projects', children: [
+      { value: 'projects.view',   label: 'View projects' },
+      { value: 'projects.create', label: 'Create projects' },
+      { value: 'projects.edit',   label: 'Edit projects' },
+    ],
+  },
+  {
+    value: 'reports', label: 'Reports', children: [
+      { value: 'reports.view',   label: 'View reports' },
+      { value: 'reports.export', label: 'Export reports' },
+    ],
+  },
+  { value: 'settings', label: 'Settings (no sub-permissions)' },
+]
+
 const radioOptions = [
   { value: 'free',    label: 'Free',       description: 'Up to 3 projects, 1 GB storage' },
   { value: 'pro',     label: 'Pro',        description: 'Unlimited projects, 50 GB storage' },
@@ -853,6 +948,74 @@ const groups: NavGroup[] = [
           'The formatted Intl display is shown below the input when the field is not focused.',
         ],
       },
+      {
+        id: 'boolean', icon: '✅', label: 'boolean', isNew: true,
+        description: 'Yes/No toggle button. Displays a green "Yes" badge or a red "No" badge. Simpler and more readable than a switch for record-list contexts.',
+        usage: `<FieldBoolean\n  v-model="isActive"\n  label="Active status"\n  true-label="Yes"\n  false-label="No"\n  true-hint="User can log in"\n/>`,
+        props: [
+          { name: 'modelValue', type: 'boolean', required: true, description: 'Bound boolean value (use v-model).' },
+          { name: 'trueLabel', type: 'string', default: '"Yes"', description: 'Button label when the value is true.' },
+          { name: 'falseLabel', type: 'string', default: '"No"', description: 'Button label when the value is false.' },
+          { name: 'trueHint', type: 'string', description: 'Descriptive text shown beside the button when true.' },
+          { name: 'falseHint', type: 'string', description: 'Descriptive text shown beside the button when false.' },
+          ...COMMON,
+        ],
+        emits: [COMMON_MODEL_EMIT('boolean', 'Emits the toggled boolean on click.')],
+        notes: [
+          'Unlike FieldSwitch, FieldBoolean renders as a badge button — suited for forms where explicit "Yes/No" labels improve clarity.',
+        ],
+      },
+      {
+        id: 'url', icon: '🔗', label: 'url', isNew: true,
+        description: 'URL input with format validation on blur and an "open in new tab" button shown when a valid URL is entered.',
+        usage: `<FieldUrl\n  v-model="website"\n  label="Website"\n  placeholder="https://example.com"\n  :openable="true"\n/>`,
+        props: [
+          { name: 'modelValue', type: 'string', required: true, description: 'Bound URL string (use v-model).' },
+          { name: 'openable', type: 'boolean', default: 'true', description: 'Show the ↗ external link button when a valid URL is entered.' },
+          { name: 'readonly', type: 'boolean', default: 'false', description: 'Prevents editing.' },
+          { name: 'placeholder', type: 'string', default: '"https://example.com"', description: 'Input placeholder.' },
+          ...COMMON,
+        ],
+        emits: [
+          COMMON_MODEL_EMIT('string'),
+          { name: 'blur', payload: 'FocusEvent', description: 'Fires on blur; URL validation runs here.' },
+        ],
+        notes: [
+          'Validation uses the URL constructor — it requires a protocol (e.g. "https://"). Plain "example.com" will fail.',
+          'The ↗ open button only activates when the URL is non-empty and passes validation.',
+        ],
+      },
+      {
+        id: 'hidden', icon: '👁️', label: 'hidden', isNew: true,
+        description: 'Renders a native <input type="hidden"> with no visible UI. Useful for embedding server-generated tokens or IDs into forms.',
+        usage: `<FieldHidden v-model="csrfToken" name="csrf_token" />`,
+        props: [
+          { name: 'modelValue', type: 'unknown', required: true, description: 'Value to embed. Objects/arrays are JSON-serialised.' },
+          { name: 'name', type: 'string', description: 'HTML name attribute forwarded to the hidden input for native form submission.' },
+        ],
+        emits: [],
+        notes: [
+          'Non-string values (objects, arrays, numbers) are serialised to JSON via JSON.stringify before being placed in the hidden input value.',
+          'The component renders nothing visible — no FieldWrapper, no label, no hint.',
+        ],
+      },
+      {
+        id: 'enum', icon: '📋', label: 'enum', isNew: true,
+        description: 'Select from a PHP-enum-like key/value map or a plain string array. Shows the key as a code badge alongside the label in the dropdown.',
+        usage: `<FieldEnum\n  v-model="status"\n  :options="{ active: 'Active', draft: 'Draft', archived: 'Archived' }"\n  label="Status"\n/>`,
+        props: [
+          { name: 'modelValue', type: 'string | number | null', required: true, description: 'Selected enum value (use v-model).' },
+          { name: 'options', type: 'Record<string, string> | (string | number)[]', required: true, description: 'A key→label object or a flat array of strings/numbers. Arrays use the value as both key and label.' },
+          { name: 'clearable', type: 'boolean', default: 'true', description: 'Show a clear button.' },
+          { name: 'placeholder', type: 'string', default: '"Select a value"', description: 'Trigger placeholder.' },
+          ...COMMON,
+        ],
+        emits: [COMMON_MODEL_EMIT('string | number | null')],
+        notes: [
+          'The dropdown shows each option\'s raw key as a monospace badge — useful when the key is a machine-readable constant.',
+          'When passing a plain array, each element becomes both the stored value and the displayed label.',
+        ],
+      },
     ],
   },
   {
@@ -1034,6 +1197,37 @@ const groups: NavGroup[] = [
           'The value is always stored and emitted as a 24-hour "HH:mm" string regardless of the use24h display mode.',
           'Changes are only committed when the "Set time" confirm button is clicked — scrolling the columns does not emit immediately.',
           'The dropdown panel teleports to <body> and flips upward when insufficient viewport space exists below.',
+        ],
+      },
+      {
+        id: 'month', icon: '🗓️', label: 'month', isNew: true,
+        description: 'Month/year picker rendered as a 4-column grid of abbreviated month names with prev/next year navigation.',
+        usage: `<FieldMonth\n  v-model="reportMonth"\n  label="Report month"\n  :clearable="true"\n/>`,
+        props: [
+          { name: 'modelValue', type: 'string | null', required: true, description: 'ISO month string "YYYY-MM" or null.' },
+          { name: 'clearable', type: 'boolean', default: 'true', description: 'Show a clear button inside the trigger.' },
+          ...COMMON,
+        ],
+        emits: [COMMON_MODEL_EMIT('string | null', 'Emits "YYYY-MM" on selection, or null when cleared.')],
+        notes: [
+          'The dropdown re-opens to the year of the current modelValue so the user sees context immediately.',
+          'The panel teleports to <body> and flips upward when insufficient space exists below.',
+        ],
+      },
+      {
+        id: 'week', icon: '📅', label: 'week', isNew: true,
+        description: 'ISO week picker using the native <input type="week">. Shows a friendly label (e.g. "Week 18 of 2025 · Apr 28 – May 4") below the input.',
+        usage: `<FieldWeek\n  v-model="sprint"\n  label="Sprint week"\n  :clearable="true"\n/>`,
+        props: [
+          { name: 'modelValue', type: 'string | null', required: true, description: 'ISO week string "YYYY-Www" (e.g. "2025-W18") or null.' },
+          { name: 'min / max', type: 'string', description: 'ISO week strings constraining the selectable range.' },
+          { name: 'clearable', type: 'boolean', default: 'true', description: 'Show a clear button.' },
+          ...COMMON,
+        ],
+        emits: [COMMON_MODEL_EMIT('string | null', 'Emits the native "YYYY-Www" string or null when cleared.')],
+        notes: [
+          'The native week picker UI varies across browsers. Chrome/Edge show a week-number spinner; Firefox shows a date-range picker.',
+          'The friendly label is computed client-side by converting the ISO week number to a Monday–Sunday date range.',
         ],
       },
     ],
@@ -1258,6 +1452,84 @@ const groups: NavGroup[] = [
       },
     ],
   },
+  {
+    label: 'Advanced',
+    items: [
+      {
+        id: 'json', icon: '{ }', label: 'json', isNew: true,
+        description: 'JSON code editor with line numbers, a Format button, a validity indicator, and Tab-key indentation support.',
+        usage: `<FieldJson\n  v-model="config"\n  label="Configuration"\n  :rows="8"\n/>`,
+        props: [
+          { name: 'modelValue', type: 'string', required: true, description: 'Raw JSON string (use v-model).' },
+          { name: 'rows', type: 'number', default: '6', description: 'Minimum visible line count.' },
+          { name: 'placeholder', type: 'string', description: 'Placeholder text shown when the editor is empty.' },
+          ...COMMON,
+        ],
+        emits: [COMMON_MODEL_EMIT('string', 'Emits the raw string on every keystroke. Validation only runs on blur.')],
+        notes: [
+          'Clicking "Format" pretty-prints valid JSON with 2-space indentation. If the JSON is invalid, the error is shown instead.',
+          'The ✓ valid badge appears only when the field is non-empty and parses without errors.',
+          'Tab key inserts 2 spaces at the cursor position instead of moving focus.',
+        ],
+      },
+      {
+        id: 'checklist', icon: '☑️', label: 'checklist', isNew: true,
+        description: 'Scrollable checkbox list with optional search filter and select-all toggle. Emits an array of selected values.',
+        usage: `<FieldChecklist\n  v-model="selected"\n  :options="[\n    { value: 'auth',  label: 'Authentication' },\n    { value: 'api',   label: 'REST API', description: 'CRUD endpoints' },\n  ]"\n  label="Features"\n  :searchable="true"\n/>`,
+        props: [
+          { name: 'modelValue', type: '(string | number)[]', required: true, description: 'Array of selected values (use v-model).' },
+          { name: 'options', type: 'ChecklistOption[]', required: true, description: '{ value, label, description?, disabled? }[]' },
+          { name: 'searchable', type: 'boolean', default: 'true', description: 'Show a search filter above the list (auto-hidden when ≤ 5 options).' },
+          { name: 'showSelectAll', type: 'boolean', default: 'true', description: 'Show a "Select all / Deselect all" header row.' },
+          { name: 'maxHeight', type: 'number', default: '220', description: 'Max height of the scrollable list in px.' },
+          ...COMMON,
+        ],
+        emits: [COMMON_MODEL_EMIT('(string | number)[]')],
+        notes: [
+          'The search filter applies locally — no async fetch is triggered.',
+          'The select-all button operates on the full options array, not just the filtered subset.',
+        ],
+      },
+      {
+        id: 'checklist_dependency', icon: '🔗', label: 'checklist_dependency', isNew: true,
+        description: 'Two-level dependency checklist: child items are only revealed when their parent is checked. Collapsible per parent.',
+        usage: `<FieldChecklistDependency\n  v-model="permissions"\n  :options="[\n    { value: 'users', label: 'Users', children: [\n      { value: 'users.view',   label: 'View' },\n      { value: 'users.delete', label: 'Delete' },\n    ]},\n  ]"\n  label="Permissions"\n/>`,
+        props: [
+          { name: 'modelValue', type: '(string | number)[]', required: true, description: 'Flat array of all checked values — both parent and child keys.' },
+          { name: 'options', type: 'DependencyItem[]', required: true, description: '{ value, label, description?, children?: DependencyItem[] }[]' },
+          ...COMMON,
+        ],
+        emits: [COMMON_MODEL_EMIT('(string | number)[]', 'Unchecking a parent also removes all its children from the value array.')],
+        notes: [
+          'Unchecking a parent automatically removes all its children from the value array.',
+          'Children are only visible when the parent is checked. The collapse toggle appears in the parent row header.',
+          'Parent values are included in the emitted array alongside child values — filter them out in your form logic if needed.',
+        ],
+      },
+      {
+        id: 'code', icon: '💻', label: 'code', isNew: true,
+        description: 'Monospace code editor with line numbers, a language selector dropdown, and Tab-key indentation (2 spaces).',
+        usage: `<FieldCode\n  v-model="script"\n  v-model:language="lang"\n  label="Script"\n  :min-lines="10"\n  :show-language-selector="true"\n/>`,
+        props: [
+          { name: 'modelValue', type: 'string', required: true, description: 'Raw code string (use v-model).' },
+          { name: 'language', type: 'string', default: '"javascript"', description: 'Current language shown/selected in the toolbar. Use v-model:language to make it two-way.' },
+          { name: 'minLines', type: 'number', default: '8', description: 'Minimum visible line count. The editor grows with content.' },
+          { name: 'showLanguageSelector', type: 'boolean', default: 'true', description: 'Show a language <select> in the toolbar. Set false to display the language label only.' },
+          { name: 'placeholder', type: 'string', description: 'Placeholder text when the editor is empty.' },
+          ...COMMON,
+        ],
+        emits: [
+          COMMON_MODEL_EMIT('string', 'Fires on every keystroke.'),
+          { name: 'update:language', payload: 'string', description: 'Fires when the user changes the language selector.' },
+        ],
+        notes: [
+          'Supported languages: plaintext, javascript, typescript, html, css, scss, json, bash, shell, sql, python, php, go, rust, yaml, markdown.',
+          'No real syntax highlighting is applied — text is rendered in a monospace indigo colour. For full highlighting, integrate a library like Shiki.',
+          'Tab inserts 2 spaces at the cursor; it does not shift focus.',
+        ],
+      },
+    ],
+  },
 ]
 
 // ─── State ───────────────────────────────────────────────────────────────────
@@ -1326,6 +1598,17 @@ const vals = reactive<Record<string, any>>({
   time_picker: null as string | null, time_picker_12h: null as string | null,
   phone: null,
   currency: null as number | null, currency_eur: null as number | null,
+  boolean: false, boolean2: false,
+  url: '', url_repo: '',
+  hidden: 'tok_abc123',
+  enum: null as string | null, enum2: null as string | null,
+  month: null as string | null, month2: null as string | null,
+  week: null as string | null, week2: null as string | null,
+  json: '{\n  "name": "TaskFlow",\n  "version": "1.0.0",\n  "features": ["kanban", "chat"]\n}',
+  checklist: [] as (string | number)[],
+  checklist_dep: [] as (string | number)[],
+  code: 'function greet(name: string) {\n  return `Hello, ${name}!`\n}\n\nconsole.log(greet("World"))',
+  code_lang: 'typescript',
 })
 
 const DISPLAY_KEY_MAP: Record<string, string[]> = {
@@ -1345,6 +1628,12 @@ const DISPLAY_KEY_MAP: Record<string, string[]> = {
   rating:       ['rating', 'rating_half'],
   time_picker:  ['time_picker', 'time_picker_12h'],
   currency:     ['currency', 'currency_eur'],
+  boolean:      ['boolean', 'boolean2'],
+  url:          ['url', 'url_repo'],
+  enum:         ['enum', 'enum2'],
+  month:        ['month', 'month2'],
+  week:         ['week', 'week2'],
+  code:         ['code', 'code_lang'],
 }
 
 const DEFAULT_VALS: Record<string, any> = {
@@ -1372,6 +1661,17 @@ const DEFAULT_VALS: Record<string, any> = {
   time_picker: null, time_picker_12h: null,
   phone: null,
   currency: null, currency_eur: null,
+  boolean: false, boolean2: false,
+  url: '', url_repo: '',
+  hidden: 'tok_abc123',
+  enum: null, enum2: null,
+  month: null, month2: null,
+  week: null, week2: null,
+  json: '{\n  "name": "TaskFlow",\n  "version": "1.0.0",\n  "features": ["kanban", "chat"]\n}',
+  checklist: [],
+  checklist_dep: [],
+  code: 'function greet(name: string) {\n  return `Hello, ${name}!`\n}\n\nconsole.log(greet("World"))',
+  code_lang: 'typescript',
 }
 
 const activeValueJson = computed(() => {

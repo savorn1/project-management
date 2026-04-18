@@ -146,10 +146,12 @@ const minutes = computed(() =>
 
 const display = computed(() => {
   if (!props.modelValue) return props.placeholder
-  const [h, m] = props.modelValue.split(':').map(Number)
+  const [hRaw, mRaw] = props.modelValue.split(':').map(Number)
+  const h = hRaw ?? 0
+  const m = mRaw ?? 0
   if (props.use24h) return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
   const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h
-  const ap = h! < 12 ? 'AM' : 'PM'
+  const ap = h < 12 ? 'AM' : 'PM'
   return `${String(h12).padStart(2, '0')}:${String(m).padStart(2, '0')} ${ap}`
 })
 
