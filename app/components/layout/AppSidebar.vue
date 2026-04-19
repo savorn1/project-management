@@ -82,7 +82,8 @@ const navItems = [
   { path: '/feature-flags',label: 'Feature Flags',icon: '🏳️' },
   { path: '/uploads',          label: 'File Uploads',     icon: '📎' },
   { path: '/resume',           label: 'Resume / CV',      icon: '📄' },
-  { path: '/form-components',  label: 'Form Components',  icon: '🧩' },
+  { path: '/form-components',   label: 'Form Components',   icon: '🧩' },
+  { path: '/column-components', label: 'Column Components', icon: '📊' },
 ]
 
 function isActive(path: string): boolean {
