@@ -112,6 +112,33 @@
                 <FieldText v-model="vals.text" label="Full name" placeholder="John Doe" :disabled="forceDisabled" :error="forceError ? 'This field is required' : ''" hint="Plain text input" />
                 <FieldText v-model="vals.text_prefix" label="Website" placeholder="example.com" prefix="https://" :disabled="forceDisabled" :error="forceError ? 'Enter a valid URL' : ''" />
                 <FieldText v-model="vals.text_counter" label="Username" placeholder="max 20 chars" :maxlength="20" :show-counter="true" :disabled="forceDisabled" :error="forceError ? 'Username is taken' : ''" />
+                <!-- rules / custom validation -->
+                <FieldText
+                  v-model="vals.text_rules"
+                  label="Username (rules)"
+                  placeholder="3–16 lowercase letters/numbers"
+                  :disabled="forceDisabled"
+                  :rules="[
+                    v => !!v || 'Required',
+                    v => v.length >= 3 || 'Minimum 3 characters',
+                    v => v.length <= 16 || 'Maximum 16 characters',
+                    v => /^[a-z0-9_]+$/.test(v) || 'Lowercase letters, numbers and _ only',
+                  ]"
+                  hint="Blur to trigger — rules run on each blur then live as you type"
+                />
+                <FieldText
+                  v-model="vals.text_rules2"
+                  label="Promo code (validate-on-input)"
+                  placeholder="SAVE10"
+                  validate-on="input"
+                  :disabled="forceDisabled"
+                  :rules="[
+                    v => !!v || 'Enter a promo code',
+                    v => v.length === 6 || 'Must be exactly 6 characters',
+                    v => /^[A-Z0-9]+$/.test(v) || 'Uppercase letters and digits only',
+                  ]"
+                  hint="validate-on=&quot;input&quot; — validates on every keystroke"
+                />
               </div>
               <!-- ── slug ── -->
               <div v-else-if="active === 'slug'" class="space-y-4">
@@ -610,10 +637,12 @@ const groups: NavGroup[] = [
     items: [
       {
         id: 'text', icon: '🔤', label: 'text', isNew: true,
-        description: 'Single-line text input with optional prefix/suffix slots and a character counter.',
-        usage: `<FieldText\n  v-model="value"\n  label="Full name"\n  placeholder="John Doe"\n  prefix="@"\n  suffix=".com"\n  :maxlength="50"\n  :show-counter="true"\n/>`,
+        description: 'Single-line text input with optional prefix/suffix slots, character counter, and custom rule-based validation.',
+        usage: `<FieldText\n  v-model="value"\n  label="Username"\n  :rules="[\n    v => !!v || 'Required',\n    v => v.length >= 3 || 'Minimum 3 characters',\n    v => /^[a-z0-9_]+$/.test(v) || 'Lowercase letters, numbers and _ only',\n  ]"\n/>\n\n<!-- validate-on=input: validate every keystroke -->\n<FieldText v-model="code" validate-on="input" :rules="[v => v.length === 6 || '6 chars required']" />\n\n<!-- call validate() from a submit handler -->\n<FieldText ref="nameRef" v-model="name" :rules="[v => !!v || 'Required']" />\n<!-- in script: if (!nameRef.value.validate()) return -->`,
         props: [
           { name: 'modelValue', type: 'string', required: true, description: 'Bound string value (use v-model).' },
+          { name: 'rules', type: '((v: string) => string | boolean | null)[]', description: 'Array of validator functions. Return true (or nothing) when valid, or an error string when invalid. The first failing message is shown.' },
+          { name: 'validateOn', type: '"blur" | "input" | "none"', default: '"blur"', description: 'When to trigger rule evaluation. blur = on first blur then live; input = every keystroke; none = only via validate().' },
           { name: 'placeholder', type: 'string', description: 'Input placeholder text.' },
           { name: 'prefix', type: 'string', description: 'Static prefix text shown inside the left side of the input. Use the #prefix slot for custom content.' },
           { name: 'suffix', type: 'string', description: 'Static suffix text shown inside the right side. Use the #suffix slot for custom content.' },
@@ -634,8 +663,11 @@ const groups: NavGroup[] = [
           { name: 'suffix', description: 'Custom content rendered inside the right edge of the input (overrides the suffix prop).' },
         ],
         notes: [
+          'Rules take priority over the external error prop when any rule fails.',
+          'validate-on="blur" runs on first blur, then re-runs on every keystroke so the user gets live feedback while correcting.',
+          'Call validate() via template ref from a parent submit handler to imperatively trigger validation without user interaction.',
+          'clearValidation() resets the internal error and dirty state (useful when resetting a form).',
           'When both prefix and suffix are present the input automatically adjusts its horizontal padding to avoid text overlap.',
-          'showCounter works best combined with maxlength — without maxlength, only the current length is shown (e.g. "14").',
         ],
       },
       {
@@ -1534,7 +1566,10 @@ const groups: NavGroup[] = [
 
 // ─── State ───────────────────────────────────────────────────────────────────
 
-const active = ref('text')
+const route  = useRoute()
+const active = ref(String(route.query.active || 'text'))
+
+watch(() => route.query.active, (v) => { if (v) active.value = String(v) })
 const activeTab = ref('props')
 const navSearch = ref('')
 const forceDisabled = ref(false)
@@ -1581,7 +1616,7 @@ const vals = reactive<Record<string, any>>({
   base64_image: null, video: null, wysiwyg: '', ckeditor: '', tinymce: '', easymde: '',
   address_google: null, icon_picker: null,
   relationship_single: null, relationship_multiple: [], repeatable: [], table: [],
-  text: '', text_prefix: '', text_counter: '',
+  text: '', text_prefix: '', text_counter: '', text_rules: '', text_rules2: '',
   slug_source: '', slug: '', email: '',
   textarea: '', textarea_auto: '',
   number: null, number_suffix: null,
@@ -1614,7 +1649,7 @@ const vals = reactive<Record<string, any>>({
 const DISPLAY_KEY_MAP: Record<string, string[]> = {
   relationship: ['relationship_single', 'relationship_multiple'],
   slug:         ['slug_source', 'slug'],
-  text:         ['text', 'text_prefix', 'text_counter'],
+  text:         ['text', 'text_prefix', 'text_counter', 'text_rules', 'text_rules2'],
   textarea:     ['textarea', 'textarea_auto'],
   number:       ['number', 'number_suffix'],
   float:        ['float', 'float_rating'],
@@ -1644,7 +1679,7 @@ const DEFAULT_VALS: Record<string, any> = {
   base64_image: null, video: null, wysiwyg: '', ckeditor: '', tinymce: '', easymde: '',
   address_google: null, icon_picker: null,
   relationship_single: null, relationship_multiple: [], repeatable: [], table: [],
-  text: '', text_prefix: '', text_counter: '',
+  text: '', text_prefix: '', text_counter: '', text_rules: '', text_rules2: '',
   slug_source: '', slug: '', email: '',
   textarea: '', textarea_auto: '',
   number: null, number_suffix: null,

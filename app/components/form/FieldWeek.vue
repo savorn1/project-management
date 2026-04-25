@@ -52,6 +52,7 @@ interface Props {
   min?: string
   max?: string
   tooltip?: string
+  id?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -63,7 +64,7 @@ const emit = defineEmits<{
 }>()
 
 const _autoId = useId()
-const uid = computed(() => _autoId)
+const uid = computed(() => props.id ?? _autoId)
 
 /** Friendly label e.g. "Week 18 of 2025 (Apr 28 – May 4)" */
 const friendly = computed(() => {

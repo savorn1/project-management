@@ -1,9 +1,9 @@
 <template>
-  <FieldWrapper :label="label" :hint="hint" :error="error || internalError" :required="required" :input-id="uid" :tooltip="tooltip">
+  <FieldWrapper :label="label" :hint="hint" :error="visibleError" :required="required" :input-id="uid" :tooltip="tooltip">
     <div
       class="flex items-center bg-slate-700 border rounded-lg transition-colors overflow-hidden"
       :class="[
-        (error || internalError) ? 'border-rose-500' : 'border-slate-600 hover:border-slate-500 focus-within:border-indigo-500',
+        visibleError ? 'border-rose-500' : 'border-slate-600 hover:border-slate-500 focus-within:border-indigo-500',
         disabled || readonly ? 'opacity-50' : '',
       ]"
     >
@@ -26,7 +26,7 @@
         class="flex-1 min-w-0 bg-transparent pl-1.5 py-2 text-sm text-white placeholder-gray-400 focus:outline-none"
         :class="openable ? 'pr-1.5' : 'pr-3'"
         @input="onInput"
-        @blur="validate"
+        @blur="onBlur"
       />
 
       <!-- Open in new tab -->
@@ -36,7 +36,7 @@
         target="_blank"
         rel="noopener noreferrer"
         class="pr-3 pl-1.5 flex-shrink-0 transition-colors"
-        :class="modelValue && !internalError && !error ? 'text-indigo-400 hover:text-indigo-300' : 'text-gray-600 pointer-events-none'"
+        :class="modelValue && !visibleError ? 'text-indigo-400 hover:text-indigo-300' : 'text-gray-600 pointer-events-none'"
         tabindex="-1"
         @click.prevent="openUrl"
       >
@@ -49,6 +49,8 @@
 </template>
 
 <script setup lang="ts">
+type Rule = (value: string) => string | boolean | null | undefined
+
 interface Props {
   modelValue: string
   label?: string
@@ -61,12 +63,16 @@ interface Props {
   /** Show the "open in new tab" button when a valid URL is entered */
   openable?: boolean
   tooltip?: string
+  id?: string
+  rules?: Rule[]
+  validateOn?: 'blur' | 'input' | 'none'
 }
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: '',
   placeholder: 'https://example.com',
   openable: true,
+  validateOn: 'blur',
 })
 
 const emit = defineEmits<{
@@ -75,31 +81,65 @@ const emit = defineEmits<{
 }>()
 
 const _autoId = useId()
-const uid = computed(() => _autoId)
-const internalError = ref('')
+const uid = computed(() => props.id ?? _autoId)
+
+const innerError  = ref('')
+const everBlurred = ref(false)
+const visibleError = computed(() => innerError.value || props.error || '')
 
 function isValidUrl(s: string): boolean {
   if (!s) return true
   try { new URL(s); return true } catch { return false }
 }
 
-function onInput(e: Event) {
-  internalError.value = ''
-  emit('update:modelValue', (e.target as HTMLInputElement).value)
+function runRules(value: string): boolean {
+  // Built-in format check first
+  if (value && !isValidUrl(value)) {
+    innerError.value = 'Enter a valid URL (e.g. https://example.com)'
+    return false
+  }
+  // Custom rules
+  if (props.rules?.length) {
+    for (const rule of props.rules) {
+      const result = rule(value)
+      if (result !== true && result !== null && result !== undefined && result !== '') {
+        innerError.value = result === false ? 'Invalid value' : String(result)
+        return false
+      }
+    }
+  }
+  innerError.value = ''
+  return true
 }
 
-function validate(e: FocusEvent) {
-  const v = props.modelValue
-  if (v && !isValidUrl(v)) {
-    internalError.value = 'Enter a valid URL (e.g. https://example.com)'
-  } else {
-    internalError.value = ''
+function onInput(e: Event) {
+  const value = (e.target as HTMLInputElement).value
+  emit('update:modelValue', value)
+  if (props.validateOn === 'input' || (props.validateOn === 'blur' && everBlurred.value)) {
+    runRules(value)
   }
+}
+
+function onBlur(e: FocusEvent) {
+  everBlurred.value = true
+  if (props.validateOn !== 'none') runRules(props.modelValue)
   emit('blur', e)
 }
 
+function validate(): boolean {
+  everBlurred.value = true
+  return runRules(props.modelValue)
+}
+
+function clearValidation() {
+  innerError.value = ''
+  everBlurred.value = false
+}
+
+defineExpose({ validate, clearValidation })
+
 function openUrl() {
-  if (props.modelValue && !internalError.value && !props.error && import.meta.client) {
+  if (props.modelValue && !visibleError.value && import.meta.client) {
     window.open(props.modelValue, '_blank', 'noopener,noreferrer')
   }
 }

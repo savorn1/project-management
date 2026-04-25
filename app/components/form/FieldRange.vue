@@ -1,5 +1,5 @@
 <template>
-  <FieldWrapper :label="label" :hint="hint" :error="error" :required="required">
+  <FieldWrapper :label="label" :hint="hint" :error="error" :required="required" :input-id="uid">
     <div class="space-y-2">
       <!-- Track + thumb -->
       <div class="relative flex items-center" :style="{ height: '20px' }">
@@ -22,6 +22,7 @@
           @input="onFromInput"
         />
         <input
+          :id="uid"
           type="range"
           class="range-thumb absolute inset-0 w-full appearance-none bg-transparent cursor-pointer"
           :class="disabled ? 'opacity-50 cursor-not-allowed' : ''"
@@ -64,6 +65,7 @@ interface Props {
   disabled?: boolean
   /** Optional unit suffix shown in the value label (e.g. "px", "%", " kg") */
   unit?: string
+  id?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -72,6 +74,9 @@ const props = withDefaults(defineProps<Props>(), {
   step: 1,
   range: false,
 })
+
+const _autoId = useId()
+const uid = computed(() => props.id ?? _autoId)
 
 const emit = defineEmits<{
   'update:modelValue': [value: number | [number, number]]

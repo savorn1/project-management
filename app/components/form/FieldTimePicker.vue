@@ -1,8 +1,9 @@
 <template>
-  <FieldWrapper :label="label" :hint="hint" :error="error" :required="required" :tooltip="tooltip">
+  <FieldWrapper :label="label" :hint="hint" :error="error" :required="required" :tooltip="tooltip" :input-id="uid">
     <div ref="containerRef" class="relative">
       <!-- Trigger -->
       <button
+        :id="uid"
         type="button"
         class="w-full flex items-center gap-2 px-3 py-2 bg-slate-700 border rounded-lg text-sm transition-colors focus:outline-none"
         :class="[
@@ -115,6 +116,7 @@ interface Props {
   minuteStep?: number
   placeholder?: string
   tooltip?: string
+  id?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -127,6 +129,9 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   'update:modelValue': [value: string | null]
 }>()
+
+const _autoId = useId()
+const uid = computed(() => props.id ?? _autoId)
 
 const containerRef = ref<HTMLElement | null>(null)
 const isOpen = ref(false)

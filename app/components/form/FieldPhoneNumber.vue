@@ -121,6 +121,7 @@ interface Props {
   tooltip?: string
   /** Default country code (ISO 3166-1 alpha-2) */
   defaultCountry?: string
+  id?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -134,7 +135,7 @@ const emit = defineEmits<{
 }>()
 
 const _autoId = useId()
-const uid = computed(() => _autoId)
+const uid = computed(() => props.id ?? _autoId)
 
 const dialRef = ref<HTMLElement | null>(null)
 const dialOpen = ref(false)

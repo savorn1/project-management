@@ -1,5 +1,5 @@
 <template>
-  <FieldWrapper :label="label" :hint="hint" :error="error" :required="required" :tooltip="tooltip">
+  <FieldWrapper :label="label" :hint="hint" :error="error" :required="required" :tooltip="tooltip" :input-id="uid">
     <div class="flex items-center gap-3">
       <!-- Swatch + native picker -->
       <label
@@ -41,6 +41,7 @@
       >
         <span class="pl-3 pr-1 text-sm text-gray-500 select-none">#</span>
         <input
+          :id="uid"
           :value="hexWithoutHash"
           type="text"
           maxlength="6"
@@ -94,6 +95,7 @@ interface Props {
   clearable?: boolean
   /** Preset colour swatches shown as quick picks */
   presets?: string[]
+  id?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -101,6 +103,9 @@ const props = withDefaults(defineProps<Props>(), {
   clearable: true,
   presets: () => [],
 })
+
+const _autoId = useId()
+const uid = computed(() => props.id ?? _autoId)
 
 const emit = defineEmits<{
   'update:modelValue': [value: string | null]

@@ -1162,7 +1162,10 @@ const groups: NavGroup[] = [
 
 // ─── State ───────────────────────────────────────────────────────────────────
 
-const active          = ref('col_text')
+const route  = useRoute()
+const active = ref(String(route.query.active || 'col_text'))
+
+watch(() => route.query.active, (v) => { if (v) active.value = String(v) })
 const navSearch       = ref('')
 const activeTab       = ref<'props' | 'usage'>('props')
 const activeBottomTab = ref('notes')

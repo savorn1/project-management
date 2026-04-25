@@ -1,7 +1,8 @@
 <template>
-  <FieldWrapper :label="label" :hint="hint" :error="error" :required="required" :tooltip="tooltip">
+  <FieldWrapper :label="label" :hint="hint" :error="error" :required="required" :tooltip="tooltip" :input-id="uid">
     <div class="flex items-center gap-3">
       <button
+        :id="uid"
         type="button"
         class="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800"
         :class="[
@@ -41,6 +42,7 @@ interface Props {
   trueHint?: string
   /** Extra descriptive text shown beside the button when false */
   falseHint?: string
+  id?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -48,6 +50,9 @@ const props = withDefaults(defineProps<Props>(), {
   trueLabel: 'Yes',
   falseLabel: 'No',
 })
+
+const _autoId = useId()
+const uid = computed(() => props.id ?? _autoId)
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]

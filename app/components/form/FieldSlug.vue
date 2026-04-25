@@ -1,5 +1,5 @@
 <template>
-  <FieldWrapper :label="label" :hint="hint" :error="error" :required="required">
+  <FieldWrapper :label="label" :hint="hint" :error="error" :required="required" :input-id="uid">
     <div class="relative">
       <!-- Lock / unlock toggle -->
       <div class="absolute inset-y-0 left-0 flex items-center pl-3">
@@ -21,6 +21,7 @@
       </div>
 
       <input
+        :id="uid"
         :value="modelValue"
         type="text"
         :placeholder="placeholder"
@@ -75,12 +76,16 @@ interface Props {
   baseUrl?: string
   /** Custom slug transformer; defaults to lowercase-hyphen */
   transform?: (raw: string) => string
+  id?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: '',
   placeholder: 'url-slug',
 })
+
+const _autoId = useId()
+const uid = computed(() => props.id ?? _autoId)
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]

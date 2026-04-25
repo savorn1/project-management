@@ -1,5 +1,5 @@
 <template>
-  <FieldWrapper :label="label" :hint="hint" :error="error" :required="required">
+  <FieldWrapper :label="label" :hint="hint" :error="error" :required="required" :input-id="uid">
     <div class="flex gap-2">
       <!-- Date part -->
       <div
@@ -26,6 +26,7 @@
           </svg>
         </div>
         <input
+          :id="uid"
           v-model="timePart"
           type="time"
           class="w-full pl-9 pr-3 py-2 bg-slate-700 border rounded-lg text-sm text-white focus:outline-none transition-colors appearance-none"
@@ -50,9 +51,13 @@ interface Props {
   error?: string
   required?: boolean
   disabled?: boolean
+  id?: string
 }
 
 const props = defineProps<Props>()
+
+const _autoId = useId()
+const uid = computed(() => props.id ?? _autoId)
 
 const emit = defineEmits<{
   'update:modelValue': [value: string | null]

@@ -1,5 +1,5 @@
 <template>
-  <FieldWrapper :label="label" :hint="hint" :error="error" :required="required" :input-id="uid" :tooltip="tooltip">
+  <FieldWrapper :label="label" :hint="hint" :error="visibleError" :required="required" :input-id="uid" :tooltip="tooltip">
     <div class="relative">
       <input
         :id="uid"
@@ -11,11 +11,11 @@
         :autocomplete="autocomplete"
         class="w-full pl-3 pr-10 py-2 bg-slate-700 border rounded-lg text-sm text-white placeholder-gray-400 focus:outline-none transition-colors"
         :class="[
-          error ? 'border-rose-500 focus:border-rose-500' : 'border-slate-600 focus:border-indigo-500',
+          visibleError ? 'border-rose-500 focus:border-rose-500' : 'border-slate-600 focus:border-indigo-500',
           disabled || readonly ? 'opacity-50 cursor-not-allowed' : 'hover:border-slate-500',
         ]"
-        @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
-        @blur="emit('blur', $event)"
+        @input="onInput"
+        @blur="onBlur"
         @focus="emit('focus', $event)"
       />
 
@@ -55,6 +55,8 @@
 </template>
 
 <script setup lang="ts">
+type Rule = (value: string) => string | boolean | null | undefined
+
 interface Props {
   modelValue: string
   label?: string
@@ -68,16 +70,20 @@ interface Props {
   /** Show a 4-segment password strength meter */
   showStrength?: boolean
   tooltip?: string
+  id?: string
+  rules?: Rule[]
+  validateOn?: 'blur' | 'input' | 'none'
 }
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: '',
   autocomplete: 'current-password',
   showStrength: false,
+  validateOn: 'blur',
 })
 
 const _autoId = useId()
-const uid = computed(() => _autoId)
+const uid = computed(() => props.id ?? _autoId)
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
@@ -86,6 +92,48 @@ const emit = defineEmits<{
 }>()
 
 const showPassword = ref(false)
+const innerError  = ref('')
+const everBlurred = ref(false)
+const visibleError = computed(() => innerError.value || props.error || '')
+
+function runRules(value: string): boolean {
+  if (!props.rules?.length) { innerError.value = ''; return true }
+  for (const rule of props.rules) {
+    const result = rule(value)
+    if (result !== true && result !== null && result !== undefined && result !== '') {
+      innerError.value = result === false ? 'Invalid value' : String(result)
+      return false
+    }
+  }
+  innerError.value = ''
+  return true
+}
+
+function onInput(e: Event) {
+  const value = (e.target as HTMLInputElement).value
+  emit('update:modelValue', value)
+  if (props.validateOn === 'input' || (props.validateOn === 'blur' && everBlurred.value)) {
+    runRules(value)
+  }
+}
+
+function onBlur(e: FocusEvent) {
+  everBlurred.value = true
+  if (props.validateOn !== 'none') runRules(props.modelValue)
+  emit('blur', e)
+}
+
+function validate(): boolean {
+  everBlurred.value = true
+  return runRules(props.modelValue)
+}
+
+function clearValidation() {
+  innerError.value = ''
+  everBlurred.value = false
+}
+
+defineExpose({ validate, clearValidation })
 
 const strength = computed(() => {
   const v = props.modelValue

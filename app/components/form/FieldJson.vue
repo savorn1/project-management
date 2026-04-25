@@ -64,6 +64,7 @@ interface Props {
   rows?: number
   placeholder?: string
   tooltip?: string
+  id?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -77,7 +78,7 @@ const emit = defineEmits<{
 }>()
 
 const _autoId = useId()
-const uid = computed(() => _autoId)
+const uid = computed(() => props.id ?? _autoId)
 const jsonError = ref('')
 
 const lineCount = computed(() => Math.max(props.modelValue.split('\n').length, props.rows))

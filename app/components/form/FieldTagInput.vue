@@ -93,6 +93,7 @@ interface Props {
   required?: boolean
   disabled?: boolean
   tooltip?: string
+  id?: string
   /** Keys that commit the current input as a tag */
   delimiters?: string[]
   /** Predefined suggestion list */
@@ -120,7 +121,7 @@ const emit = defineEmits<{
 }>()
 
 const _autoId = useId()
-const uid = computed(() => _autoId)
+const uid = computed(() => props.id ?? _autoId)
 
 const inputRef = ref<HTMLInputElement | null>(null)
 const inputVal = ref('')

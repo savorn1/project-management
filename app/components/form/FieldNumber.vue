@@ -1,9 +1,9 @@
 <template>
-  <FieldWrapper :label="label" :hint="hint" :error="error" :required="required" :input-id="uid" :tooltip="tooltip">
+  <FieldWrapper :label="label" :hint="hint" :error="visibleError" :required="required" :input-id="uid" :tooltip="tooltip">
     <div
       class="flex items-center bg-slate-700 border rounded-lg transition-colors overflow-hidden"
       :class="[
-        error    ? 'border-rose-500'   : 'border-slate-600 hover:border-slate-500 focus-within:border-indigo-500',
+        visibleError ? 'border-rose-500'   : 'border-slate-600 hover:border-slate-500 focus-within:border-indigo-500',
         disabled || readonly ? 'opacity-50' : '',
       ]"
     >
@@ -67,6 +67,8 @@
 </template>
 
 <script setup lang="ts">
+type Rule = (value: number | null) => string | boolean | null | undefined
+
 interface Props {
   modelValue: number | null
   label?: string
@@ -83,19 +85,52 @@ interface Props {
   suffix?: string
   showStepper?: boolean
   tooltip?: string
+  id?: string
+  rules?: Rule[]
+  validateOn?: 'blur' | 'input' | 'none'
 }
 
 const props = withDefaults(defineProps<Props>(), {
   step: 1,
   showStepper: true,
+  validateOn: 'blur',
 })
 
 const _autoId = useId()
-const uid = computed(() => _autoId)
+const uid = computed(() => props.id ?? _autoId)
 
 const emit = defineEmits<{
   'update:modelValue': [value: number | null]
 }>()
+
+const innerError  = ref('')
+const everBlurred = ref(false)
+const visibleError = computed(() => innerError.value || props.error || '')
+
+function runRules(value: number | null): boolean {
+  if (!props.rules?.length) { innerError.value = ''; return true }
+  for (const rule of props.rules) {
+    const result = rule(value)
+    if (result !== true && result !== null && result !== undefined && result !== '') {
+      innerError.value = result === false ? 'Invalid value' : String(result)
+      return false
+    }
+  }
+  innerError.value = ''
+  return true
+}
+
+function validate(): boolean {
+  everBlurred.value = true
+  return runRules(props.modelValue)
+}
+
+function clearValidation() {
+  innerError.value = ''
+  everBlurred.value = false
+}
+
+defineExpose({ validate, clearValidation })
 
 const inputRef = ref<HTMLInputElement | null>(null)
 const rawText = ref(props.modelValue !== null && props.modelValue !== undefined ? String(props.modelValue) : '')
@@ -117,15 +152,21 @@ function clamp(n: number): number {
 function onInput(raw: string) {
   rawText.value = raw.replace(/[^\d-]/g, '')
   const num = parseInt(rawText.value, 10)
-  emit('update:modelValue', isNaN(num) ? null : num)
+  const val = isNaN(num) ? null : num
+  emit('update:modelValue', val)
+  if (props.validateOn === 'input' || (props.validateOn === 'blur' && everBlurred.value)) {
+    runRules(val)
+  }
 }
 
 function onBlur() {
+  everBlurred.value = true
   if (props.modelValue !== null && props.modelValue !== undefined) {
     const clamped = clamp(props.modelValue)
     if (clamped !== props.modelValue) emit('update:modelValue', clamped)
     rawText.value = String(clamped)
   }
+  if (props.validateOn !== 'none') runRules(props.modelValue)
 }
 
 function step(dir: 1 | -1) {

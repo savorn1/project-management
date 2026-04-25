@@ -1,8 +1,9 @@
 <template>
-  <FieldWrapper :label="label" :hint="hint" :error="error" :required="required">
+  <FieldWrapper :label="label" :hint="hint" :error="error" :required="required" :input-id="uid">
     <div ref="containerRef" class="relative">
       <!-- Trigger -->
       <div
+        :id="uid"
         class="min-h-[38px] w-full flex flex-wrap items-center gap-1 px-2 py-1.5 bg-slate-700 border rounded-lg text-sm transition-colors cursor-pointer"
         :class="[
           error ? 'border-rose-500' : isOpen ? 'border-indigo-500' : 'border-slate-600 hover:border-slate-500',
@@ -97,6 +98,7 @@ interface Props {
   disabled?: boolean
   minChars?: number
   debounce?: number
+  id?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -109,6 +111,9 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   'update:modelValue': [value: AjaxOption[]]
 }>()
+
+const _autoId = useId()
+const uid = computed(() => props.id ?? _autoId)
 
 const containerRef = ref<HTMLElement | null>(null)
 const searchRef = ref<HTMLInputElement | null>(null)

@@ -9,6 +9,7 @@
         <p v-if="description" class="text-xs text-gray-500 mt-0.5">{{ description }}</p>
       </div>
       <button
+        :id="uid"
         type="button"
         role="switch"
         :aria-checked="!!modelValue"
@@ -46,13 +47,17 @@ interface Props {
   disabled?: boolean
   size?: 'sm' | 'md' | 'lg'
   color?: 'indigo' | 'emerald' | 'rose' | 'amber' | 'sky'
+  id?: string
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   modelValue: false,
   size: 'md',
   color: 'indigo',
 })
+
+const _autoId = useId()
+const uid = computed(() => props.id ?? _autoId)
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
