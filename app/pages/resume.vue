@@ -672,7 +672,10 @@
             <span class="cv-hb-dot cv-hb-dot-e">✦</span>
             <span class="cv-hb-dot cv-hb-dot-s">✦</span>
             <span class="cv-hb-dot cv-hb-dot-w">✦</span>
-            <div class="cv-hb-avatar">{{ initials }}</div>
+            <div class="cv-hb-avatar">
+              <img v-if="form.photo" :src="form.photo" class="w-full h-full object-cover" style="border-radius:inherit" alt="" />
+              <template v-else>{{ initials }}</template>
+            </div>
           </div>
           <div class="cv-hb-header-name">{{ form.fullName }}</div>
         </div>
@@ -906,7 +909,10 @@
           <!-- Sidebar theme: two-column header -->
           <div v-if="activeTheme === 'sidebar'" class="cv-sidebar-header">
             <div class="cv-sidebar-left">
-              <div class="cv-avatar">{{ initials }}</div>
+              <div class="cv-avatar">
+                <img v-if="form.photo" :src="form.photo" class="w-full h-full object-cover rounded-full" alt="" />
+                <template v-else>{{ initials }}</template>
+              </div>
             </div>
             <div class="cv-sidebar-right">
               <h1 class="cv-name">{{ form.fullName }}</h1>
@@ -923,7 +929,10 @@
           <!-- All other themes: single-column header -->
           <template v-else>
             <div v-if="!editing" class="cv-header-content">
-              <div class="cv-avatar">{{ initials }}</div>
+              <div class="cv-avatar">
+                <img v-if="form.photo" :src="form.photo" class="w-full h-full object-cover" style="border-radius:inherit" alt="" />
+                <template v-else>{{ initials }}</template>
+              </div>
               <div class="flex-1">
                 <h1 class="cv-name">{{ form.fullName }}</h1>
                 <p v-if="form.title" class="cv-job-title">{{ form.title }}</p>
@@ -961,6 +970,20 @@
               <div class="col-span-2">
                 <label class="cv-label">Profile / Portfolio URL</label>
                 <input v-model="form.profileUrl" class="cv-input" placeholder="https://linkedin.com/in/..." />
+              </div>
+              <div class="col-span-2">
+                <label class="cv-label">Profile Photo</label>
+                <div class="flex items-center gap-3">
+                  <div v-if="form.photo" class="w-16 h-16 rounded-full overflow-hidden flex-shrink-0 border-2 border-slate-600">
+                    <img :src="form.photo" class="w-full h-full object-cover" alt="Profile photo" />
+                  </div>
+                  <div v-else class="w-16 h-16 rounded-full flex-shrink-0 border-2 border-dashed border-slate-600 flex items-center justify-center text-slate-500 text-xs text-center">No photo</div>
+                  <div class="flex flex-col gap-1.5">
+                    <button type="button" @click="photoFileInput?.click()" class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-xs font-medium transition-colors text-left">Upload photo</button>
+                    <button v-if="form.photo" type="button" @click="removePhoto" class="px-3 py-1.5 rounded-lg bg-red-900/40 hover:bg-red-900/60 text-xs font-medium transition-colors text-red-400 text-left">Remove</button>
+                  </div>
+                  <input ref="photoFileInput" type="file" accept="image/*" class="hidden" @change="onPhotoChange" />
+                </div>
               </div>
             </div>
           </template>
@@ -1349,6 +1372,7 @@ const emptyForm = () => ({
   email: '',
   location: '',
   profileUrl: '',
+  photo: '',
   summary: '',
   skills: [] as string[],
   experiences: [] as WorkExperience[],
@@ -1394,6 +1418,7 @@ function syncFormFromResume() {
   form.email      = r.email      ?? ''
   form.location   = r.location   ?? ''
   form.profileUrl = r.profileUrl ?? ''
+  form.photo      = r.photo      ?? ''
   form.summary    = r.summary    ?? ''
   form.skills     = [...(r.skills ?? [])]
   form.experiences = r.experiences.map(e => ({ ...e, responsibilities: [...e.responsibilities] }))
@@ -1541,6 +1566,23 @@ function removeAward(i: number) { form.awards.splice(i, 1) }
 
 function addReference() { form.references.push({ name: '', jobTitle: '', organization: '', email: '', phone: '' }) }
 function removeReference(i: number) { form.references.splice(i, 1) }
+
+// ─── Photo upload ─────────────────────────────────────────────────────────────
+
+const photoFileInput = ref<HTMLInputElement | null>(null)
+
+function onPhotoChange(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = () => { form.photo = reader.result as string }
+  reader.readAsDataURL(file)
+}
+
+function removePhoto() {
+  form.photo = ''
+  if (photoFileInput.value) photoFileInput.value.value = ''
+}
 
 // ─── Clone / Export / Import ──────────────────────────────────────────────────
 

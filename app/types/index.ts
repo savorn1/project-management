@@ -580,6 +580,7 @@ export interface Resume {
   email?: string
   location?: string
   profileUrl?: string
+  photo?: string
   summary: string
   skills: string[]
   experiences: WorkExperience[]
