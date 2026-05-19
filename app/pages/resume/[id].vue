@@ -2,7 +2,24 @@
   <div class="min-h-screen bg-slate-950 text-white">
     <!-- Toolbar (hidden on print) -->
     <div class="no-print sticky top-0 z-30 bg-slate-900/95 backdrop-blur border-b border-slate-800 px-6 py-3 flex items-center gap-3 flex-wrap">
-      <h1 class="text-lg font-bold text-white flex-1">My Resume / CV</h1>
+      <NuxtLink to="/resume" class="text-slate-400 hover:text-white text-sm transition-colors flex items-center gap-1 mr-1">
+        ← CVs
+      </NuxtLink>
+      <input
+        v-if="renamingTitle"
+        id="toolbar-rename"
+        v-model="renameValue"
+        @keydown.enter="commitTitleRename"
+        @keydown.esc="renamingTitle = false"
+        @blur="commitTitleRename"
+        class="flex-1 bg-slate-800 border border-blue-500 rounded px-2 py-0.5 text-base font-bold text-white focus:outline-none"
+      />
+      <h1
+        v-else
+        @click="startTitleRename"
+        class="flex-1 text-lg font-bold text-white cursor-pointer hover:text-blue-300 transition-colors"
+        title="Click to rename"
+      >{{ form.cvName || 'Untitled CV' }}</h1>
 
       <!-- Theme Picker -->
       <!-- Theme Picker Dropdown -->
@@ -1249,11 +1266,31 @@
 <script setup lang="ts">
 import type { WorkExperience, ResumeEducation, ResumeLanguage, ResumeAward, ResumeReference } from '~/types'
 
+const route = useRoute()
+const cvId = computed(() => route.params.id as string)
+
 useHead({ title: 'Resume / CV' })
 
-const { resume, loading, saving, fetchResume, saveResume } = useResume()
+const { resume, loading, saving, fetchResume, saveResume, renameResume } = useResume()
 
 const editing = ref(false)
+
+const renamingTitle = ref(false)
+const renameValue = ref('')
+
+function startTitleRename() {
+  renameValue.value = form.cvName
+  renamingTitle.value = true
+  nextTick(() => (document.getElementById('toolbar-rename') as HTMLInputElement)?.select())
+}
+
+async function commitTitleRename() {
+  renamingTitle.value = false
+  const name = renameValue.value.trim()
+  if (!name || name === form.cvName) return
+  form.cvName = name
+  await renameResume(cvId.value, name)
+}
 
 // ─── Themes ──────────────────────────────────────────────────────────────────
 
@@ -1366,6 +1403,7 @@ const themeGroups = [
 // ─── Form state ───────────────────────────────────────────────────────────────
 
 const emptyForm = () => ({
+  cvName: 'Untitled CV',
   fullName: '',
   title: '',
   phone: '',
@@ -1405,13 +1443,13 @@ const initials = computed(() => {
 // ─── Load ─────────────────────────────────────────────────────────────────────
 
 onMounted(async () => {
-  await fetchResume()
+  await fetchResume(cvId.value)
   if (resume.value) syncFormFromResume()
-  else prefillDefault()
 })
 
 function syncFormFromResume() {
   const r = resume.value!
+  form.cvName     = r.cvName     ?? 'Untitled CV'
   form.fullName   = r.fullName   ?? ''
   form.title      = r.title      ?? ''
   form.phone      = r.phone      ?? ''
@@ -1502,12 +1540,11 @@ function startEdit() { editing.value = true }
 
 function cancelEdit() {
   if (resume.value) syncFormFromResume()
-  else prefillDefault()
   editing.value = false
 }
 
 async function handleSave() {
-  await saveResume({ ...form })
+  await saveResume(cvId.value, { ...form })
   editing.value = false
 }
 

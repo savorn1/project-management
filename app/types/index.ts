@@ -571,9 +571,17 @@ export interface ResumeReference {
   phone?: string
 }
 
+export interface ResumeListItem {
+  _id: string
+  cvName: string
+  fullName: string
+  updatedAt: string
+}
+
 export interface Resume {
   _id: string
   userId: string
+  cvName: string
   fullName: string
   title?: string
   phone?: string
